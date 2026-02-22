@@ -1,0 +1,23 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+*.cache
+*.dll
+*.exe
+*.pdb
+
+## MonoGame Content Pipeline
+Content/bin/
+Content/obj/
+
+## IDE
+.vs/
+.vscode/
+*.swp
+*~
+
+## OS
+.DS_Store
+Thumbs.db
