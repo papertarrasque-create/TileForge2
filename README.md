@@ -1,10 +1,10 @@
-# TileForge2
+# TileForge
 
 An interactive map editor for top-down 2D games. Paint tiles, place entities, play the map.
 
 Built with C# / MonoGame (DesktopGL), targeting .NET 9.0.
 
-![TileForge2](https://img.shields.io/badge/.NET-9.0-blue) ![MonoGame](https://img.shields.io/badge/MonoGame-3.8-green)
+![TileForge](https://img.shields.io/badge/.NET-9.0-blue) ![MonoGame](https://img.shields.io/badge/MonoGame-3.8-green)
 
 ## What It Does
 
@@ -12,8 +12,11 @@ Built with C# / MonoGame (DesktopGL), targeting .NET 9.0.
 - **Place entities** with identity (doors, chests, NPCs, player start)
 - **Multiple layers** with visibility toggles and reordering
 - **Play mode** (F5) — walk your map with collision and entity interaction
-- **Save/Load** projects as `.tileforge2` JSON files
+- **Save/Load** projects as `.tileforge` JSON files
 - **Undo/Redo** for all editing actions
+- **Minimap** overlay with click-to-pan navigation
+- **Export** to JSON or PNG
+- **Stamp brush** for multi-tile pattern painting
 
 ## Quick Start
 
@@ -26,17 +29,17 @@ Built with C# / MonoGame (DesktopGL), targeting .NET 9.0.
 ```bash
 git clone https://github.com/papertarrasque-create/TileForge2.git
 cd TileForge2
-dotnet run --project TileForge2
+dotnet run --project TileForge
 ```
 
 Window opens at 1440x900. To get started:
 
-1. **Open the sample project**: `Ctrl+O`, navigate to `TileForge2/TutorialProject/TestCavernDungeon.tileforge2`
+1. **Open the sample project**: `Ctrl+O`, navigate to `TileForge/TutorialProject/TestCavernDungeon.tileforge`
 2. **Or start fresh**: drag-and-drop any spritesheet PNG onto the window, enter tile dimensions
 
 ### Try the Sample Project
 
-The `TileForge2/TutorialProject/` folder contains a sample project with a pre-built dungeon map and "The Roguelike" spritesheet (16x16 tiles). Open `TestCavernDungeon.tileforge2` to explore.
+The `TileForge/TutorialProject/` folder contains a sample project with a pre-built dungeon map and "The Roguelike" spritesheet (16x16 tiles). Open `TestCavernDungeon.tileforge` to explore.
 
 ## Controls
 
@@ -48,12 +51,23 @@ The `TileForge2/TutorialProject/` folder contains a sample project with a pre-bu
 | E | Eraser tool |
 | F | Fill tool |
 | N | Entity tool |
-| G | Toggle grid |
+| I | Picker tool (eyedropper) |
+| M | Selection tool |
+| G | Cycle grid (Normal/Fine/Off) |
 | V | Toggle layer visibility |
 | Tab | Cycle active layer |
+| Shift+Up/Down | Reorder layers |
+| Delete | Clear selection / remove entity |
+| Escape | Clear stamp → selection → entity → exit |
 | Ctrl+S | Save |
 | Ctrl+O | Open file |
+| Ctrl+Shift+O | Open recent |
+| Ctrl+N | New project |
 | Ctrl+Z / Ctrl+Y | Undo / Redo |
+| Ctrl+R | Resize map |
+| Ctrl+C / Ctrl+V | Copy / Paste selection |
+| Ctrl+E | Export (JSON/PNG) |
+| Ctrl+M | Toggle minimap |
 | F5 | Enter play mode |
 | Middle drag | Pan |
 | Scroll | Zoom |
@@ -88,14 +102,15 @@ The `TileForge2/TutorialProject/` folder contains a sample project with a pre-bu
 ## Project Structure
 
 ```
-TileForge2/         Main application
+TileForge/          Main application
+TileForge.Tests/    Unit tests (453 tests)
 DojoUI/             Shared UI library (Camera, SpriteSheet, Dialogs, etc.)
-TileForge2.sln      Solution file
+TileForge.sln       Solution file
 ```
 
 ## File Format
 
-Projects save as `.tileforge2` JSON files — human-readable, hand-editable. Spritesheets are referenced by relative path.
+Projects save as `.tileforge` JSON files — human-readable, hand-editable. Spritesheets are referenced by relative path. Legacy `.tileforge2` files are also supported for loading.
 
 ## Feedback
 

@@ -24,6 +24,13 @@ public class TextInputField
     public string Text => _text;
     public bool IsFocused { get; set; }
 
+    public void SetText(string text)
+    {
+        _text = text ?? "";
+        _cursorPos = _text.Length;
+        ResetBlink();
+    }
+
     public TextInputField(string defaultText = "", int maxLength = 256, Func<char, bool> charFilter = null)
     {
         _text = defaultText;

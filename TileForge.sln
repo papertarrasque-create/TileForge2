@@ -1,0 +1,34 @@
+
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TileForge", "TileForge\TileForge.csproj", "{829C276A-EE40-4863-89D4-F22A40193F3A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DojoUI", "DojoUI\DojoUI.csproj", "{B850CE41-21D8-49E7-838F-5CC446CCEBC1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TileForge.Tests", "TileForge.Tests\TileForge.Tests.csproj", "{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{829C276A-EE40-4863-89D4-F22A40193F3A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{829C276A-EE40-4863-89D4-F22A40193F3A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{829C276A-EE40-4863-89D4-F22A40193F3A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{829C276A-EE40-4863-89D4-F22A40193F3A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B850CE41-21D8-49E7-838F-5CC446CCEBC1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B850CE41-21D8-49E7-838F-5CC446CCEBC1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B850CE41-21D8-49E7-838F-5CC446CCEBC1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B850CE41-21D8-49E7-838F-5CC446CCEBC1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

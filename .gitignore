@@ -18,6 +18,9 @@ Content/obj/
 *.swp
 *~
 
+## TileForge
+*.autosave
+
 ## OS
 .DS_Store
 Thumbs.db

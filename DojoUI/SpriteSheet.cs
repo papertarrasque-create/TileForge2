@@ -5,7 +5,7 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace DojoUI;
 
-public class SpriteSheet
+public class SpriteSheet : ISpriteSheet
 {
     public Texture2D Texture { get; }
     public int TileWidth { get; }
