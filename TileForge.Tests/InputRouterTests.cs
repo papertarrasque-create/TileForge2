@@ -266,16 +266,19 @@ public class InputRouterTests
     // ===== Escape =====
 
     [Fact]
-    public void Update_Escape_InPlayMode_CallsExitPlayMode()
+    public void Update_Escape_InPlayMode_PassesThrough()
     {
+        // Escape in play mode is handled by ScreenManager (opens PauseScreen),
+        // not by InputRouter. InputRouter returns false so the key reaches the game loop.
         var state = CreateStateWithMap();
         state.IsPlayMode = true;
         var (router, tracker) = CreateRouter(state);
         var (current, prev) = SimulateKeyPress(Keys.Escape);
 
-        router.Update(current, prev, default);
+        bool consumed = router.Update(current, prev, default);
 
-        Assert.True(tracker.ExitPlayModeCalled);
+        Assert.False(consumed);
+        Assert.False(tracker.ExitPlayModeCalled);
     }
 
     [Fact]

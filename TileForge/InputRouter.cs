@@ -117,11 +117,12 @@ public class InputRouter
 
         if (KeyPressed(keyboard, prevKeyboard, Keys.Escape))
         {
+            // In play mode, Escape is handled by the ScreenManager (opens PauseScreen).
+            // Only F5 exits play mode from InputRouter.
             if (_state.IsPlayMode)
-            {
-                _exitPlayMode();
-            }
-            else if (_state.Clipboard != null)
+                return false;
+
+            if (_state.Clipboard != null)
             {
                 _state.Clipboard = null;
             }

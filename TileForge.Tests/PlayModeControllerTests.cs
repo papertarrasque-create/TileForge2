@@ -3,6 +3,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 using TileForge.Data;
 using TileForge.Editor;
+using TileForge.Game;
 using TileForge.Play;
 using TileForge.Tests.Helpers;
 using TileForge.UI;
@@ -79,34 +80,37 @@ public class PlayModeControllerTests
     }
 
     /// <summary>
-    /// Simulates a single key-press Update cycle (key down in current, key up in prev).
-    /// Uses a large enough elapsed time to complete the move in one frame.
+    /// Simulates a single key-press Update cycle (key down this frame).
+    /// GameInputManager tracks its own previous state internally.
     /// </summary>
     private static void SimulateKeyPress(PlayModeController controller, Keys key)
     {
         var current = new KeyboardState(key);
-        var prev = new KeyboardState();
-        // Use an elapsed time greater than MoveDuration (0.15s) to start + complete the move
         var gameTime = new GameTime(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(0.01));
-        controller.Update(gameTime, current, prev);
+        controller.Update(gameTime, current);
     }
 
     /// <summary>
     /// Starts a move and then completes it by calling Update with enough elapsed time.
     /// After this returns, IsMoving will be false and the player entity position will be updated.
+    /// Includes a release frame so the key registers as JustPressed even if the same key
+    /// was down from a previous SimulateKeyPress call.
     /// </summary>
     private static void SimulateFullMove(PlayModeController controller, Keys key)
     {
-        // First frame: key press initiates the move
-        var current = new KeyboardState(key);
-        var prev = new KeyboardState();
-        var startTime = new GameTime(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(0.01));
-        controller.Update(startTime, current, prev);
+        // Release frame: ensure key is up so next press registers as JustPressed
+        var releaseTime = new GameTime(TimeSpan.FromSeconds(0.5), TimeSpan.FromSeconds(0.001));
+        controller.Update(releaseTime, new KeyboardState());
 
-        // Second frame: enough time passes to complete the move (elapsed > MoveDuration)
+        // Frame 1: key press initiates the move
+        var current = new KeyboardState(key);
+        var startTime = new GameTime(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(0.01));
+        controller.Update(startTime, current);
+
+        // Frame 2: enough time passes to complete the move (elapsed > MoveDuration)
         var finishTime = new GameTime(TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(PlayState.MoveDuration + 0.01f));
         var noKeys = new KeyboardState();
-        controller.Update(finishTime, noKeys, current);
+        controller.Update(finishTime, noKeys);
     }
 
     // =========================================================================
@@ -416,9 +420,8 @@ public class PlayModeControllerTests
         var controller = new PlayModeController(state, canvas, DefaultCanvasBounds);
         var gameTime = new GameTime(TimeSpan.FromSeconds(1), TimeSpan.FromMilliseconds(16));
         var keyboard = new KeyboardState();
-        var prevKeyboard = new KeyboardState();
 
-        var exception = Record.Exception(() => controller.Update(gameTime, keyboard, prevKeyboard));
+        var exception = Record.Exception(() => controller.Update(gameTime, keyboard));
 
         Assert.Null(exception);
     }
@@ -521,7 +524,7 @@ public class PlayModeControllerTests
 
         // Update with no keys pressed
         var gameTime = new GameTime(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(0.1));
-        controller.Update(gameTime, new KeyboardState(), new KeyboardState());
+        controller.Update(gameTime, new KeyboardState());
 
         Assert.False(state.PlayState.IsMoving);
         Assert.Equal(5, state.PlayState.PlayerEntity.X);
@@ -531,18 +534,29 @@ public class PlayModeControllerTests
     [Fact]
     public void Update_KeyHeldDown_DoesNotRepeatMove()
     {
-        // KeyPressed requires key down in current AND key up in previous.
-        // If the same key state is used for both, it should not register.
+        // GameInputManager tracks its own previous state. A key held across
+        // frames should only trigger JustPressed on the first frame.
         var (state, canvas, controller) = CreatePlaySetup(playerX: 5, playerY: 5);
         controller.Enter();
 
         var rightDown = new KeyboardState(Keys.Right);
-        var gameTime = new GameTime(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(0.01));
 
-        // Both current and prev have right key down — no new press detected
-        controller.Update(gameTime, rightDown, rightDown);
+        // Frame 1: key pressed — initiates move
+        var startTime = new GameTime(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(0.01));
+        controller.Update(startTime, rightDown);
+        Assert.True(state.PlayState.IsMoving);
 
+        // Complete the move
+        var finishTime = new GameTime(TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(PlayState.MoveDuration + 0.01f));
+        controller.Update(finishTime, rightDown);
         Assert.False(state.PlayState.IsMoving);
+        Assert.Equal(6, state.PlayState.PlayerEntity.X);
+
+        // Frame 3: key still held — should NOT start a new move
+        var holdTime = new GameTime(TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(0.01));
+        controller.Update(holdTime, rightDown);
+        Assert.False(state.PlayState.IsMoving);
+        Assert.Equal(6, state.PlayState.PlayerEntity.X);
     }
 
     // =========================================================================
@@ -831,7 +845,7 @@ public class PlayModeControllerTests
 
         // Run an Update with some elapsed time (no key press)
         var gameTime = new GameTime(TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(0.5));
-        controller.Update(gameTime, new KeyboardState(), new KeyboardState());
+        controller.Update(gameTime, new KeyboardState());
 
         Assert.True(state.PlayState.StatusMessageTimer < initialTimer);
     }
@@ -864,7 +878,7 @@ public class PlayModeControllerTests
         // Tick past the full status message duration
         var gameTime = new GameTime(TimeSpan.FromSeconds(10),
             TimeSpan.FromSeconds(PlayState.StatusMessageDuration + 0.1));
-        controller.Update(gameTime, new KeyboardState(), new KeyboardState());
+        controller.Update(gameTime, new KeyboardState());
 
         Assert.Null(state.PlayState.StatusMessage);
     }
@@ -906,16 +920,15 @@ public class PlayModeControllerTests
 
         // Initiate move
         var current = new KeyboardState(Keys.Right);
-        var prev = new KeyboardState();
         var startTime = new GameTime(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(0.01));
-        controller.Update(startTime, current, prev);
+        controller.Update(startTime, current);
 
         Assert.True(state.PlayState.IsMoving);
 
         // Partial progress: half of MoveDuration
         var halfTime = new GameTime(TimeSpan.FromSeconds(2),
             TimeSpan.FromSeconds(PlayState.MoveDuration * 0.5));
-        controller.Update(halfTime, new KeyboardState(), current);
+        controller.Update(halfTime, new KeyboardState());
 
         // RenderPos should be between MoveFrom (5,5) and MoveTo (6,5)
         Assert.True(state.PlayState.RenderPos.X > 5f);
@@ -931,9 +944,8 @@ public class PlayModeControllerTests
 
         // Start a move to the right
         var rightKey = new KeyboardState(Keys.Right);
-        var prev = new KeyboardState();
         var startTime = new GameTime(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(0.01));
-        controller.Update(startTime, rightKey, prev);
+        controller.Update(startTime, rightKey);
 
         Assert.True(state.PlayState.IsMoving);
         Assert.Equal(new Vector2(6, 5), state.PlayState.MoveTo);
@@ -942,7 +954,7 @@ public class PlayModeControllerTests
         var downKey = new KeyboardState(Keys.Down);
         var partialTime = new GameTime(TimeSpan.FromSeconds(2),
             TimeSpan.FromSeconds(PlayState.MoveDuration * 0.3));
-        controller.Update(partialTime, downKey, rightKey);
+        controller.Update(partialTime, downKey);
 
         // Still moving to the original target
         Assert.True(state.PlayState.IsMoving);
@@ -1029,5 +1041,450 @@ public class PlayModeControllerTests
         // But can move right and down
         SimulateKeyPress(controller, Keys.Right);
         Assert.True(state.PlayState.IsMoving);
+    }
+
+    // =========================================================================
+    // G2: GameStateManager integration
+    // =========================================================================
+
+    [Fact]
+    public void Enter_CreatesGameStateManager()
+    {
+        var (state, canvas, controller) = CreatePlaySetup();
+        controller.Enter();
+
+        Assert.NotNull(controller.GameStateManager);
+        Assert.NotNull(controller.GameStateManager.State);
+    }
+
+    [Fact]
+    public void Enter_GameStateManagerHasPlayerPosition()
+    {
+        var (state, canvas, controller) = CreatePlaySetup(playerX: 3, playerY: 7);
+        controller.Enter();
+
+        Assert.Equal(3, controller.GameStateManager.State.Player.X);
+        Assert.Equal(7, controller.GameStateManager.State.Player.Y);
+    }
+
+    [Fact]
+    public void Enter_GameStateManagerExcludesPlayerFromActiveEntities()
+    {
+        var (state, canvas, controller) = CreatePlaySetup(customize: s =>
+        {
+            s.AddGroup(new TileGroup
+            {
+                Name = "npc",
+                Type = GroupType.Entity,
+                Sprites = { new SpriteRef { Col = 1, Row = 1 } },
+            });
+            s.Map.Entities.Add(new Entity { Id = "npc01", GroupName = "npc", X = 8, Y = 8 });
+        });
+        controller.Enter();
+
+        Assert.Single(controller.GameStateManager.State.ActiveEntities);
+        Assert.Equal("npc01", controller.GameStateManager.State.ActiveEntities[0].Id);
+    }
+
+    [Fact]
+    public void Exit_ClearsGameStateManager()
+    {
+        var (state, canvas, controller) = CreatePlaySetup();
+        controller.Enter();
+        controller.Exit();
+
+        Assert.Null(controller.GameStateManager);
+    }
+
+    // =========================================================================
+    // G2: Hazard tile damage
+    // =========================================================================
+
+    [Fact]
+    public void Update_HazardTile_DamagesPlayer()
+    {
+        var (state, canvas, controller) = CreatePlaySetup(playerX: 5, playerY: 5, customize: s =>
+        {
+            s.AddGroup(new TileGroup
+            {
+                Name = "lava",
+                Type = GroupType.Tile,
+                IsHazardous = true,
+                DamagePerTick = 10,
+                DamageType = "fire",
+                Sprites = { new SpriteRef { Col = 3, Row = 3 } },
+            });
+            s.Map.GetLayer("Ground").SetCell(6, 5, s.Map.Width, "lava");
+        });
+        controller.Enter();
+
+        SimulateFullMove(controller, Keys.Right);
+
+        // 10 instant fire damage + 1 burn effect damage on same step = 89
+        Assert.Equal(89, controller.GameStateManager.State.Player.Health);
+    }
+
+    [Fact]
+    public void Update_HazardTile_ShowsDamageMessage()
+    {
+        var (state, canvas, controller) = CreatePlaySetup(playerX: 5, playerY: 5, customize: s =>
+        {
+            s.AddGroup(new TileGroup
+            {
+                Name = "lava",
+                Type = GroupType.Tile,
+                IsHazardous = true,
+                DamagePerTick = 10,
+                DamageType = "fire",
+                Sprites = { new SpriteRef { Col = 3, Row = 3 } },
+            });
+            s.Map.GetLayer("Ground").SetCell(6, 5, s.Map.Width, "lava");
+        });
+        controller.Enter();
+
+        SimulateFullMove(controller, Keys.Right);
+
+        Assert.Equal("Took 10 fire damage!", state.PlayState.StatusMessage);
+    }
+
+    [Fact]
+    public void Update_NonHazardousTile_NoDamage()
+    {
+        var (state, canvas, controller) = CreatePlaySetup(playerX: 5, playerY: 5, customize: s =>
+        {
+            s.AddGroup(new TileGroup
+            {
+                Name = "grass",
+                Type = GroupType.Tile,
+                IsHazardous = false,
+                Sprites = { new SpriteRef { Col = 2, Row = 2 } },
+            });
+            s.Map.GetLayer("Ground").SetCell(6, 5, s.Map.Width, "grass");
+        });
+        controller.Enter();
+
+        SimulateFullMove(controller, Keys.Right);
+
+        Assert.Equal(100, controller.GameStateManager.State.Player.Health);
+    }
+
+    [Fact]
+    public void Update_HazardKillsPlayer_ShowsDeathMessage()
+    {
+        var (state, canvas, controller) = CreatePlaySetup(playerX: 5, playerY: 5, customize: s =>
+        {
+            s.AddGroup(new TileGroup
+            {
+                Name = "deathpit",
+                Type = GroupType.Tile,
+                IsHazardous = true,
+                DamagePerTick = 200,
+                DamageType = "spikes",
+                Sprites = { new SpriteRef { Col = 3, Row = 3 } },
+            });
+            s.Map.GetLayer("Ground").SetCell(6, 5, s.Map.Width, "deathpit");
+        });
+        controller.Enter();
+
+        SimulateFullMove(controller, Keys.Right);
+
+        Assert.Equal(0, controller.GameStateManager.State.Player.Health);
+        Assert.False(controller.GameStateManager.IsPlayerAlive());
+        Assert.True(controller.ScreenManager.HasScreens);
+    }
+
+    [Fact]
+    public void Update_DeadPlayer_CannotMove()
+    {
+        var (state, canvas, controller) = CreatePlaySetup(playerX: 5, playerY: 5, customize: s =>
+        {
+            s.AddGroup(new TileGroup
+            {
+                Name = "deathpit",
+                Type = GroupType.Tile,
+                IsHazardous = true,
+                DamagePerTick = 200,
+                Sprites = { new SpriteRef { Col = 3, Row = 3 } },
+            });
+            s.Map.GetLayer("Ground").SetCell(6, 5, s.Map.Width, "deathpit");
+        });
+        controller.Enter();
+
+        // Move onto lethal tile — player dies
+        SimulateFullMove(controller, Keys.Right);
+        Assert.False(controller.GameStateManager.IsPlayerAlive());
+
+        // Try to move again — should not work
+        int xBefore = state.PlayState.PlayerEntity.X;
+        SimulateKeyPress(controller, Keys.Down);
+        Assert.False(state.PlayState.IsMoving);
+        Assert.Equal(xBefore, state.PlayState.PlayerEntity.X);
+    }
+
+    // =========================================================================
+    // G2: Movement cost
+    // =========================================================================
+
+    [Fact]
+    public void Update_HighMovementCost_IncreasesMoveDuration()
+    {
+        var (state, canvas, controller) = CreatePlaySetup(playerX: 5, playerY: 5, customize: s =>
+        {
+            s.AddGroup(new TileGroup
+            {
+                Name = "swamp",
+                Type = GroupType.Tile,
+                MovementCost = 2.0f,
+                Sprites = { new SpriteRef { Col = 4, Row = 4 } },
+            });
+            s.Map.GetLayer("Ground").SetCell(6, 5, s.Map.Width, "swamp");
+        });
+        controller.Enter();
+
+        // Initiate move onto swamp tile
+        SimulateKeyPress(controller, Keys.Right);
+
+        // CurrentMoveDuration should be 0.15 * 2.0 = 0.30
+        Assert.Equal(PlayState.MoveDuration * 2.0f, state.PlayState.CurrentMoveDuration, 3);
+    }
+
+    [Fact]
+    public void Update_DefaultMovementCost_UsesBaseDuration()
+    {
+        var (state, canvas, controller) = CreatePlaySetup(playerX: 5, playerY: 5);
+        controller.Enter();
+
+        SimulateKeyPress(controller, Keys.Right);
+
+        Assert.Equal(PlayState.MoveDuration, state.PlayState.CurrentMoveDuration, 3);
+    }
+
+    [Fact]
+    public void Update_HighMovementCost_TakesLongerToComplete()
+    {
+        var (state, canvas, controller) = CreatePlaySetup(playerX: 5, playerY: 5, customize: s =>
+        {
+            s.AddGroup(new TileGroup
+            {
+                Name = "swamp",
+                Type = GroupType.Tile,
+                MovementCost = 3.0f,
+                Sprites = { new SpriteRef { Col = 4, Row = 4 } },
+            });
+            s.Map.GetLayer("Ground").SetCell(6, 5, s.Map.Width, "swamp");
+        });
+        controller.Enter();
+
+        // Start move
+        var current = new KeyboardState(Keys.Right);
+        var startTime = new GameTime(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(0.01));
+        controller.Update(startTime, current);
+        Assert.True(state.PlayState.IsMoving);
+
+        // After base MoveDuration (0.15s), move should NOT be complete (cost=3x → needs 0.45s)
+        var midTime = new GameTime(TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(PlayState.MoveDuration));
+        controller.Update(midTime, new KeyboardState());
+        Assert.True(state.PlayState.IsMoving);
+
+        // After total 0.45s+, move should be complete
+        var endTime = new GameTime(TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(PlayState.MoveDuration * 2.0f + 0.01f));
+        controller.Update(endTime, new KeyboardState());
+        Assert.False(state.PlayState.IsMoving);
+    }
+
+    // =========================================================================
+    // G2: Entity interaction by EntityType
+    // =========================================================================
+
+    [Fact]
+    public void Update_NPCInteraction_ShowsTalkedMessage()
+    {
+        var (state, canvas, controller) = CreatePlaySetup(playerX: 5, playerY: 5, customize: s =>
+        {
+            s.AddGroup(new TileGroup
+            {
+                Name = "elder",
+                Type = GroupType.Entity,
+                IsSolid = true,
+                EntityType = EntityType.NPC,
+                Sprites = { new SpriteRef { Col = 5, Row = 5 } },
+            });
+            s.Map.Entities.Add(new Entity { Id = "elder01", GroupName = "elder", X = 6, Y = 5 });
+        });
+        controller.Enter();
+
+        // Bump into the NPC (solid)
+        SimulateKeyPress(controller, Keys.Right);
+
+        Assert.Equal("Talked to elder", state.PlayState.StatusMessage);
+    }
+
+    [Fact]
+    public void Update_ItemInteraction_CollectsAndDeactivates()
+    {
+        var (state, canvas, controller) = CreatePlaySetup(playerX: 5, playerY: 5, customize: s =>
+        {
+            s.AddGroup(new TileGroup
+            {
+                Name = "health_potion",
+                Type = GroupType.Entity,
+                IsSolid = false,
+                EntityType = EntityType.Item,
+                Sprites = { new SpriteRef { Col = 6, Row = 6 } },
+            });
+            s.Map.Entities.Add(new Entity { Id = "hp01", GroupName = "health_potion", X = 6, Y = 5 });
+        });
+        controller.Enter();
+
+        SimulateFullMove(controller, Keys.Right);
+
+        Assert.Equal("Collected health_potion", state.PlayState.StatusMessage);
+        Assert.True(controller.GameStateManager.HasItem("health_potion"));
+
+        // Entity should be deactivated
+        var instance = controller.GameStateManager.State.ActiveEntities[0];
+        Assert.False(instance.IsActive);
+    }
+
+    [Fact]
+    public void Update_CollectedItem_NoLongerBlocks()
+    {
+        var (state, canvas, controller) = CreatePlaySetup(playerX: 5, playerY: 5, customize: s =>
+        {
+            s.AddGroup(new TileGroup
+            {
+                Name = "key",
+                Type = GroupType.Entity,
+                IsSolid = true,
+                EntityType = EntityType.Item,
+                Sprites = { new SpriteRef { Col = 6, Row = 6 } },
+            });
+            s.Map.Entities.Add(new Entity { Id = "key01", GroupName = "key", X = 6, Y = 5 });
+        });
+        controller.Enter();
+
+        // Bump into the key (solid + item = collect on bump)
+        SimulateKeyPress(controller, Keys.Right);
+        Assert.Equal("Collected key", state.PlayState.StatusMessage);
+
+        // Now the deactivated entity should no longer block
+        SimulateFullMove(controller, Keys.Right);
+        Assert.Equal(6, state.PlayState.PlayerEntity.X);
+    }
+
+    [Fact]
+    public void Update_TrapInteraction_DealsDamage()
+    {
+        var (state, canvas, controller) = CreatePlaySetup(playerX: 5, playerY: 5, customize: s =>
+        {
+            s.AddGroup(new TileGroup
+            {
+                Name = "spike_trap",
+                Type = GroupType.Entity,
+                IsSolid = false,
+                EntityType = EntityType.Trap,
+                Sprites = { new SpriteRef { Col = 7, Row = 7 } },
+            });
+            s.Map.Entities.Add(new Entity
+            {
+                Id = "trap01",
+                GroupName = "spike_trap",
+                X = 6,
+                Y = 5,
+                Properties = new() { ["damage"] = "15" },
+            });
+        });
+        controller.Enter();
+
+        SimulateFullMove(controller, Keys.Right);
+
+        Assert.Equal(85, controller.GameStateManager.State.Player.Health);
+        Assert.Equal("spike_trap dealt 15 damage!", state.PlayState.StatusMessage);
+    }
+
+    [Fact]
+    public void Update_TriggerInteraction_ShowsTriggeredMessage()
+    {
+        var (state, canvas, controller) = CreatePlaySetup(playerX: 5, playerY: 5, customize: s =>
+        {
+            s.AddGroup(new TileGroup
+            {
+                Name = "door",
+                Type = GroupType.Entity,
+                IsSolid = false,
+                EntityType = EntityType.Trigger,
+                Sprites = { new SpriteRef { Col = 8, Row = 8 } },
+            });
+            s.Map.Entities.Add(new Entity
+            {
+                Id = "door01",
+                GroupName = "door",
+                X = 6,
+                Y = 5,
+                Properties = new() { ["message"] = "A mysterious door" },
+            });
+        });
+        controller.Enter();
+
+        SimulateFullMove(controller, Keys.Right);
+
+        Assert.Equal("Triggered door", state.PlayState.StatusMessage);
+    }
+
+    [Fact]
+    public void Update_InteractableInteraction_ShowsDefaultMessage()
+    {
+        var (state, canvas, controller) = CreatePlaySetup(playerX: 5, playerY: 5, customize: s =>
+        {
+            s.AddGroup(new TileGroup
+            {
+                Name = "sign",
+                Type = GroupType.Entity,
+                IsSolid = true,
+                EntityType = EntityType.Interactable,
+                Sprites = { new SpriteRef { Col = 9, Row = 9 } },
+            });
+            s.Map.Entities.Add(new Entity { Id = "sign01", GroupName = "sign", X = 6, Y = 5 });
+        });
+        controller.Enter();
+
+        // Bump into the sign (solid interactable)
+        SimulateKeyPress(controller, Keys.Right);
+
+        Assert.Equal("Interacted with sign", state.PlayState.StatusMessage);
+    }
+
+    [Fact]
+    public void Update_InactiveEntity_NotInteractedWith()
+    {
+        var (state, canvas, controller) = CreatePlaySetup(playerX: 5, playerY: 5, customize: s =>
+        {
+            s.AddGroup(new TileGroup
+            {
+                Name = "coin",
+                Type = GroupType.Entity,
+                IsSolid = false,
+                EntityType = EntityType.Item,
+                Sprites = { new SpriteRef { Col = 6, Row = 6 } },
+            });
+            s.Map.Entities.Add(new Entity { Id = "coin01", GroupName = "coin", X = 6, Y = 5 });
+        });
+        controller.Enter();
+
+        // Collect the coin
+        SimulateFullMove(controller, Keys.Right);
+        Assert.Equal("Collected coin", state.PlayState.StatusMessage);
+
+        // Move away
+        SimulateFullMove(controller, Keys.Right);
+
+        // Clear the status message manually so we can detect if a new one is set
+        state.PlayState.StatusMessage = null;
+        state.PlayState.StatusMessageTimer = 0;
+
+        // Move back to coin position — coin is inactive, should not trigger
+        SimulateFullMove(controller, Keys.Left);
+
+        Assert.Null(state.PlayState.StatusMessage);
     }
 }

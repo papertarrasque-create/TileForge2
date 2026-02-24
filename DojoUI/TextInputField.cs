@@ -105,13 +105,14 @@ public class TextInputField
         string beforeCursor = _text[.._cursorPos];
         float cursorX = font.MeasureString(beforeCursor).X;
         float scrollOffset = 0;
-        if (cursorX > visibleWidth)
+        if (IsFocused && cursorX > visibleWidth)
             scrollOffset = cursorX - visibleWidth;
 
         var prevScissor = spriteBatch.GraphicsDevice.ScissorRectangle;
         spriteBatch.End();
         spriteBatch.Begin(samplerState: SamplerState.PointClamp, rasterizerState: _scissorRasterizer);
-        spriteBatch.GraphicsDevice.ScissorRectangle = new Rectangle(bounds.X + pad, bounds.Y, (int)visibleWidth, bounds.Height);
+        var fieldClip = new Rectangle(bounds.X + pad, bounds.Y, (int)visibleWidth, bounds.Height);
+        spriteBatch.GraphicsDevice.ScissorRectangle = Rectangle.Intersect(prevScissor, fieldClip);
 
         var textPos = new Vector2(bounds.X + pad - scrollOffset, textY);
         spriteBatch.DrawString(font, _text, textPos, TextColor);
@@ -125,8 +126,18 @@ public class TextInputField
         }
 
         spriteBatch.End();
-        spriteBatch.Begin(samplerState: SamplerState.PointClamp);
+        spriteBatch.Begin(samplerState: SamplerState.PointClamp, rasterizerState: _scissorRasterizer);
         spriteBatch.GraphicsDevice.ScissorRectangle = prevScissor;
+    }
+
+    /// <summary>
+    /// Returns true if the text is wider than the given field bounds (minus padding).
+    /// Used by editors to trigger tooltip display on hover.
+    /// </summary>
+    public bool IsTextOverflowing(SpriteFont font, Rectangle bounds)
+    {
+        float visibleWidth = bounds.Width - 12; // 6px padding each side
+        return font.MeasureString(_text).X > visibleWidth;
     }
 
     private void ResetBlink()

@@ -6,6 +6,7 @@ using DojoUI;
 using TileForge.Data;
 using TileForge.Editor;
 using TileForge.Editor.Tools;
+using TileForge.Play;
 
 namespace TileForge.UI;
 
@@ -340,6 +341,23 @@ public class MapCanvas
             var destRect = new Rectangle((int)screenPos.X, (int)screenPos.Y, cellW, cellH);
 
             spriteBatch.Draw(state.Sheet.Texture, destRect, srcRect, Color.White);
+
+            // Per-sprite damage flash overlays (play mode only)
+            if (state.IsPlayMode && state.PlayState != null)
+            {
+                if (entity == state.PlayState.PlayerEntity && state.PlayState.PlayerFlashTimer > 0)
+                {
+                    float intensity = state.PlayState.PlayerFlashTimer / PlayState.FlashDuration;
+                    int alpha = (int)(intensity * 150);
+                    renderer.DrawRect(spriteBatch, destRect, new Color(255, 0, 0, alpha));
+                }
+                else if (entity.Id == state.PlayState.FlashedEntityId && state.PlayState.EntityFlashTimer > 0)
+                {
+                    float intensity = state.PlayState.EntityFlashTimer / PlayState.FlashDuration;
+                    int alpha = (int)(intensity * 200);
+                    renderer.DrawRect(spriteBatch, destRect, new Color(255, 255, 255, alpha));
+                }
+            }
         }
 
         // Selection highlight (editor mode only)

@@ -1,0 +1,52 @@
+{
+  "id": "elder_01",
+  "nodes": [
+    {
+      "id": "start",
+      "speaker": "Village Elder",
+      "text": "Welcome, traveler. Our village is in danger.",
+      "choices": [
+        {
+          "text": "What happened?",
+          "nextNodeId": "explain"
+        },
+        {
+          "text": "I'm just passing through.",
+          "nextNodeId": "decline"
+        }
+      ]
+    },
+    {
+      "id": "explain",
+      "speaker": "Village Elder",
+      "text": "Dark creatures have invaded the caves to the north. We need a brave soul to investigate.",
+      "choices": [
+        {
+          "text": "I will help!",
+          "nextNodeId": "quest_accept",
+          "setsFlag": "quest_caves_accepted"
+        },
+        {
+          "text": "That sounds dangerous...",
+          "nextNodeId": "quest_decline"
+        }
+      ]
+    },
+    {
+      "id": "decline",
+      "speaker": "Village Elder",
+      "text": "Safe travels then. Return if you change your mind."
+    },
+    {
+      "id": "quest_accept",
+      "speaker": "Village Elder",
+      "text": "Thank you! Take this healing potion. The cave entrance is to the north.",
+      "setsFlag": "received_potion"
+    },
+    {
+      "id": "quest_decline",
+      "speaker": "Village Elder",
+      "text": "I understand. But please, reconsider. We have little time."
+    }
+  ]
+}

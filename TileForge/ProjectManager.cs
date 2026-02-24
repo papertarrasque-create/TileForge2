@@ -1,10 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using DojoUI;
 using TileForge.Data;
 using TileForge.Editor;
+using TileForge.Game;
 using TileForge.UI;
 
 namespace TileForge;
@@ -98,10 +100,30 @@ public class ProjectManager
                 // Reset state for new project
                 _state.Map = new MapData(mapW, mapH);
                 _state.Groups = new System.Collections.Generic.List<TileGroup>();
+
+                // Seed a default Player entity group and place it at center
+                var playerGroup = new TileGroup
+                {
+                    Name = "Player",
+                    Type = GroupType.Entity,
+                    IsPlayer = true,
+                    Sprites = { new SpriteRef { Col = 0, Row = 0 } },
+                };
+                _state.Groups.Add(playerGroup);
+                _state.Map.Entities.Add(new Entity
+                {
+                    Id = "player",
+                    GroupName = "Player",
+                    X = mapW / 2,
+                    Y = mapH / 2,
+                });
+
                 _state.RebuildGroupIndex();
                 _state.UndoStack.Clear();
                 _state.SelectedEntityId = null;
-                _state.SelectedGroupName = null;
+                _state.SelectedGroupName = playerGroup.Name;
+                _state.Quests = new List<QuestDefinition>();
+                _state.Dialogues = new List<DialogueData>();
                 _state.ClearDirty();
                 _projectPath = null;
 
@@ -203,6 +225,13 @@ public class ProjectManager
                 if (data.EditorState.CollapsedLayers != null)
                     _mapPanel.RestoreCollapsedLayers(data.EditorState.CollapsedLayers);
             }
+
+            // Load quest definitions from quests.json
+            string projectDir = Path.GetDirectoryName(Path.GetFullPath(path));
+            _state.Quests = QuestFileManager.Load(projectDir);
+
+            // Load dialogue definitions from dialogues/*.json
+            _state.Dialogues = DialogueFileManager.LoadAll(projectDir);
 
             // Select first group if available
             if (_state.Groups.Count > 0 && _state.SelectedGroupName == null)

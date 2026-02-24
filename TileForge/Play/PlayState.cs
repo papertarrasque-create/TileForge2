@@ -18,9 +18,16 @@ public class PlayState
     public Vector2 MoveTo { get; set; }
     public float MoveProgress { get; set; }
     public const float MoveDuration = 0.15f;
+    public float CurrentMoveDuration { get; set; } = MoveDuration;
 
     // Status bar message for entity interaction feedback
     public string StatusMessage { get; set; }
     public float StatusMessageTimer { get; set; }
     public const float StatusMessageDuration = 2.0f;
+
+    // Per-sprite damage flash (red on player, white on hit enemy)
+    public float PlayerFlashTimer { get; set; }
+    public float EntityFlashTimer { get; set; }
+    public string FlashedEntityId { get; set; }
+    public const float FlashDuration = 0.3f;
 }

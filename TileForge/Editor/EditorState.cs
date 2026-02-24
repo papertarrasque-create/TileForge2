@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using TileForge.Data;
 using TileForge.Editor.Tools;
+using TileForge.Game;
 using TileForge.Play;
 using DojoUI;
 
@@ -40,6 +41,7 @@ public class EditorState
     public event Action<bool> PlayModeChanged;
     public event Action MapDirtied;
     public event Action UndoRedoStateChanged;
+    public event Action QuestsChanged;
 
     // --- Event-raising properties ---
 
@@ -118,6 +120,28 @@ public class EditorState
     }
 
     public PlayState PlayState { get; set; }
+
+    // --- Quest data (loaded from quests.json) ---
+
+    public List<QuestDefinition> Quests { get; set; } = new();
+
+    public void NotifyQuestsChanged()
+    {
+        QuestsChanged?.Invoke();
+        MarkDirty();
+    }
+
+    // --- Dialogue data (loaded from dialogues/*.json) ---
+
+    public List<DialogueData> Dialogues { get; set; } = new();
+
+    public event Action DialoguesChanged;
+
+    public void NotifyDialoguesChanged()
+    {
+        DialoguesChanged?.Invoke();
+        MarkDirty();
+    }
 
     // --- Selection & Clipboard ---
 

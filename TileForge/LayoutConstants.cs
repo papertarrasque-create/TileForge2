@@ -21,7 +21,7 @@ public static class LayoutConstants
     public const int DefaultMapHeight = 30;
 
     // ---------------------------------------------------------------
-    //  Toolbar
+    //  Toolbar (legacy — kept for reference)
     // ---------------------------------------------------------------
     public const int ToolbarHeight = 28;
     public const int ToolbarButtonSize = 24;
@@ -37,6 +37,19 @@ public static class LayoutConstants
     public static readonly Color ToolbarDimTextColor = new(120, 120, 120);
     public static readonly Color ToolbarSeparatorColor = new(60, 60, 60);
     public static readonly Color ToolbarPlayModeTextColor = new(255, 200, 100);
+
+    // ---------------------------------------------------------------
+    //  Toolbar ribbon (replaces Toolbar + ToolPanel)
+    // ---------------------------------------------------------------
+    public const int ToolbarRibbonHeight = 32;
+
+    // ---------------------------------------------------------------
+    //  Top chrome (menu bar + toolbar ribbon)
+    // ---------------------------------------------------------------
+    /// <summary>Menu bar (22) + toolbar ribbon (32) in editor mode.</summary>
+    public const int TopChromeHeight = 54; // MenuBar.Height + ToolbarRibbonHeight
+    /// <summary>Toolbar ribbon only (32) in play mode — no menu bar.</summary>
+    public const int PlayTopChromeHeight = 32;
 
     // ---------------------------------------------------------------
     //  Panel dock (left sidebar)
@@ -183,6 +196,107 @@ public static class LayoutConstants
     public static readonly Color TilePaletteHoverOutline = new(200, 200, 200, 150);
     public static readonly Color TilePaletteUngroupedHint = new(80, 80, 80, 120);
     public static readonly Color TilePaletteBackground = new(30, 30, 30);
+
+    // ---------------------------------------------------------------
+    //  Quest panel (sidebar)
+    // ---------------------------------------------------------------
+    public const int QuestPanelPreferredHeight = 120;
+    public const int QuestPanelItemHeight = 24;
+    public const int QuestPanelItemPadding = 2;
+    public const int QuestPanelAddButtonHeight = 22;
+    public const double QuestPanelDoubleClickThreshold = 0.4;
+
+    public static readonly Color QuestPanelItemBg = new(42, 42, 42);
+    public static readonly Color QuestPanelSelectedBg = new(60, 80, 120);
+    public static readonly Color QuestPanelHoverBg = new(50, 55, 65);
+    public static readonly Color QuestPanelLabelColor = new(200, 200, 200);
+    public static readonly Color QuestPanelAddButtonBg = new(50, 60, 50);
+    public static readonly Color QuestPanelAddButtonHoverBg = new(60, 72, 60);
+
+    // ---------------------------------------------------------------
+    //  Quest editor (modal overlay)
+    // ---------------------------------------------------------------
+    public const int QuestEditorFieldHeight = 22;
+    public const int QuestEditorRowHeight = 28;
+    public const int QuestEditorLabelWidth = 120;
+    public const int QuestEditorMaxWidth = 660;
+    public const int QuestEditorMaxHeight = 500;
+    public const int QuestEditorObjectiveRowHeight = 80;
+    public const int QuestEditorTypeButtonWidth = 50;
+
+    public static readonly Color QuestEditorOverlay = new(0, 0, 0, 180);
+    public static readonly Color QuestEditorPanelBg = new(35, 35, 35);
+    public static readonly Color QuestEditorHeaderBg = new(45, 45, 45);
+    public static readonly Color QuestEditorLabelColor = new(180, 180, 180);
+    public static readonly Color QuestEditorHintColor = new(120, 120, 120);
+    public static readonly Color QuestEditorSectionColor = new(140, 180, 220);
+    public static readonly Color QuestEditorButtonActive = new(70, 90, 130);
+    public static readonly Color QuestEditorButtonInactive = new(55, 55, 55);
+    public static readonly Color QuestEditorButtonHover = new(65, 65, 65);
+    public static readonly Color QuestEditorAddButtonBg = new(50, 60, 50);
+    public static readonly Color QuestEditorAddButtonHoverBg = new(60, 72, 60);
+    public static readonly Color QuestEditorRemoveColor = new(180, 60, 60);
+    public static readonly Color QuestEditorRemoveHoverColor = new(210, 80, 80);
+
+    // ---------------------------------------------------------------
+    //  Dialogue panel (sidebar)
+    // ---------------------------------------------------------------
+    public const int DialoguePanelPreferredHeight = 120;
+    public const int DialoguePanelItemHeight = 24;
+    public const int DialoguePanelItemPadding = 2;
+    public const int DialoguePanelAddButtonHeight = 22;
+    public const double DialoguePanelDoubleClickThreshold = 0.4;
+
+    public static readonly Color DialoguePanelItemBg = new(42, 42, 42);
+    public static readonly Color DialoguePanelSelectedBg = new(60, 80, 120);
+    public static readonly Color DialoguePanelHoverBg = new(50, 55, 65);
+    public static readonly Color DialoguePanelLabelColor = new(200, 200, 200);
+    public static readonly Color DialoguePanelAddButtonBg = new(50, 60, 50);
+    public static readonly Color DialoguePanelAddButtonHoverBg = new(60, 72, 60);
+
+    // ---------------------------------------------------------------
+    //  Dialogue editor (modal overlay)
+    // ---------------------------------------------------------------
+    public const int DialogueEditorFieldHeight = 22;
+    public const int DialogueEditorRowHeight = 28;
+    public const int DialogueEditorLabelWidth = 110;
+    public const int DialogueEditorMaxWidth = 760;
+    public const int DialogueEditorMaxHeight = 650;
+
+    public static readonly Color DialogueEditorOverlay = new(0, 0, 0, 180);
+    public static readonly Color DialogueEditorPanelBg = new(35, 35, 35);
+    public static readonly Color DialogueEditorHeaderBg = new(45, 45, 45);
+    public static readonly Color DialogueEditorLabelColor = new(180, 180, 180);
+    public static readonly Color DialogueEditorHintColor = new(120, 120, 120);
+    public static readonly Color DialogueEditorSectionColor = new(140, 180, 220);
+    public static readonly Color DialogueEditorNodeSectionColor = new(180, 160, 120);
+    public static readonly Color DialogueEditorAddButtonBg = new(50, 60, 50);
+    public static readonly Color DialogueEditorAddButtonHoverBg = new(60, 72, 60);
+    public static readonly Color DialogueEditorRemoveColor = new(180, 60, 60);
+    public static readonly Color DialogueEditorRemoveHoverColor = new(210, 80, 80);
+    public static readonly Color DialogueEditorNodeSeparator = new(60, 60, 60);
+
+    // ---------------------------------------------------------------
+    //  Form layout defaults (shared across modal editors)
+    // ---------------------------------------------------------------
+    public const int FormLabelWidth = 110;
+    public const int FormFieldHeight = 22;
+    public const int FormRowHeight = 28;
+    public const int FormPadding = 10;
+    public const int FormTwoFieldGap = 12;
+
+    // ---------------------------------------------------------------
+    //  Scroll panel
+    // ---------------------------------------------------------------
+    public const int ScrollBarWidth = 6;
+    public const int ScrollStep = 20;
+
+    // ---------------------------------------------------------------
+    //  Resizable modal constraints
+    // ---------------------------------------------------------------
+    public const int ModalMinWidth = 500;
+    public const int ModalMinHeight = 400;
+    public const int ModalEdgeGrabSize = 6;
 
     // ---------------------------------------------------------------
     //  Minimap

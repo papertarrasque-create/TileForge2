@@ -4,6 +4,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using DojoUI;
+using TileForge.Data;
 using TileForge.Editor;
 using TileForge.Editor.Commands;
 using TileForge.Editor.Tools;
@@ -12,7 +13,7 @@ using TileForge.UI;
 
 namespace TileForge;
 
-public class TileForgeGame : Game
+public class TileForgeGame : Microsoft.Xna.Framework.Game
 {
     private readonly GraphicsDeviceManager _graphics;
     private SpriteBatch _spriteBatch;
@@ -21,17 +22,23 @@ public class TileForgeGame : Game
     private RasterizerState _scissorRasterizer;
 
     // UI regions
-    private Toolbar _toolbar;
+    private MenuBar _menuBar;
+    private ToolbarRibbon _toolbarRibbon;
+    private MenuActionDispatcher _menuDispatcher;
     private PanelDock _panelDock;
-    private ToolPanel _toolPanel;
     private MapPanel _mapPanel;
     private TilePalettePanel _tilePalettePanel;
     private MapCanvas _canvas;
     private StatusBar _statusBar;
     private GroupEditor _groupEditor;
+    private QuestPanel _questPanel;
+    private QuestEditor _questEditor;
+    private DialoguePanel _dialoguePanel;
+    private DialogueEditor _dialogueEditor;
 
     // Central state
     private EditorState _state;
+    private IProjectContext _projectContext;
 
     // Input tracking
     private KeyboardState _prevKeyboard;
@@ -74,15 +81,18 @@ public class TileForgeGame : Game
         _renderer = new Renderer(GraphicsDevice);
         _scissorRasterizer = new RasterizerState { ScissorTestEnable = true };
 
-        _toolbar = new Toolbar();
+        _menuBar = new MenuBar(EditorMenus.CreateMenus());
+        _toolbarRibbon = new ToolbarRibbon();
         _canvas = new MapCanvas();
         _statusBar = new StatusBar();
-        _toolPanel = new ToolPanel();
         _mapPanel = new MapPanel();
         _tilePalettePanel = new TilePalettePanel();
+        _questPanel = new QuestPanel();
+        _dialoguePanel = new DialoguePanel();
         _panelDock = new PanelDock();
-        _panelDock.Panels.Add(_toolPanel);
         _panelDock.Panels.Add(_mapPanel);
+        _panelDock.Panels.Add(_questPanel);
+        _panelDock.Panels.Add(_dialoguePanel);
         _panelDock.Panels.Add(_tilePalettePanel);
 
         _state = new EditorState { ActiveTool = new BrushTool() };
@@ -96,6 +106,28 @@ public class TileForgeGame : Game
             EnterPlayMode, ExitPlayMode, Exit, ResizeMap,
             _projectManager.OpenRecent, NewProject, ShowExportDialog,
             () => _canvas.Minimap.Toggle());
+        _menuDispatcher = new MenuActionDispatcher(
+            NewProject, _projectManager.Open, _projectManager.OpenRecent,
+            _projectManager.Save, _projectManager.Save, ShowExportDialog, Exit,
+            _state.UndoStack.Undo, _state.UndoStack.Redo,
+            () => { /* copy: handled by InputRouter */ },
+            () => { /* paste: handled by InputRouter */ },
+            () => { /* delete: handled by InputRouter */ },
+            ResizeMap,
+            () => _canvas.Minimap.Toggle(),
+            () => _state.Grid.CycleMode(),
+            () => { var l = _state.ActiveLayer; if (l != null) l.Visible = !l.Visible; },
+            () => { /* next layer: handled by InputRouter */ },
+            () => _state.ActiveTool = new BrushTool(),
+            () => _state.ActiveTool = new EraserTool(),
+            () => _state.ActiveTool = new FillTool(),
+            () => _state.ActiveTool = new EntityTool(),
+            () => _state.ActiveTool = new PickerTool(),
+            () => _state.ActiveTool = new SelectionTool(),
+            () => { if (_state.IsPlayMode) ExitPlayMode(); else EnterPlayMode(); },
+            () => _dialogManager.Show(new ShortcutsDialog(), _ => { }),
+            () => _dialogManager.Show(new AboutDialog(), _ => { }));
+        _projectContext = new ProjectContext(() => _projectManager.ProjectPath);
         _autoSave = new AutoSaveManager(_state,
             () => _projectManager.ProjectPath, _projectManager.SaveToPath);
 
@@ -115,6 +147,8 @@ public class TileForgeGame : Game
     private void OnTextInput(object sender, TextInputEventArgs e)
     {
         if (_dialogManager.IsActive) { _dialogManager.OnTextInput(e.Character); return; }
+        if (_questEditor != null) { _questEditor.OnTextInput(e.Character); return; }
+        if (_dialogueEditor != null) { _dialogueEditor.OnTextInput(e.Character); return; }
         _groupEditor?.OnTextInput(e.Character);
     }
 
@@ -159,6 +193,10 @@ public class TileForgeGame : Game
 
     private void EnterPlayMode()
     {
+        // Set base directory for map transitions and dialogue loading
+        if (_projectManager.ProjectPath != null)
+            _playMode.MapBaseDirectory = Path.GetDirectoryName(_projectManager.ProjectPath);
+
         if (!_playMode.Enter())
             Window.Title = "TileForge — No player entity found (mark a group as Player in GroupEditor)";
     }
@@ -228,9 +266,12 @@ public class TileForgeGame : Game
         int screenW = _graphics.PreferredBackBufferWidth;
         int screenH = _graphics.PreferredBackBufferHeight;
         int leftOffset = _state.IsPlayMode ? 0 : PanelDock.Width;
-        return new Rectangle(leftOffset, Toolbar.Height,
+        int topOffset = _state.IsPlayMode
+            ? LayoutConstants.PlayTopChromeHeight
+            : LayoutConstants.TopChromeHeight;
+        return new Rectangle(leftOffset, topOffset,
                              screenW - leftOffset,
-                             screenH - Toolbar.Height - StatusBar.Height);
+                             screenH - topOffset - StatusBar.Height);
     }
 
     // --- Update ---
@@ -245,39 +286,78 @@ public class TileForgeGame : Game
         if (_dialogManager.Update(keyboard, _prevKeyboard, gameTime))
         { FinishUpdate(keyboard, mouse, gameTime); return; }
 
+        // QuestEditor priority (modal overlay)
+        if (_questEditor != null)
+        {
+            int qScreenW = _graphics.PreferredBackBufferWidth;
+            _questEditor.Update(mouse, _prevMouse, keyboard, _prevKeyboard,
+                GetCanvasBounds(), _state.Quests, _font, qScreenW, screenH);
+            if (_questEditor.IsComplete) { HandleQuestEditorResult(); _questEditor = null; }
+            FinishUpdate(keyboard, mouse, gameTime); return;
+        }
+
+        // DialogueEditor priority (modal overlay)
+        if (_dialogueEditor != null)
+        {
+            int dScreenW = _graphics.PreferredBackBufferWidth;
+            _dialogueEditor.Update(mouse, _prevMouse, keyboard, _prevKeyboard,
+                GetCanvasBounds(), _state.Dialogues, _font, dScreenW, screenH);
+            if (_dialogueEditor.IsComplete) { HandleDialogueEditorResult(); _dialogueEditor = null; }
+            FinishUpdate(keyboard, mouse, gameTime); return;
+        }
+
         // GroupEditor priority
         if (_groupEditor != null)
         {
-            _groupEditor.Update(_state, mouse, _prevMouse, keyboard, _prevKeyboard, GetCanvasBounds());
+            int gScreenW = _graphics.PreferredBackBufferWidth;
+            _groupEditor.Update(_state, mouse, _prevMouse, keyboard, _prevKeyboard,
+                GetCanvasBounds(), _font, gScreenW, screenH);
             if (_groupEditor.IsComplete) { HandleGroupEditorResult(); _groupEditor = null; }
+            else { HandleGroupEditorCreateSignals(); }
             FinishUpdate(keyboard, mouse, gameTime); return;
         }
 
         // Global keybinds
         if (_inputRouter.Update(keyboard, _prevKeyboard, mouse))
         {
-            if (_state.IsPlayMode) _playMode.Update(gameTime, keyboard, _prevKeyboard);
+            if (_state.IsPlayMode) _playMode.Update(gameTime, keyboard);
             FinishUpdate(keyboard, mouse, gameTime); return;
         }
 
-        // Play mode -- skip editor UI
+        // Play mode -- skip editor UI (but update ribbon for play/stop button)
         if (_state.IsPlayMode)
         {
-            _playMode.Update(gameTime, keyboard, _prevKeyboard);
+            _toolbarRibbon.Update(_state, mouse, _prevMouse,
+                _graphics.PreferredBackBufferWidth, _font, gameTime);
+            HandleRibbonActions();
+            _playMode.Update(gameTime, keyboard);
             FinishUpdate(keyboard, mouse, gameTime); return;
         }
 
-        // Editor UI
+        // Menu bar (highest priority after modals)
         int screenW = _graphics.PreferredBackBufferWidth;
-        var dockBounds = new Rectangle(0, Toolbar.Height, PanelDock.Width,
-                                        screenH - Toolbar.Height - StatusBar.Height);
-        _toolbar.Update(_state, mouse, _prevMouse, screenW, _font);
+        UpdateMenuState();
+        var menuResult = _menuBar.Update(mouse, _prevMouse, screenW);
+        if (menuResult.Menu >= 0)
+            _menuDispatcher.Dispatch(menuResult.Menu, menuResult.Item);
+        if (_menuBar.IsMenuOpen)
+        { FinishUpdate(keyboard, mouse, gameTime); return; }
+
+        // Toolbar ribbon
+        _toolbarRibbon.Update(_state, mouse, _prevMouse, screenW, _font, gameTime);
+
+        // Editor panels
+        int topOffset = LayoutConstants.TopChromeHeight;
+        var dockBounds = new Rectangle(0, topOffset, PanelDock.Width,
+                                        screenH - topOffset - StatusBar.Height);
         _panelDock.Update(_state, mouse, _prevMouse, _font, dockBounds, gameTime, screenW, screenH);
         _canvas.Update(_state, mouse, _prevMouse, keyboard, _prevKeyboard, GetCanvasBounds());
 
         HandleMapPanelActions();
+        HandleQuestPanelActions();
+        HandleDialoguePanelActions();
         HandleTilePaletteActions();
-        HandleToolbarActions();
+        HandleRibbonActions();
 
         FinishUpdate(keyboard, mouse, gameTime);
     }
@@ -295,14 +375,14 @@ public class TileForgeGame : Game
         if (_mapPanel.WantsNewGroupForLayer.Requested && _state.Sheet != null)
         {
             _pendingNewGroupLayer = _mapPanel.WantsNewGroupForLayer.LayerName;
-            _groupEditor = GroupEditor.ForNewGroup();
+            _groupEditor = GroupEditor.ForNewGroup(_projectContext);
             _groupEditor.CenterOnSheet(_state.Sheet, GetCanvasBounds());
         }
         else if (_mapPanel.WantsEditGroup != null)
         {
             if (_state.GroupsByName.TryGetValue(_mapPanel.WantsEditGroup, out var group))
             {
-                _groupEditor = GroupEditor.ForExistingGroup(group);
+                _groupEditor = GroupEditor.ForExistingGroup(group, _projectContext);
                 _groupEditor.CenterOnSheet(_state.Sheet, GetCanvasBounds());
             }
         }
@@ -341,19 +421,37 @@ public class TileForgeGame : Game
         {
             if (_state.GroupsByName.TryGetValue(_tilePalettePanel.WantsEditGroup, out var group))
             {
-                _groupEditor = GroupEditor.ForExistingGroup(group);
+                _groupEditor = GroupEditor.ForExistingGroup(group, _projectContext);
                 _groupEditor.CenterOnSheet(_state.Sheet, GetCanvasBounds());
             }
         }
     }
 
-    private void HandleToolbarActions()
+    private void HandleRibbonActions()
     {
-        if (_toolbar.WantsUndo) _state.UndoStack.Undo();
-        if (_toolbar.WantsRedo) _state.UndoStack.Redo();
-        if (_toolbar.WantsSave) _projectManager.Save();
-        if (_toolbar.WantsPlayToggle)
+        if (_toolbarRibbon.WantsNew) NewProject();
+        if (_toolbarRibbon.WantsOpen) _projectManager.Open();
+        if (_toolbarRibbon.WantsSave) _projectManager.Save();
+        if (_toolbarRibbon.WantsUndo) _state.UndoStack.Undo();
+        if (_toolbarRibbon.WantsRedo) _state.UndoStack.Redo();
+        if (_toolbarRibbon.WantsExport) ShowExportDialog();
+        if (_toolbarRibbon.WantsPlayToggle)
         { if (_state.IsPlayMode) ExitPlayMode(); else EnterPlayMode(); }
+
+        int toolIdx = _toolbarRibbon.WantsToolIndex;
+        if (toolIdx >= 0)
+        {
+            _state.ActiveTool = toolIdx switch
+            {
+                0 => new BrushTool(),
+                1 => new EraserTool(),
+                2 => new FillTool(),
+                3 => new EntityTool(),
+                4 => new PickerTool(),
+                5 => new SelectionTool(),
+                _ => _state.ActiveTool,
+            };
+        }
     }
 
     private void HandleGroupEditorResult()
@@ -390,8 +488,213 @@ public class TileForgeGame : Game
                 existing.Sprites = result.Sprites;
                 existing.IsSolid = result.IsSolid;
                 existing.IsPlayer = result.IsPlayer;
+                existing.IsPassable = result.IsPassable;
+                existing.IsHazardous = result.IsHazardous;
+                existing.MovementCost = result.MovementCost;
+                existing.DamageType = result.DamageType;
+                existing.DamagePerTick = result.DamagePerTick;
+                existing.EntityType = result.EntityType;
+                existing.DefaultProperties = result.DefaultProperties;
             }
         }
+    }
+
+    private void UpdateMenuState()
+    {
+        _menuBar.SetItemEnabled(EditorMenus.EditMenu, EditorMenus.Edit_Undo, _state.UndoStack.CanUndo);
+        _menuBar.SetItemEnabled(EditorMenus.EditMenu, EditorMenus.Edit_Redo, _state.UndoStack.CanRedo);
+        _menuBar.SetItemEnabled(EditorMenus.FileMenu, EditorMenus.File_Export, _state.Sheet != null);
+        _menuBar.SetItemEnabled(EditorMenus.EditMenu, EditorMenus.Edit_ResizeMap, _state.Map != null);
+    }
+
+    private void HandleGroupEditorCreateSignals()
+    {
+        if (_groupEditor == null) return;
+
+        if (_groupEditor.WantsCreateMap)
+        {
+            _dialogManager.Show(new InputDialog("New map name:", ""), dialog =>
+            {
+                var input = (InputDialog)dialog;
+                if (input.WasCancelled || _groupEditor == null) return;
+                string name = input.ResultText.Trim();
+                if (string.IsNullOrEmpty(name)) return;
+                if (!name.EndsWith(".tileforge", StringComparison.OrdinalIgnoreCase))
+                    name += ".tileforge";
+                string dir = _projectContext.ProjectDirectory;
+                if (dir != null)
+                {
+                    string path = Path.Combine(dir, name);
+                    if (!File.Exists(path))
+                        File.WriteAllText(path, "{}");
+                    _groupEditor.RefreshBrowseField("target_map",
+                        Path.GetFileNameWithoutExtension(name));
+                }
+            });
+        }
+
+        if (_groupEditor.WantsCreateDialogue)
+        {
+            _dialogManager.Show(new InputDialog("New dialogue name:", ""), dialog =>
+            {
+                var input = (InputDialog)dialog;
+                if (input.WasCancelled || _groupEditor == null) return;
+                string name = input.ResultText.Trim();
+                if (string.IsNullOrEmpty(name)) return;
+                if (name.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
+                    name = name[..^5];
+                string dir = _projectContext.ProjectDirectory;
+                if (dir != null)
+                {
+                    var emptyDialogue = new Game.DialogueData { Id = name, Nodes = new() };
+                    DialogueFileManager.SaveOne(dir, emptyDialogue);
+                    _state.Dialogues.Add(emptyDialogue);
+                    _state.NotifyDialoguesChanged();
+                    foreach (var k in new[] { "dialogue", "dialogue_id" })
+                        _groupEditor.RefreshBrowseField(k, name);
+                }
+            });
+        }
+    }
+
+    private void HandleQuestPanelActions()
+    {
+        if (_questPanel.WantsNewQuest)
+        {
+            _questEditor = QuestEditor.ForNewQuest();
+        }
+        else if (_questPanel.WantsEditQuestIndex >= 0)
+        {
+            int idx = _questPanel.WantsEditQuestIndex;
+            if (idx < _state.Quests.Count)
+                _questEditor = QuestEditor.ForExistingQuest(_state.Quests[idx]);
+        }
+        else if (_questPanel.WantsDeleteQuestIndex >= 0)
+        {
+            int idx = _questPanel.WantsDeleteQuestIndex;
+            if (idx < _state.Quests.Count)
+            {
+                string name = _state.Quests[idx].Name ?? _state.Quests[idx].Id;
+                int capturedIdx = idx;
+                _dialogManager.Show(new ConfirmDialog($"Delete quest \"{name}\"?"), dialog =>
+                {
+                    if (!dialog.WasCancelled && capturedIdx < _state.Quests.Count)
+                    {
+                        _state.Quests.RemoveAt(capturedIdx);
+                        SaveQuests();
+                        _state.NotifyQuestsChanged();
+                    }
+                });
+            }
+        }
+    }
+
+    private void HandleQuestEditorResult()
+    {
+        if (_questEditor.WasCancelled || _questEditor.Result == null) return;
+        var result = _questEditor.Result;
+
+        if (_questEditor.IsNew)
+        {
+            _state.Quests.Add(result);
+        }
+        else
+        {
+            // Replace existing quest by original id
+            string origId = _questEditor.OriginalId;
+            int idx = _state.Quests.FindIndex(q => q.Id == origId);
+            if (idx >= 0)
+                _state.Quests[idx] = result;
+            else
+                _state.Quests.Add(result);
+        }
+
+        SaveQuests();
+        _state.NotifyQuestsChanged();
+    }
+
+    private void SaveQuests()
+    {
+        if (_projectManager.ProjectPath == null) return;
+        string projectDir = Path.GetDirectoryName(_projectManager.ProjectPath);
+        QuestFileManager.Save(projectDir, _state.Quests);
+    }
+
+    private void HandleDialoguePanelActions()
+    {
+        if (_dialoguePanel.WantsNewDialogue)
+        {
+            _dialogueEditor = DialogueEditor.ForNewDialogue();
+        }
+        else if (_dialoguePanel.WantsEditDialogueIndex >= 0)
+        {
+            int idx = _dialoguePanel.WantsEditDialogueIndex;
+            if (idx < _state.Dialogues.Count)
+                _dialogueEditor = DialogueEditor.ForExistingDialogue(_state.Dialogues[idx]);
+        }
+        else if (_dialoguePanel.WantsDeleteDialogueIndex >= 0)
+        {
+            int idx = _dialoguePanel.WantsDeleteDialogueIndex;
+            if (idx < _state.Dialogues.Count)
+            {
+                string name = _state.Dialogues[idx].Id;
+                int capturedIdx = idx;
+                _dialogManager.Show(new ConfirmDialog($"Delete dialogue \"{name}\"?"), dialog =>
+                {
+                    if (!dialog.WasCancelled && capturedIdx < _state.Dialogues.Count)
+                    {
+                        string deletedId = _state.Dialogues[capturedIdx].Id;
+                        _state.Dialogues.RemoveAt(capturedIdx);
+                        if (_projectManager.ProjectPath != null)
+                        {
+                            string projectDir = Path.GetDirectoryName(_projectManager.ProjectPath);
+                            DialogueFileManager.DeleteOne(projectDir, deletedId);
+                        }
+                        _state.NotifyDialoguesChanged();
+                    }
+                });
+            }
+        }
+    }
+
+    private void HandleDialogueEditorResult()
+    {
+        if (_dialogueEditor.WasCancelled || _dialogueEditor.Result == null) return;
+        var result = _dialogueEditor.Result;
+
+        if (_dialogueEditor.IsNew)
+        {
+            _state.Dialogues.Add(result);
+        }
+        else
+        {
+            string origId = _dialogueEditor.OriginalId;
+            int idx = _state.Dialogues.FindIndex(d => d.Id == origId);
+            if (idx >= 0)
+            {
+                // If id changed, delete old file
+                if (result.Id != origId && _projectManager.ProjectPath != null)
+                {
+                    string projectDir = Path.GetDirectoryName(_projectManager.ProjectPath);
+                    DialogueFileManager.DeleteOne(projectDir, origId);
+                }
+                _state.Dialogues[idx] = result;
+            }
+            else
+            {
+                _state.Dialogues.Add(result);
+            }
+        }
+
+        SaveDialogue(result);
+        _state.NotifyDialoguesChanged();
+    }
+
+    private void SaveDialogue(Game.DialogueData dialogue)
+    {
+        if (_projectManager.ProjectPath == null) return;
+        string projectDir = Path.GetDirectoryName(_projectManager.ProjectPath);
+        DialogueFileManager.SaveOne(projectDir, dialogue);
     }
 
     // --- Draw ---
@@ -403,20 +706,37 @@ public class TileForgeGame : Game
         int screenH = _graphics.PreferredBackBufferHeight;
         var canvasBounds = GetCanvasBounds();
 
-        // Pass 1: Canvas and GroupEditor, scissor-clipped
+        // Pass 1: Scissor-clipped content
         GraphicsDevice.ScissorRectangle = canvasBounds;
         _spriteBatch.Begin(samplerState: SamplerState.PointClamp, rasterizerState: _scissorRasterizer);
-        _canvas.Draw(_spriteBatch, _state, _renderer, canvasBounds);
-        if (!_state.IsPlayMode && _groupEditor != null)
-            _groupEditor.Draw(_spriteBatch, _font, _state, _renderer, canvasBounds, gameTime);
+        if (_state.IsPlayMode)
+        {
+            _playMode.Draw(_spriteBatch, _font, _renderer, canvasBounds);
+        }
+        else
+        {
+            _canvas.Draw(_spriteBatch, _state, _renderer, canvasBounds);
+            if (_groupEditor != null)
+                _groupEditor.Draw(_spriteBatch, _font, _state, _renderer, canvasBounds, gameTime);
+            if (_questEditor != null)
+                _questEditor.Draw(_spriteBatch, _font, _renderer, canvasBounds, gameTime);
+            if (_dialogueEditor != null)
+                _dialogueEditor.Draw(_spriteBatch, _font, _renderer, canvasBounds, gameTime);
+        }
         _spriteBatch.End();
 
         // Pass 2: UI chrome -- no clipping
         _spriteBatch.Begin(samplerState: SamplerState.PointClamp);
         if (!_state.IsPlayMode)
+        {
             _panelDock.Draw(_spriteBatch, _font, _state, _renderer);
-        _toolbar.Draw(_spriteBatch, _font, _state, _renderer, screenW);
+            _menuBar.Draw(_spriteBatch, _font, _renderer, screenW);
+        }
+        _toolbarRibbon.Draw(_spriteBatch, _font, _state, _renderer, screenW);
         _statusBar.Draw(_spriteBatch, _font, _state, _renderer, _canvas, screenW, screenH);
+        // Menu submenus drawn last (on top of everything)
+        if (!_state.IsPlayMode)
+            _menuBar.DrawSubmenu(_spriteBatch, _font, _renderer);
         _dialogManager.Draw(_spriteBatch, _font, _renderer, screenW, screenH, gameTime);
         _spriteBatch.End();
 

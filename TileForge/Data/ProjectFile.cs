@@ -43,6 +43,14 @@ public static class ProjectFile
         public bool? IsSolid { get; set; }
         public bool? IsPlayer { get; set; }
         public string Layer { get; set; }
+        // G1 gameplay properties
+        public bool? IsPassable { get; set; }
+        public bool? IsHazardous { get; set; }
+        public float? MovementCost { get; set; }
+        public string DamageType { get; set; }
+        public int? DamagePerTick { get; set; }
+        public string EntityType { get; set; }
+        public Dictionary<string, string> DefaultProperties { get; set; }
     }
 
     public class SpriteRefData
@@ -117,6 +125,16 @@ public static class ProjectFile
             if (group.IsSolid) gd.IsSolid = true;
             if (group.IsPlayer) gd.IsPlayer = true;
             gd.Layer = group.LayerName;
+            // G1 gameplay properties (only write non-default values)
+            if (!group.IsPassable) gd.IsPassable = false;
+            if (group.IsHazardous) gd.IsHazardous = true;
+            if (group.MovementCost != 1.0f) gd.MovementCost = group.MovementCost;
+            gd.DamageType = group.DamageType;  // null omitted by serializer
+            if (group.DamagePerTick > 0) gd.DamagePerTick = group.DamagePerTick;
+            if (group.Type == GroupType.Entity && group.EntityType != Game.EntityType.Interactable)
+                gd.EntityType = group.EntityType.ToString();
+            if (group.DefaultProperties.Count > 0)
+                gd.DefaultProperties = group.DefaultProperties;
             foreach (var sprite in group.Sprites)
                 gd.Sprites.Add(new SpriteRefData { Col = sprite.Col, Row = sprite.Row });
             data.Groups.Add(gd);
@@ -183,6 +201,15 @@ public static class ProjectFile
                 IsSolid = gd.IsSolid ?? false,
                 IsPlayer = gd.IsPlayer ?? false,
                 LayerName = gd.Layer,
+                IsPassable = gd.IsPassable ?? true,
+                IsHazardous = gd.IsHazardous ?? false,
+                MovementCost = gd.MovementCost ?? 1.0f,
+                DamageType = gd.DamageType,
+                DamagePerTick = gd.DamagePerTick ?? 0,
+                EntityType = Enum.TryParse<Game.EntityType>(gd.EntityType, out var et) ? et : Game.EntityType.Interactable,
+                DefaultProperties = gd.DefaultProperties != null
+                    ? new Dictionary<string, string>(gd.DefaultProperties)
+                    : new(),
             };
             foreach (var s in gd.Sprites)
                 group.Sprites.Add(new SpriteRef { Col = s.Col, Row = s.Row });

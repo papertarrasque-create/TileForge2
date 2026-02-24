@@ -1,8 +1,15 @@
 using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using DojoUI;
 using TileForge.Data;
 using TileForge.Editor;
+using TileForge.Game;
+using TileForge.Game.Screens;
 using TileForge.Play;
 using TileForge.UI;
 
@@ -16,6 +23,23 @@ public class PlayModeController
 
     private Vector2 _savedCameraOffset;
     private int _savedZoomIndex;
+    private MapData _savedMap;
+    private List<TileGroup> _savedGroups;
+    private GameStateManager _gameStateManager;
+    private GameInputManager _inputManager;
+    private ScreenManager _screenManager;
+    private SaveManager _saveManager;
+    private QuestManager _questManager;
+    private string _bindingsPath;
+
+    public GameStateManager GameStateManager => _gameStateManager;
+    public ScreenManager ScreenManager => _screenManager;
+
+    /// <summary>
+    /// Optional base directory for resolving relative map paths in transitions.
+    /// If null, target_map paths are used as-is.
+    /// </summary>
+    public string MapBaseDirectory { get; set; }
 
     public PlayModeController(EditorState state, MapCanvas canvas, Func<Rectangle> getCanvasBounds)
     {
@@ -45,11 +69,27 @@ public class PlayModeController
         if (playerEntity == null)
             return false;
 
-        // Save editor camera state
+        // Save editor state for restoration on exit
         _savedCameraOffset = _canvas.Camera.Offset;
         _savedZoomIndex = _canvas.Camera.ZoomIndex;
+        _savedMap = _state.Map;
+        _savedGroups = new List<TileGroup>(_state.Groups);
 
-        // Create play state
+        // Initialize game state
+        _gameStateManager = new GameStateManager();
+        _gameStateManager.Initialize(_state.Map, _state.GroupsByName);
+
+        // Initialize input, screen management, and save manager
+        _inputManager = new GameInputManager();
+        _bindingsPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+            ".tileforge", "keybindings.json");
+        _inputManager.LoadBindings(_bindingsPath);
+        _screenManager = new ScreenManager();
+        _saveManager = new SaveManager();
+        _questManager = LoadQuests();
+
+        // Create play state (rendering/lerp)
         _state.PlayState = new PlayState
         {
             PlayerEntity = playerEntity,
@@ -57,156 +97,179 @@ public class PlayModeController
         };
         _state.IsPlayMode = true;
 
-        CenterCameraOnPlayer();
+        // Push the gameplay screen
+        _screenManager.Push(new GameplayScreen(_state, _canvas, _gameStateManager, _saveManager, _inputManager, _bindingsPath, MapBaseDirectory, _questManager, _getCanvasBounds));
+
         return true;
     }
 
     public void Exit()
     {
+        _screenManager?.Clear();
+
         _canvas.Camera.Offset = _savedCameraOffset;
         _canvas.Camera.ZoomIndex = _savedZoomIndex;
 
+        // Restore editor state
+        if (_savedMap != null)
+        {
+            _state.Map = _savedMap;
+            _state.Groups = new List<TileGroup>(_savedGroups);
+            _state.RebuildGroupIndex();
+            _savedMap = null;
+            _savedGroups = null;
+        }
+
         _state.IsPlayMode = false;
         _state.PlayState = null;
+        _gameStateManager = null;
+        _inputManager = null;
+        _screenManager = null;
+        _saveManager = null;
+        _questManager = null;
+        _bindingsPath = null;
     }
 
-    public void Update(GameTime gameTime, KeyboardState keyboard, KeyboardState prevKeyboard)
+    public void Update(GameTime gameTime, KeyboardState keyboard)
     {
-        var play = _state.PlayState;
-        if (play == null) return;
+        if (_state.PlayState == null) return;
 
-        float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
+        _inputManager.Update(keyboard);
+        _screenManager.Update(gameTime, _inputManager);
 
-        // Tick status message timer
-        if (play.StatusMessageTimer > 0)
+        // Check for pending map transition (set by GameplayScreen on trigger)
+        if (_gameStateManager?.PendingTransition != null)
         {
-            play.StatusMessageTimer -= dt;
-            if (play.StatusMessageTimer <= 0)
-                play.StatusMessage = null;
+            var transition = _gameStateManager.PendingTransition;
+            _gameStateManager.PendingTransition = null;
+            ExecuteMapTransition(transition);
         }
 
-        if (play.IsMoving)
+        if (_gameStateManager?.RestartRequested == true)
         {
-            // Continue lerp
-            play.MoveProgress += dt / PlayState.MoveDuration;
-            if (play.MoveProgress >= 1.0f)
-            {
-                play.MoveProgress = 1.0f;
-                play.RenderPos = play.MoveTo;
-                play.IsMoving = false;
-
-                // Update entity grid position
-                play.PlayerEntity.X = (int)play.MoveTo.X;
-                play.PlayerEntity.Y = (int)play.MoveTo.Y;
-
-                // Check for entity interaction at destination
-                CheckEntityInteractionAt(play, play.PlayerEntity.X, play.PlayerEntity.Y);
-            }
-            else
-            {
-                play.RenderPos = Vector2.Lerp(play.MoveFrom, play.MoveTo, play.MoveProgress);
-            }
+            _gameStateManager.RestartRequested = false;
+            Exit();
+            Enter();
+            return;
         }
 
-        if (!play.IsMoving)
-        {
-            // Accept movement input
-            int dx = 0, dy = 0;
-
-            if (KeyPressed(keyboard, prevKeyboard, Keys.Up)) dy = -1;
-            else if (KeyPressed(keyboard, prevKeyboard, Keys.Down)) dy = 1;
-            else if (KeyPressed(keyboard, prevKeyboard, Keys.Left)) dx = -1;
-            else if (KeyPressed(keyboard, prevKeyboard, Keys.Right)) dx = 1;
-
-            if (dx != 0 || dy != 0)
-            {
-                int targetX = play.PlayerEntity.X + dx;
-                int targetY = play.PlayerEntity.Y + dy;
-
-                if (CanMoveTo(targetX, targetY))
-                {
-                    play.MoveFrom = new Vector2(play.PlayerEntity.X, play.PlayerEntity.Y);
-                    play.MoveTo = new Vector2(targetX, targetY);
-                    play.MoveProgress = 0f;
-                    play.IsMoving = true;
-                }
-                else if (_state.Map.InBounds(targetX, targetY))
-                {
-                    // Blocked -- check for bump interaction with entity
-                    CheckEntityInteractionAt(play, targetX, targetY);
-                }
-            }
-        }
-
-        CenterCameraOnPlayer();
+        if (_screenManager.ExitRequested)
+            Exit();
     }
 
-    private bool CanMoveTo(int x, int y)
+    public void Draw(SpriteBatch spriteBatch, SpriteFont font,
+        Renderer renderer, Rectangle canvasBounds)
     {
-        var map = _state.Map;
-        if (!map.InBounds(x, y)) return false;
-
-        // Check all layers for solid groups
-        foreach (var layer in map.Layers)
-        {
-            string groupName = layer.GetCell(x, y, map.Width);
-            if (groupName != null
-                && _state.GroupsByName.TryGetValue(groupName, out var group)
-                && group.IsSolid)
-            {
-                return false;
-            }
-        }
-
-        // Check entities (excluding player) for solid groups
-        foreach (var entity in map.Entities)
-        {
-            if (entity == _state.PlayState.PlayerEntity) continue;
-            if (entity.X == x && entity.Y == y
-                && _state.GroupsByName.TryGetValue(entity.GroupName, out var group)
-                && group.IsSolid)
-            {
-                return false;
-            }
-        }
-
-        return true;
+        _screenManager?.Draw(spriteBatch, font, renderer, canvasBounds);
     }
 
-    private void CheckEntityInteractionAt(PlayState play, int x, int y)
+    private void ExecuteMapTransition(MapTransitionRequest request)
     {
-        foreach (var entity in _state.Map.Entities)
+        // Resolve map path
+        string mapPath = request.TargetMap;
+        if (MapBaseDirectory != null && !Path.IsPathRooted(mapPath))
+            mapPath = Path.Combine(MapBaseDirectory, mapPath);
+
+        if (!File.Exists(mapPath))
         {
-            if (entity == play.PlayerEntity) continue;
-            if (entity.X == x && entity.Y == y)
+            _state.PlayState.StatusMessage = $"Map not found: {request.TargetMap}";
+            _state.PlayState.StatusMessageTimer = PlayState.StatusMessageDuration;
+            return;
+        }
+
+        // Load the target map
+        string json = File.ReadAllText(mapPath);
+        var loader = new MapLoader();
+        var loadedMap = loader.Load(json, Path.GetFileNameWithoutExtension(mapPath));
+
+        // Switch game state (preserves flags, variables, inventory, health)
+        _gameStateManager.SwitchMap(loadedMap, request.TargetX, request.TargetY);
+
+        // Update editor state for rendering
+        ApplyLoadedMapToEditorState(loadedMap);
+
+        // Find or create the player entity for rendering
+        var playerGroupName = _state.Groups.FirstOrDefault(g => g.IsPlayer)?.Name;
+        if (playerGroupName == null)
+        {
+            // Carry forward the player group from the original map
+            var originalPlayerGroup = _savedGroups?.FirstOrDefault(g => g.IsPlayer);
+            if (originalPlayerGroup != null)
             {
-                play.StatusMessage = $"Interacted with {entity.GroupName}";
-                play.StatusMessageTimer = PlayState.StatusMessageDuration;
-                return;
+                _state.AddGroup(originalPlayerGroup);
+                playerGroupName = originalPlayerGroup.Name;
             }
         }
+
+        var playerEntity = new Entity
+        {
+            Id = "player",
+            GroupName = playerGroupName ?? "player",
+            X = request.TargetX,
+            Y = request.TargetY,
+        };
+        _state.Map.Entities.Add(playerEntity);
+
+        // Reset play state for new position
+        _state.PlayState = new PlayState
+        {
+            PlayerEntity = playerEntity,
+            RenderPos = new Vector2(request.TargetX, request.TargetY),
+        };
+
+        // Pop the old gameplay screen and push a new one (re-centers camera)
+        _screenManager.Clear();
+        _screenManager.Push(new GameplayScreen(_state, _canvas, _gameStateManager, _saveManager, _inputManager, _bindingsPath, MapBaseDirectory, _questManager, _getCanvasBounds));
     }
 
-    private void CenterCameraOnPlayer()
+    private QuestManager LoadQuests()
     {
-        var play = _state.PlayState;
-        var sheet = _state.Sheet;
-        var canvasBounds = _getCanvasBounds();
+        if (string.IsNullOrEmpty(MapBaseDirectory))
+            return new QuestManager(new List<QuestDefinition>());
 
-        // Player world pixel center
-        float worldX = (play.RenderPos.X + 0.5f) * sheet.TileWidth;
-        float worldY = (play.RenderPos.Y + 0.5f) * sheet.TileHeight;
-
-        // Center on screen
-        float screenCenterX = canvasBounds.X + canvasBounds.Width / 2f;
-        float screenCenterY = canvasBounds.Y + canvasBounds.Height / 2f;
-        int zoom = _canvas.Camera.Zoom;
-
-        _canvas.Camera.Offset = new Vector2(
-            screenCenterX - worldX * zoom,
-            screenCenterY - worldY * zoom);
+        string questPath = Path.Combine(MapBaseDirectory, "quests.json");
+        var quests = QuestLoader.Load(questPath);
+        return new QuestManager(quests);
     }
 
-    private static bool KeyPressed(KeyboardState current, KeyboardState prev, Keys key)
-        => current.IsKeyDown(key) && prev.IsKeyUp(key);
+    private void ApplyLoadedMapToEditorState(LoadedMap loadedMap)
+    {
+        // Build MapData from LoadedMap
+        var mapData = new MapData(loadedMap.Width, loadedMap.Height);
+        mapData.Layers.Clear();
+
+        foreach (var layer in loadedMap.Layers)
+        {
+            var editorLayer = new MapLayer(layer.Name, loadedMap.Width, loadedMap.Height);
+            if (layer.Cells != null)
+            {
+                int copyLen = Math.Min(layer.Cells.Length, editorLayer.Cells.Length);
+                Array.Copy(layer.Cells, editorLayer.Cells, copyLen);
+            }
+            mapData.Layers.Add(editorLayer);
+        }
+
+        mapData.EntityRenderOrder = Math.Max(0, mapData.Layers.Count - 1);
+
+        // Add non-player entities to MapData (for rendering)
+        foreach (var ei in loadedMap.Entities)
+        {
+            var group = loadedMap.Groups.FirstOrDefault(g => g.Name == ei.DefinitionName);
+            if (group != null && group.IsPlayer)
+                continue;
+
+            mapData.Entities.Add(new Entity
+            {
+                Id = ei.Id,
+                GroupName = ei.DefinitionName,
+                X = ei.X,
+                Y = ei.Y,
+                Properties = new Dictionary<string, string>(ei.Properties),
+            });
+        }
+
+        _state.Map = mapData;
+        _state.Groups = new List<TileGroup>(loadedMap.Groups);
+        _state.RebuildGroupIndex();
+    }
 }

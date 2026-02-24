@@ -1,5 +1,6 @@
 using System.Text.Json;
 using TileForge.Data;
+using TileForge.Game;
 using TileForge.Tests.Helpers;
 using Xunit;
 
@@ -1100,5 +1101,163 @@ public class ProjectFileTests : IDisposable
 
         Assert.True(rawData.Groups[0].IsSolid);
         Assert.True(rawData.Groups[0].IsPlayer);
+    }
+
+    // --- G1 gameplay properties tests ---
+
+    [Fact]
+    public void GroupData_GameplayProperties_DefaultsToNull()
+    {
+        var gd = new ProjectFile.GroupData();
+        Assert.Null(gd.IsPassable);
+        Assert.Null(gd.IsHazardous);
+        Assert.Null(gd.MovementCost);
+        Assert.Null(gd.DamageType);
+        Assert.Null(gd.DamagePerTick);
+        Assert.Null(gd.EntityType);
+    }
+
+    [Fact]
+    public void RestoreGroups_MissingGameplayFields_DefaultsToSafeValues()
+    {
+        // Simulates loading an old .tileforge file without gameplay fields
+        var data = new ProjectFile.ProjectData
+        {
+            Groups = new()
+            {
+                new ProjectFile.GroupData
+                {
+                    Name = "grass",
+                    Type = "Tile",
+                    // No gameplay properties set — all null
+                }
+            }
+        };
+
+        var groups = ProjectFile.RestoreGroups(data);
+        var grass = groups[0];
+
+        Assert.True(grass.IsPassable);
+        Assert.False(grass.IsHazardous);
+        Assert.Equal(1.0f, grass.MovementCost);
+        Assert.Null(grass.DamageType);
+        Assert.Equal(0, grass.DamagePerTick);
+        Assert.Equal(EntityType.Interactable, grass.EntityType);
+    }
+
+    [Fact]
+    public void RestoreGroups_WithGameplayFields_RestoresCorrectly()
+    {
+        var data = new ProjectFile.ProjectData
+        {
+            Groups = new()
+            {
+                new ProjectFile.GroupData
+                {
+                    Name = "lava",
+                    Type = "Tile",
+                    IsSolid = true,
+                    IsPassable = false,
+                    IsHazardous = true,
+                    MovementCost = 2.0f,
+                    DamageType = "fire",
+                    DamagePerTick = 5,
+                }
+            }
+        };
+
+        var groups = ProjectFile.RestoreGroups(data);
+        var lava = groups[0];
+
+        Assert.True(lava.IsSolid);
+        Assert.False(lava.IsPassable);
+        Assert.True(lava.IsHazardous);
+        Assert.Equal(2.0f, lava.MovementCost);
+        Assert.Equal("fire", lava.DamageType);
+        Assert.Equal(5, lava.DamagePerTick);
+    }
+
+    [Fact]
+    public void RestoreGroups_EntityTypeField_RestoresCorrectly()
+    {
+        var data = new ProjectFile.ProjectData
+        {
+            Groups = new()
+            {
+                new ProjectFile.GroupData { Name = "npc", Type = "Entity", EntityType = "NPC" },
+                new ProjectFile.GroupData { Name = "door", Type = "Entity", EntityType = "Trigger" },
+                new ProjectFile.GroupData { Name = "chest", Type = "Entity" },  // missing = Interactable
+            }
+        };
+
+        var groups = ProjectFile.RestoreGroups(data);
+
+        Assert.Equal(EntityType.NPC, groups[0].EntityType);
+        Assert.Equal(EntityType.Trigger, groups[1].EntityType);
+        Assert.Equal(EntityType.Interactable, groups[2].EntityType);
+    }
+
+    [Fact]
+    public void JsonRoundtrip_GameplayProperties_Preserved()
+    {
+        var original = new ProjectFile.GroupData
+        {
+            Name = "lava",
+            Type = "Tile",
+            IsSolid = true,
+            IsPassable = false,
+            IsHazardous = true,
+            MovementCost = 2.5f,
+            DamageType = "fire",
+            DamagePerTick = 10,
+        };
+
+        var projectData = new ProjectFile.ProjectData
+        {
+            Groups = new() { original }
+        };
+
+        var options = new System.Text.Json.JsonSerializerOptions
+        {
+            PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
+            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
+        };
+
+        string json = System.Text.Json.JsonSerializer.Serialize(projectData, options);
+        var deserialized = System.Text.Json.JsonSerializer.Deserialize<ProjectFile.ProjectData>(json, options);
+
+        var g = deserialized.Groups[0];
+        Assert.False(g.IsPassable);
+        Assert.True(g.IsHazardous);
+        Assert.Equal(2.5f, g.MovementCost);
+        Assert.Equal("fire", g.DamageType);
+        Assert.Equal(10, g.DamagePerTick);
+    }
+
+    [Fact]
+    public void JsonRoundtrip_DefaultGameplayProperties_OmittedFromJson()
+    {
+        var projectData = new ProjectFile.ProjectData
+        {
+            Groups = new()
+            {
+                new ProjectFile.GroupData { Name = "grass", Type = "Tile" }
+            }
+        };
+
+        var options = new System.Text.Json.JsonSerializerOptions
+        {
+            PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
+            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
+        };
+
+        string json = System.Text.Json.JsonSerializer.Serialize(projectData, options);
+
+        Assert.DoesNotContain("\"isPassable\"", json);
+        Assert.DoesNotContain("\"isHazardous\"", json);
+        Assert.DoesNotContain("\"movementCost\"", json);
+        Assert.DoesNotContain("\"damageType\"", json);
+        Assert.DoesNotContain("\"damagePerTick\"", json);
+        Assert.DoesNotContain("\"entityType\"", json);
     }
 }
