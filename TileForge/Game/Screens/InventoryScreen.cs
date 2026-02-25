@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Xna.Framework;
@@ -7,9 +8,10 @@ using DojoUI;
 namespace TileForge.Game.Screens;
 
 /// <summary>
-/// Overlay screen showing the player's inventory. Items are grouped by name
-/// with a count. The player can use consumable items (those with a "heal"
-/// property) or close the screen with Cancel / OpenInventory toggle.
+/// Overlay screen showing the player's equipment and inventory. The menu has
+/// three sections: equipment slots, inventory items (grouped by name with count),
+/// and a Close button. The player can equip/unequip gear, use consumable items
+/// (those with a "heal" property), or close the screen with Cancel / OpenInventory toggle.
 /// </summary>
 public class InventoryScreen : GameScreen
 {
@@ -25,6 +27,10 @@ public class InventoryScreen : GameScreen
         _gameStateManager = gameStateManager;
     }
 
+    private enum MenuSection { EquipSlot, InventoryItem, Close }
+
+    private record struct MenuItem(MenuSection Section, string Label, string ItemName, EquipmentSlot? Slot);
+
     /// <summary>
     /// Groups inventory items by name, returning (name, count) pairs.
     /// </summary>
@@ -36,9 +42,35 @@ public class InventoryScreen : GameScreen
             .ToList();
     }
 
-    // Menu: grouped items + "Close"
-    private int MenuItemCount(List<(string Name, int Count)> items) => items.Count + 1;
-    private bool IsCloseItem(List<(string Name, int Count)> items, int index) => index == items.Count;
+    private List<MenuItem> BuildMenuItems()
+    {
+        var items = new List<MenuItem>();
+
+        // Equipment slots
+        foreach (var slot in Enum.GetValues<EquipmentSlot>())
+        {
+            string equipped = _gameStateManager.GetEquippedItem(slot);
+            string label = equipped != null
+                ? $"[{slot}] {equipped}"
+                : $"[{slot}] (empty)";
+            items.Add(new MenuItem(MenuSection.EquipSlot, label, equipped, slot));
+        }
+
+        // Inventory items (grouped)
+        var grouped = GetGroupedItems();
+        foreach (var group in grouped)
+        {
+            string label = group.Count > 1 ? $"{group.Name} x{group.Count}" : group.Name;
+            if (_gameStateManager.IsEquipped(group.Name))
+                label += " [E]";
+            items.Add(new MenuItem(MenuSection.InventoryItem, label, group.Name, null));
+        }
+
+        // Close
+        items.Add(new MenuItem(MenuSection.Close, "Close", null, null));
+
+        return items;
+    }
 
     public override void Update(GameTime gameTime, GameInputManager input)
     {
@@ -52,8 +84,8 @@ public class InventoryScreen : GameScreen
                 _statusMessage = null;
         }
 
-        var items = GetGroupedItems();
-        int count = MenuItemCount(items);
+        var menuItems = BuildMenuItems();
+        int count = menuItems.Count;
 
         if (input.IsActionJustPressed(GameAction.MoveUp))
         {
@@ -72,16 +104,33 @@ public class InventoryScreen : GameScreen
 
         if (input.IsActionJustPressed(GameAction.Interact))
         {
-            if (IsCloseItem(items, _selectedIndex))
+            if (_selectedIndex < count)
             {
-                ScreenManager.Pop();
-                return;
-            }
+                var item = menuItems[_selectedIndex];
+                switch (item.Section)
+                {
+                    case MenuSection.Close:
+                        ScreenManager.Pop();
+                        return;
 
-            if (_selectedIndex < items.Count)
-            {
-                var item = items[_selectedIndex];
-                UseItem(item.Name);
+                    case MenuSection.EquipSlot:
+                        if (item.ItemName != null && item.Slot.HasValue)
+                        {
+                            _gameStateManager.UnequipItem(item.Slot.Value);
+                            _statusMessage = $"Unequipped {item.ItemName}";
+                            _statusTimer = 2.0f;
+                        }
+                        else
+                        {
+                            _statusMessage = "Nothing equipped";
+                            _statusTimer = 2.0f;
+                        }
+                        break;
+
+                    case MenuSection.InventoryItem:
+                        HandleInventoryInteract(item.ItemName);
+                        break;
+                }
             }
             return;
         }
@@ -94,9 +143,19 @@ public class InventoryScreen : GameScreen
         }
     }
 
-    private void UseItem(string itemName)
+    private void HandleInventoryInteract(string itemName)
     {
-        // Look up item properties from the cache (populated at collection time)
+        // Check if item is equippable
+        var equipSlot = _gameStateManager.GetItemEquipSlot(itemName);
+        if (equipSlot.HasValue)
+        {
+            _gameStateManager.EquipItem(itemName, equipSlot.Value);
+            _statusMessage = $"Equipped {itemName} ({equipSlot.Value})";
+            _statusTimer = 2.0f;
+            return;
+        }
+
+        // Fall through to existing heal logic
         int healAmount = 0;
         if (_gameStateManager.State.ItemPropertyCache.TryGetValue(itemName, out var props)
             && props.TryGetValue("heal", out var healStr))
@@ -137,40 +196,33 @@ public class InventoryScreen : GameScreen
             canvasBounds.Y + 40f);
         spriteBatch.DrawString(font, titleText, titlePos, Color.White);
 
-        // Items
-        var items = GetGroupedItems();
-        int count = MenuItemCount(items);
+        // Menu items
+        var menuItems = BuildMenuItems();
         float startY = titlePos.Y + titleSize.Y + 20f;
 
-        if (items.Count == 0)
-        {
-            var emptyText = "No items";
-            var emptySize = font.MeasureString(emptyText);
-            var emptyPos = new Vector2(
-                canvasBounds.X + (canvasBounds.Width - emptySize.X) / 2f,
-                startY);
-            spriteBatch.DrawString(font, emptyText, emptyPos, Color.Gray);
-            startY += emptySize.Y + 8f;
-        }
+        // Check if inventory section is empty (only equip slots + close, no actual items)
+        bool hasInventoryItems = menuItems.Exists(m => m.Section == MenuSection.InventoryItem);
 
-        for (int i = 0; i < count; i++)
+        for (int i = 0; i < menuItems.Count; i++)
         {
-            string text;
-            if (i < items.Count)
-            {
-                var item = items[i];
-                text = item.Count > 1 ? $"{item.Name} x{item.Count}" : item.Name;
-            }
-            else
-            {
-                text = "Close";
-            }
+            var item = menuItems[i];
+            string text = item.Label;
 
             var itemSize = font.MeasureString(text);
             var itemPos = new Vector2(
                 canvasBounds.X + (canvasBounds.Width - itemSize.X) / 2f,
                 startY + i * (itemSize.Y + 6f));
-            var color = i == _selectedIndex ? Color.Yellow : Color.White;
+
+            Color color;
+            if (i == _selectedIndex)
+                color = Color.Yellow;
+            else if (item.Section == MenuSection.EquipSlot && item.ItemName != null)
+                color = Color.Cyan;
+            else if (item.Section == MenuSection.EquipSlot)
+                color = Color.Gray;
+            else
+                color = Color.White;
+
             spriteBatch.DrawString(font, text, itemPos, color);
         }
 

@@ -101,6 +101,17 @@ public class TilePalettePanel : Panel
         }
     }
 
+    public override void UpdateContent(EditorState state, MouseState mouse, MouseState prevMouse,
+                                        InputEvent input, SpriteFont font, GameTime gameTime,
+                                        int screenW, int screenH)
+    {
+        // Run the existing update logic
+        UpdateContent(state, mouse, prevMouse, font, gameTime, screenW, screenH);
+
+        // Consume clicks within content area for inter-panel consumption
+        input.TryConsumeClick(ContentBounds);
+    }
+
     public override void DrawContent(SpriteBatch spriteBatch, SpriteFont font, EditorState state,
                                       Renderer renderer)
     {

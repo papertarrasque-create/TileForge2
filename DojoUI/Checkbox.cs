@@ -34,6 +34,23 @@ public class Checkbox
     }
 
     /// <summary>
+    /// Returns true if the checkbox was toggled this frame.
+    /// Consumes the click via InputEvent if toggle occurs.
+    /// </summary>
+    public bool Update(InputEvent input, Rectangle bounds)
+    {
+        _isHovered = bounds.Contains(input.Mouse.X, input.Mouse.Y);
+
+        if (_isHovered && input.TryConsumeClick(bounds))
+        {
+            IsChecked = !IsChecked;
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
     /// Draws the checkbox within the given bounds.
     /// The box is drawn as a 14x14 square centered in the bounds.
     /// </summary>

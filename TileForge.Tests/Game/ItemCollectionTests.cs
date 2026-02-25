@@ -264,14 +264,23 @@ public class ItemCollectionTests
         var screenManager = new ScreenManager();
         screenManager.Push(screen);
 
-        // Simulate pressing Interact (Z key) to use the first item (index 0 = "Potion")
-        var input = new GameInputManager();
-        input.Update(new KeyboardState());          // previous frame: nothing pressed
-        input.Update(new KeyboardState(Keys.Z));    // current frame: Z pressed
-
         var gameTime = new Microsoft.Xna.Framework.GameTime(
             System.TimeSpan.FromSeconds(1),
             System.TimeSpan.FromSeconds(0.016));
+
+        // Navigate past the 3 equipment slots (Weapon, Armor, Accessory) to reach the Potion
+        for (int i = 0; i < 3; i++)
+        {
+            var downInput = new GameInputManager();
+            downInput.Update(new KeyboardState());
+            downInput.Update(new KeyboardState(Keys.Down));
+            screen.Update(gameTime, downInput);
+        }
+
+        // Simulate pressing Interact (Z key) to use the item at index 3 = "Potion"
+        var input = new GameInputManager();
+        input.Update(new KeyboardState());          // previous frame: nothing pressed
+        input.Update(new KeyboardState(Keys.Z));    // current frame: Z pressed
         screen.Update(gameTime, input);
 
         // Player should be healed from 60 → 85

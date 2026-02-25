@@ -32,6 +32,18 @@ public class PanelDock
                        SpriteFont font, Rectangle bounds, GameTime gameTime,
                        int screenW, int screenH)
     {
+        Update(state, mouse, prevMouse, new InputEvent(mouse, prevMouse),
+               font, bounds, gameTime, screenW, screenH);
+    }
+
+    /// <summary>
+    /// InputEvent-aware update. Uses the provided InputEvent for click consumption
+    /// across panels and between PanelDock and other game components.
+    /// </summary>
+    public void Update(EditorState state, MouseState mouse, MouseState prevMouse,
+                       InputEvent input, SpriteFont font, Rectangle bounds, GameTime gameTime,
+                       int screenW, int screenH)
+    {
         _bounds = bounds;
         DistributeHeight(bounds);
 
@@ -54,6 +66,7 @@ public class PanelDock
                 {
                     _mouseDownHeaderIndex = i;
                     _mouseDownY = mouse.Y;
+                    input.TryConsumeClick(_panels[i].HeaderBounds);
                     break;
                 }
             }
@@ -105,7 +118,7 @@ public class PanelDock
             if (_panels[i].IsCollapsed) continue;
             if (_isDragging && i == _dragIndex) continue;
 
-            _panels[i].UpdateContent(state, mouse, prevMouse, font, gameTime, screenW, screenH);
+            _panels[i].UpdateContent(state, mouse, prevMouse, input, font, gameTime, screenW, screenH);
         }
     }
 

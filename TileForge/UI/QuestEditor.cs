@@ -207,6 +207,9 @@ public class QuestEditor
         // Skip top-level fields (5 rows + gap + section header)
         y += 5 * RowHeight + 6 + RowHeight;
 
+        // InputEvent for click consumption between controls
+        var input = new InputEvent(mouse, prevMouse);
+
         // Update objective type dropdowns with computed positions
         _objectiveRemoveRects.Clear();
         if (font != null)
@@ -216,7 +219,7 @@ public class QuestEditor
                 var obj = _objectives[i];
                 int descFieldW = fieldW - TypeDDWidth - 8;
                 var typeRect = new Rectangle(px + Padding + 20 + descFieldW + 4, y, TypeDDWidth, FieldHeight);
-                obj.TypeDD.Update(mouse, prevMouse, typeRect, font, screenW, screenH);
+                obj.TypeDD.Update(input, typeRect, font, screenW, screenH);
                 y += RowHeight;
 
                 // Remove button rect
@@ -228,10 +231,8 @@ public class QuestEditor
             }
         }
 
-        // Mouse handling
-        bool leftClick = mouse.LeftButton == ButtonState.Pressed && prevMouse.LeftButton == ButtonState.Released;
-
-        if (leftClick && !_resizing)
+        // Mouse handling — skip if a dropdown consumed the click
+        if (input.HasUnconsumedClick && !_resizing)
         {
             bool clickHandled = false;
 

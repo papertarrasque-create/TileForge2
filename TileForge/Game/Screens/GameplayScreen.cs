@@ -268,6 +268,11 @@ public class GameplayScreen : GameScreen
                 Color healthColor = healthPct > 0.5f ? Color.Green : healthPct > 0.25f ? Color.Yellow : Color.Red;
                 renderer.DrawRect(spriteBatch, new Rectangle(barX, barY, fillWidth, barHeight), healthColor);
             }
+
+            // ATK/DEF stats readout
+            string statsText = $"ATK:{_gameStateManager.GetEffectiveAttack()} DEF:{_gameStateManager.GetEffectiveDefense()}";
+            var statsPos = new Vector2(barX, barY + barHeight + 2);
+            spriteBatch.DrawString(font, statsText, statsPos, Color.White);
         }
 
         // Status message text below health bar
@@ -545,7 +550,7 @@ public class GameplayScreen : GameScreen
 
             if (_gameStateManager.IsAttackable(instance, _state.GroupsByName))
             {
-                var result = _gameStateManager.AttackEntity(instance, _gameStateManager.State.Player.Attack);
+                var result = _gameStateManager.AttackEntity(instance, _gameStateManager.GetEffectiveAttack());
                 play.StatusMessage = result.Message;
                 play.StatusMessageTimer = PlayState.StatusMessageDuration;
                 TriggerEntityFlash(instance.Id);
@@ -576,7 +581,7 @@ public class GameplayScreen : GameScreen
                     {
                         // Melee: entity is adjacent to player
                         var atk = _gameStateManager.GetEntityIntProperty(entity, "attack", 3);
-                        var damage = CombatHelper.CalculateDamage(atk, _gameStateManager.State.Player.Defense);
+                        var damage = CombatHelper.CalculateDamage(atk, _gameStateManager.GetEffectiveDefense());
                         _gameStateManager.DamagePlayer(damage);
                         TriggerDamageFlash();
                         play.StatusMessage = $"{entity.DefinitionName} hit you for {damage} damage!";

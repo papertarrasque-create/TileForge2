@@ -166,6 +166,20 @@ public class MapCanvas
             state.Grid.CycleMode();
     }
 
+    /// <summary>
+    /// InputEvent-aware update. Consumes canvas clicks so they don't
+    /// propagate back to toolbar or panels.
+    /// </summary>
+    public void Update(EditorState state, InputEvent input,
+                       KeyboardState keyboard, KeyboardState prevKeyboard,
+                       Rectangle bounds)
+    {
+        Update(state, input.Mouse, input.PrevMouse, keyboard, prevKeyboard, bounds);
+
+        // Consume clicks within canvas bounds for cross-component consumption
+        input.TryConsumeClick(bounds);
+    }
+
     public void Draw(SpriteBatch spriteBatch, EditorState state, Renderer renderer, Rectangle bounds)
     {
         // Background

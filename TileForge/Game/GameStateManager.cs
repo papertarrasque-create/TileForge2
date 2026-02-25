@@ -275,6 +275,98 @@ public class GameStateManager
             IncrementVariable(collectVar);
     }
 
+    // Equipment operations
+
+    /// <summary>
+    /// Equips an item from inventory into the specified slot.
+    /// If the slot already has an item, that item is returned to inventory first.
+    /// Removes one instance of the item from inventory.
+    /// </summary>
+    public void EquipItem(string itemName, EquipmentSlot slot)
+    {
+        string slotKey = slot.ToString();
+
+        // Unequip existing item in this slot (return to inventory)
+        if (State.Player.Equipment.TryGetValue(slotKey, out var existing))
+        {
+            AddToInventory(existing);
+            State.Player.Equipment.Remove(slotKey);
+        }
+
+        // Move from inventory to equipment slot
+        RemoveFromInventory(itemName);
+        State.Player.Equipment[slotKey] = itemName;
+    }
+
+    /// <summary>
+    /// Unequips an item from the specified slot, returning it to inventory.
+    /// No-op if the slot is empty.
+    /// </summary>
+    public void UnequipItem(EquipmentSlot slot)
+    {
+        string slotKey = slot.ToString();
+        if (State.Player.Equipment.TryGetValue(slotKey, out var itemName))
+        {
+            State.Player.Equipment.Remove(slotKey);
+            AddToInventory(itemName);
+        }
+    }
+
+    /// <summary>
+    /// Returns true if the named item is currently equipped in any slot.
+    /// </summary>
+    public bool IsEquipped(string itemName) => State.Player.Equipment.ContainsValue(itemName);
+
+    /// <summary>
+    /// Returns the item name equipped in the given slot, or null if empty.
+    /// </summary>
+    public string GetEquippedItem(EquipmentSlot slot)
+    {
+        return State.Player.Equipment.TryGetValue(slot.ToString(), out var item) ? item : null;
+    }
+
+    /// <summary>
+    /// Returns the EquipmentSlot for an item based on its cached equip_slot property,
+    /// or null if the item is not equippable.
+    /// </summary>
+    public EquipmentSlot? GetItemEquipSlot(string itemName)
+    {
+        if (State.ItemPropertyCache.TryGetValue(itemName, out var props)
+            && props.TryGetValue("equip_slot", out var slotStr)
+            && Enum.TryParse<EquipmentSlot>(slotStr, ignoreCase: true, out var slot))
+            return slot;
+        return null;
+    }
+
+    /// <summary>
+    /// Returns effective attack: base player attack + sum of equip_attack bonuses from all equipped items.
+    /// </summary>
+    public int GetEffectiveAttack()
+    {
+        return State.Player.Attack + GetEquipmentBonus("equip_attack");
+    }
+
+    /// <summary>
+    /// Returns effective defense: base player defense + sum of equip_defense bonuses from all equipped items.
+    /// </summary>
+    public int GetEffectiveDefense()
+    {
+        return State.Player.Defense + GetEquipmentBonus("equip_defense");
+    }
+
+    private int GetEquipmentBonus(string propertyKey)
+    {
+        int total = 0;
+        foreach (var kvp in State.Player.Equipment)
+        {
+            if (State.ItemPropertyCache.TryGetValue(kvp.Value, out var props)
+                && props.TryGetValue(propertyKey, out var val)
+                && int.TryParse(val, out var bonus))
+                total += bonus;
+        }
+        return total;
+    }
+
     // Entity property helpers
     public int GetEntityIntProperty(EntityInstance entity, string key, int defaultValue = 0)
     {

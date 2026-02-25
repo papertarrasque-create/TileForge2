@@ -11,9 +11,9 @@ TileForge is a tile-based level editor with an embedded RPG game runtime. The ed
 Expert game designer and C# developer. Vanilla C# + MonoGame. No engine magic.
 
 ### Status
-G1–G8 complete + Quest Editor UI + Dialogue Editor UI + UI Overhaul. 1050 tests, 0 failures. The game runtime has: health, damage, inventory, status effects, map transitions, save/load, dialogue, input rebinding, pause/inventory/settings/quest log screens, game over/restart, entity AI (chase/patrol/chase_patrol), bump combat, pathfinding (axis-priority + Bresenham LOS), damage flash, combat message coloring, data-driven quest system with flag/variable objectives and auto-completion. Quest Editor UI: in-editor quest authoring via QuestPanel (sidebar) + QuestEditor (modal overlay). Dialogue Editor UI: in-editor dialogue authoring via DialoguePanel (sidebar) + DialogueEditor (form-based modal with nested node/choice editing). UI Overhaul: RPG Maker-inspired menu bar + icon toolbar ribbon, smart property editors with dropdowns/checkboxes/numerics, IProjectContext browse-dropdowns with "Create New..." linkage.
+G1–G9 complete + Quest Editor UI + Dialogue Editor UI + UI Overhaul. 1119 tests, 0 failures. The game runtime has: health, damage, inventory, equipment (weapon/armor/accessory slots with stat modifiers), status effects, map transitions, save/load, dialogue, input rebinding, pause/inventory/settings/quest log screens, game over/restart, entity AI (chase/patrol/chase_patrol), bump combat, pathfinding (axis-priority + Bresenham LOS), damage flash, combat message coloring, data-driven quest system with flag/variable objectives and auto-completion. Quest Editor UI: in-editor quest authoring via QuestPanel (sidebar) + QuestEditor (modal overlay). Dialogue Editor UI: in-editor dialogue authoring via DialoguePanel (sidebar) + DialogueEditor (form-based modal with nested node/choice editing). UI Overhaul: RPG Maker-inspired menu bar + icon toolbar ribbon, smart property editors with dropdowns/checkboxes/numerics, IProjectContext browse-dropdowns with "Create New..." linkage.
 
-**Next up: G9+** — equipment, ranged combat, A* pathfinding, visual dialogue tree editor. See PRD-GAME.md §Future Phases.
+**Next up: G10+** — ranged combat, A* pathfinding, visual dialogue tree editor. See PRD-GAME.md §Future Phases.
 
 ---
 
@@ -28,7 +28,7 @@ Editor (TileGroups, Entities, Map) → F5 → PlayModeController
        ├─ GameplayScreen (movement, collision, hazard, bump combat, entity turn, HUD)
        ├─ PauseScreen (overlay → save/load/settings/quit)
        ├─ DialogueScreen (typewriter text, branching choices, flag conditions)
-       ├─ InventoryScreen (item use/drop, grouped display)
+       ├─ InventoryScreen (equip/unequip, item use, grouped display)
        ├─ SaveLoadScreen (slot-based save/load via SaveManager)
        ├─ SettingsScreen (key rebinding)
        ├─ QuestLogScreen (quest objectives + completion)
@@ -40,7 +40,8 @@ Editor (TileGroups, Entities, Map) → F5 → PlayModeController
 **Map transitions:** Trigger entities with `target_map`/`target_x`/`target_y` properties
 **Save files:** `~/.tileforge/saves/{slot}.json` — serialized GameState
 **Key bindings:** `~/.tileforge/keybindings.json`
-**Combat:** Bump-to-attack (Brogue-style). `damage = max(1, atk - def)`. Entities act after player.
+**Combat:** Bump-to-attack (Brogue-style). `damage = max(1, atk - def)`. Uses effective stats (base + equipment bonuses). Entities act after player.
+**Equipment:** EquipmentSlot enum (Weapon, Armor, Accessory). `PlayerState.Equipment` dict. `GameStateManager.GetEffectiveAttack()/GetEffectiveDefense()` sum base + `equip_attack`/`equip_defense` from ItemPropertyCache. InventoryScreen handles equip/unequip. HUD shows ATK/DEF readout.
 **Entity AI:** Property-driven behaviors: idle, chase, patrol, chase_patrol. IPathfinder interface.
 **Quests:** JSON definitions in `quests.json`. QuestManager evaluates flag/variable objectives. Entity hooks: `on_kill_set_flag`, `on_kill_increment`, `on_collect_set_flag`, `on_collect_increment`. Auto-complete with rewards.
 **Quest Editor:** QuestPanel (sidebar) + QuestEditor (modal overlay) for in-editor quest authoring. QuestFileManager reads/writes quests.json.
@@ -62,7 +63,7 @@ Editor (TileGroups, Entities, Map) → F5 → PlayModeController
 - All new classes testable without MonoGame (follow ISpriteSheet pattern)
 - System.Text.Json for all serialization
 - ScreenManager is play-mode-only — the editor is NOT a GameScreen
-- xUnit tests for everything; 1050 baseline, 0 failures allowed
+- xUnit tests for everything; 1119 baseline, 0 failures allowed
 
 ## Model Assignment (for Claude Code)
 - **Sonnet** — Mechanical work: data classes, enums, serialization, tests following established patterns

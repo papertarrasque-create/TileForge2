@@ -190,10 +190,11 @@ public class DialogueEditor
         // Tooltip update
         _tooltipManager.Update(mouse.X != prevMouse.X || mouse.Y != prevMouse.Y ? 0 : 1.0 / 60.0);
 
-        // Mouse handling
-        bool leftClick = mouse.LeftButton == ButtonState.Pressed && prevMouse.LeftButton == ButtonState.Released;
+        // InputEvent for click consumption between controls
+        var input = new InputEvent(mouse, prevMouse);
 
-        if (leftClick && !_resizing)
+        // Mouse handling
+        if (input.HasUnconsumedClick && !_resizing)
         {
             bool clickHandled = false;
 

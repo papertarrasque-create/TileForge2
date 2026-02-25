@@ -127,6 +127,79 @@ public class Dropdown
         return false;
     }
 
+    /// <summary>
+    /// InputEvent-aware update. When the popup is open, ALL clicks are consumed
+    /// (the popup acts as a modal overlay). When closed, opening the dropdown
+    /// consumes the click via InputEvent.
+    /// </summary>
+    public bool Update(InputEvent input, Rectangle bounds,
+                       SpriteFont font, int screenW, int screenH)
+    {
+        bool hasClick = input.Mouse.LeftButton == ButtonState.Pressed &&
+                        input.PrevMouse.LeftButton == ButtonState.Released;
+        bool hasRightClick = input.Mouse.RightButton == ButtonState.Pressed &&
+                             input.PrevMouse.RightButton == ButtonState.Released;
+
+        // Recompute popup geometry every frame so DrawPopup is always current
+        _itemHeight = font.LineSpacing + 8;
+        int visibleCount = Math.Min(_items.Length, MaxVisible);
+        int popupH = visibleCount * _itemHeight;
+        int popupY = (bounds.Bottom + popupH > screenH) ? bounds.Y - popupH : bounds.Bottom;
+        _popupBounds = new Rectangle(bounds.X, popupY, bounds.Width, popupH);
+
+        _buttonHovered = bounds.Contains(input.Mouse.X, input.Mouse.Y);
+
+        if (_isOpen)
+        {
+            // Open popup is a modal overlay — consume ANY click
+            if (hasClick)
+                input.ConsumeClick();
+
+            // Update hovered popup item
+            _hoveredPopupIndex = -1;
+            if (_popupBounds.Contains(input.Mouse.X, input.Mouse.Y))
+            {
+                int idx = (input.Mouse.Y - _popupBounds.Y) / _itemHeight;
+                if (idx >= 0 && idx < visibleCount)
+                    _hoveredPopupIndex = idx;
+            }
+
+            if (hasClick)
+            {
+                if (_hoveredPopupIndex >= 0)
+                {
+                    int prev = _selectedIndex;
+                    _selectedIndex = _hoveredPopupIndex;
+                    _isOpen = false;
+                    _hoveredPopupIndex = -1;
+                    return _selectedIndex != prev;
+                }
+
+                // Click outside popup (including button) — close
+                _isOpen = false;
+                _hoveredPopupIndex = -1;
+                return false;
+            }
+
+            if (hasRightClick && _hoveredPopupIndex < 0)
+            {
+                _isOpen = false;
+                _hoveredPopupIndex = -1;
+            }
+
+            return false;
+        }
+
+        // Closed state — open on click (consumes via TryConsumeClick)
+        if (_items.Length > 0 && input.TryConsumeClick(bounds))
+        {
+            _isOpen = true;
+            _hoveredPopupIndex = -1;
+        }
+
+        return false;
+    }
+
     // -------------------------------------------------------------------------
     // Draw (closed button — always call)
     // -------------------------------------------------------------------------

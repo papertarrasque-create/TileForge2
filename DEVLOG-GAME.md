@@ -111,6 +111,7 @@ Notable design decisions:
 | UI Overhaul (P1-P5) | 1031 | +75 |
 | G8++ (dialogue editor) | 1050 | +19 |
 | Form layout overhaul | 1067 | +17 |
+| G9 (equipment) | 1119 | +52 |
 
 All phases: 0 failures, 0 regressions.
 
@@ -175,6 +176,36 @@ Three-layer architecture: `DialoguePanel` (sidebar list) + `DialogueEditor` (for
 | `TileForge/UI/DialogueEditor.cs` | Form-based dialogue node/choice editor |
 | `TileForge.Tests/Data/DialogueFileManagerTests.cs` | File I/O + serialization tests |
 | `TileForge.Tests/UI/DialogueEditorTests.cs` | Factory method + state tests |
+
+---
+
+### G9 — Equipment & Gear
+Equipment system adding weapon/armor/accessory slots with stat modifiers. Data-driven via existing property bags — no new item classes. **1067 → 1119 tests.**
+
+Notable design decisions:
+- **Dictionary<string, string> for equipment slots.** Mirrors the Variables pattern. Keyed by `EquipmentSlot.ToString()`, stores item definition name. Extensible to future slots (ring, boots) without data model changes.
+- **Effective stats computed, not stored.** `GetEffectiveAttack()`/`GetEffectiveDefense()` sum base stats + bonuses from all equipped items via `ItemPropertyCache`. No redundant stored values to keep in sync.
+- **Equipment properties are just entity properties.** `equip_slot`, `equip_attack`, `equip_defense` in the entity property bag, authored via GroupEditor's Item preset. Flow through existing export pipeline unchanged — no MapExporter/MapLoader changes needed.
+- **InventoryScreen evolved, not replaced.** Added equipment slots section at top of menu, `HandleInventoryInteract` replaces `UseItem` with equip/heal branching. Existing heal logic preserved. Existing InventoryScreen tests updated to account for new slot entries.
+- **GameState.Version bumped to 2.** Backward compatible — v1 saves deserialize with empty Equipment dictionary (System.Text.Json default behavior). No migration code needed.
+- **Sprite overrides deferred.** G9 focuses on game mechanics only. Gear-based sprite changes can be added later without architectural changes (PlayState sprite override fields + MapCanvas rendering check).
+- **Combat integration is two one-line changes.** `TryBumpAttack` and `ExecuteEntityTurn` simply call `GetEffectiveAttack()`/`GetEffectiveDefense()` instead of reading base stats directly.
+
+New/Modified files:
+| File | Action |
+|------|--------|
+| `TileForge/Game/EquipmentSlot.cs` | **NEW** — Weapon, Armor, Accessory enum |
+| `TileForge/Game/PlayerState.cs` | **MODIFIED** — Added Equipment dictionary |
+| `TileForge/Game/GameState.cs` | **MODIFIED** — Version bumped to 2 |
+| `TileForge/Game/GameStateManager.cs` | **MODIFIED** — Equip/unequip methods, effective stats |
+| `TileForge/Game/Screens/GameplayScreen.cs` | **MODIFIED** — Effective stats in combat, HUD ATK/DEF |
+| `TileForge/Game/Screens/InventoryScreen.cs` | **MODIFIED** — Equipment slot UI, equip/unequip |
+| `TileForge/UI/GroupEditor.cs` | **MODIFIED** — Item preset expanded, equip_slot dropdown |
+| `TileForge.Tests/Game/EquipmentSlotTests.cs` | **NEW** — 11 tests |
+| `TileForge.Tests/Game/EquipmentManagerTests.cs` | **NEW** — 20 tests |
+| `TileForge.Tests/Game/EquipmentCombatTests.cs` | **NEW** — 6 tests |
+| `TileForge.Tests/Game/EquipmentInventoryTests.cs` | **NEW** — 14 tests |
+| `TileForge.Tests/Game/EquipmentExportTests.cs` | **NEW** — 4 tests |
 
 ---
 

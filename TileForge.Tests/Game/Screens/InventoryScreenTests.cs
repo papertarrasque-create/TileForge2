@@ -14,6 +14,12 @@ public class InventoryScreenTests
     // Helpers
     // =========================================================================
 
+    /// <summary>
+    /// The number of equipment slot entries that appear at the top of the menu
+    /// (Weapon, Armor, Accessory).
+    /// </summary>
+    private const int EquipSlotCount = 3;
+
     private static GameStateManager CreateGameStateManager()
     {
         var gsm = new GameStateManager();
@@ -39,6 +45,18 @@ public class InventoryScreenTests
         return input;
     }
 
+    /// <summary>
+    /// Navigates the inventory screen down by the specified number of steps.
+    /// </summary>
+    private static void NavigateDown(InventoryScreen screen, int steps)
+    {
+        for (int i = 0; i < steps; i++)
+        {
+            var down = SimulateKeyPress(Keys.Down);
+            screen.Update(DefaultGameTime, down);
+        }
+    }
+
     private static readonly GameTime DefaultGameTime =
         new GameTime(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(0.016));
 
@@ -55,14 +73,16 @@ public class InventoryScreenTests
     }
 
     // =========================================================================
-    // Empty inventory — only "Close" item
+    // Empty inventory — equip slots + "Close"
     // =========================================================================
 
     [Fact]
     public void EmptyInventory_InteractImmediately_PopsScreen()
     {
-        // No items → index 0 = "Close"
+        // No items → menu has 3 equip slots + Close. Navigate to Close (index 3)
         var (screen, manager, _) = CreateInventoryScreen();
+
+        NavigateDown(screen, EquipSlotCount);
 
         var interact = SimulateKeyPress(Keys.Z);
         screen.Update(DefaultGameTime, interact);
@@ -111,10 +131,8 @@ public class InventoryScreenTests
         gsm.AddToInventory("sword");
         gsm.AddToInventory("shield");
 
-        // 2 items + Close = 3 items. Navigate to Close (index 2)
-        var down = SimulateKeyPress(Keys.Down);
-        screen.Update(DefaultGameTime, down);
-        screen.Update(DefaultGameTime, down);
+        // 3 equip slots + 2 items + Close = 6 items. Navigate to Close (index 5)
+        NavigateDown(screen, EquipSlotCount + 2);
 
         var interact = SimulateKeyPress(Keys.Z);
         screen.Update(DefaultGameTime, interact);
@@ -130,10 +148,9 @@ public class InventoryScreenTests
         gsm.AddToInventory("potion");
         gsm.AddToInventory("potion");
 
-        // 3 potions grouped = 1 item entry + Close = 2 items total
-        // Navigate to Close (index 1) and select
-        var down = SimulateKeyPress(Keys.Down);
-        screen.Update(DefaultGameTime, down);
+        // 3 potions grouped = 1 item entry. 3 equip slots + 1 item + Close = 5 total
+        // Navigate to Close (index 4)
+        NavigateDown(screen, EquipSlotCount + 1);
 
         var interact = SimulateKeyPress(Keys.Z);
         screen.Update(DefaultGameTime, interact);
@@ -156,7 +173,10 @@ public class InventoryScreenTests
 
         Assert.Equal(80, gsm.State.Player.Health);
 
-        // Index 0 = "health_potion", Interact to use
+        // Navigate past equip slots to first inventory item (index 3)
+        NavigateDown(screen, EquipSlotCount);
+
+        // Interact to use
         var interact = SimulateKeyPress(Keys.Z);
         screen.Update(DefaultGameTime, interact);
 
@@ -175,6 +195,9 @@ public class InventoryScreenTests
         // Populate the ItemPropertyCache as CollectItem would
         gsm.State.ItemPropertyCache["health_potion"] = new Dictionary<string, string> { ["heal"] = "25" };
 
+        // Navigate past equip slots to first inventory item
+        NavigateDown(screen, EquipSlotCount);
+
         var interact = SimulateKeyPress(Keys.Z);
         screen.Update(DefaultGameTime, interact);
 
@@ -187,6 +210,9 @@ public class InventoryScreenTests
     {
         var (screen, manager, gsm) = CreateInventoryScreen();
         gsm.AddToInventory("sword");
+
+        // Navigate past equip slots to first inventory item
+        NavigateDown(screen, EquipSlotCount);
 
         // No entity with heal property for sword
         var interact = SimulateKeyPress(Keys.Z);
@@ -207,7 +233,7 @@ public class InventoryScreenTests
         var (screen, manager, gsm) = CreateInventoryScreen();
         gsm.AddToInventory("sword");
 
-        // 1 item + Close = 2. MoveUp from 0 wraps to 1 (Close)
+        // 3 equip slots + 1 item + Close = 5. MoveUp from 0 wraps to 4 (Close)
         var up = SimulateKeyPress(Keys.Up);
         screen.Update(DefaultGameTime, up);
 
@@ -223,17 +249,18 @@ public class InventoryScreenTests
         var (screen, manager, gsm) = CreateInventoryScreen();
         gsm.AddToInventory("sword");
 
-        // Navigate to Close (index 1), then down wraps to 0
-        var down = SimulateKeyPress(Keys.Down);
-        screen.Update(DefaultGameTime, down); // index 1 (Close)
-        screen.Update(DefaultGameTime, down); // wraps to 0 (sword)
+        // 3 equip slots + 1 item + Close = 5. Navigate to Close (index 4),
+        // then down wraps to 0 (Weapon equip slot, which is empty)
+        NavigateDown(screen, EquipSlotCount + 1); // index 4 (Close)
+        NavigateDown(screen, 1);                  // wraps to 0 (Weapon equip slot)
 
-        // Interact at sword index = attempt to use (sword has no heal → "Cannot use")
+        // Interact at Weapon equip slot (empty) → "Nothing equipped" status message
         var interact = SimulateKeyPress(Keys.Z);
         screen.Update(DefaultGameTime, interact);
 
-        // Sword not consumable, screen stays open
+        // Screen stays open (equip slot interaction does not pop)
         Assert.True(manager.HasScreens);
+        // Sword still in inventory
         Assert.Single(gsm.State.Player.Inventory);
     }
 

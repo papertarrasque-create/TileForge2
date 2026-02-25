@@ -8,7 +8,8 @@ public class Selection
 {
     private (int col, int row)? _anchor;
     private (int col, int row)? _current;
-    private readonly HashSet<(int col, int row)> _cells = new();
+    private readonly List<(int col, int row)> _cells = new();
+    private readonly HashSet<(int col, int row)> _cellSet = new();
 
     public (int col, int row)? Current => _current;
     public int Count => _cells.Count;
@@ -20,8 +21,13 @@ public class Selection
         if (ctrlHeld)
         {
             // Toggle individual cell
-            if (!_cells.Add((col, row)))
+            if (_cellSet.Add((col, row)))
+                _cells.Add((col, row));
+            else
+            {
+                _cellSet.Remove((col, row));
                 _cells.Remove((col, row));
+            }
             _anchor = (col, row);
         }
         else if (shiftHeld && _anchor.HasValue)
@@ -33,20 +39,24 @@ public class Selection
             int maxRow = Math.Max(_anchor.Value.row, row);
             for (int r = minRow; r <= maxRow; r++)
                 for (int c = minCol; c <= maxCol; c++)
-                    _cells.Add((c, r));
+                    if (_cellSet.Add((c, r)))
+                        _cells.Add((c, r));
         }
         else
         {
             // Clear and start fresh
             _cells.Clear();
+            _cellSet.Clear();
             _cells.Add((col, row));
+            _cellSet.Add((col, row));
             _anchor = (col, row);
         }
     }
 
     public void AddCell(int col, int row)
     {
-        _cells.Add((col, row));
+        if (_cellSet.Add((col, row)))
+            _cells.Add((col, row));
         _anchor ??= (col, row);
         _current ??= (col, row);
     }
@@ -56,6 +66,7 @@ public class Selection
         _anchor = null;
         _current = null;
         _cells.Clear();
+        _cellSet.Clear();
     }
 
     public IReadOnlyCollection<(int col, int row)> GetSelectedCells() => _cells;
@@ -81,5 +92,5 @@ public class Selection
         return new Rectangle(minCol, minRow, maxCol - minCol + 1, maxRow - minRow + 1);
     }
 
-    public bool Contains(int col, int row) => _cells.Contains((col, row));
+    public bool Contains(int col, int row) => _cellSet.Contains((col, row));
 }

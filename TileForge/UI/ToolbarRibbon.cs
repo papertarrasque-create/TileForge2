@@ -125,6 +125,20 @@ public class ToolbarRibbon
         }
     }
 
+    /// <summary>
+    /// InputEvent-aware update. Consumes button clicks so they don't
+    /// propagate to panels or canvas.
+    /// </summary>
+    public void Update(EditorState state, InputEvent input,
+                       int screenWidth, SpriteFont font, GameTime gameTime)
+    {
+        Update(state, input.Mouse, input.PrevMouse, screenWidth, font, gameTime);
+
+        // Consume the button click for cross-component consumption
+        if (_hoverIndex >= 0 && _buttonRects[_hoverIndex].Width > 0)
+            input.TryConsumeClick(_buttonRects[_hoverIndex]);
+    }
+
     public void Draw(SpriteBatch spriteBatch, SpriteFont font, EditorState state,
                      Renderer renderer, int screenWidth)
     {

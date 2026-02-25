@@ -343,15 +343,18 @@ public class TileForgeGame : Microsoft.Xna.Framework.Game
         if (_menuBar.IsMenuOpen)
         { FinishUpdate(keyboard, mouse, gameTime); return; }
 
-        // Toolbar ribbon
-        _toolbarRibbon.Update(_state, mouse, _prevMouse, screenW, _font, gameTime);
+        // InputEvent for cross-component click consumption
+        var input = new InputEvent(mouse, _prevMouse);
 
-        // Editor panels
+        // Toolbar ribbon (consumes before panels/canvas)
+        _toolbarRibbon.Update(_state, input, screenW, _font, gameTime);
+
+        // Editor panels (consumes before canvas)
         int topOffset = LayoutConstants.TopChromeHeight;
         var dockBounds = new Rectangle(0, topOffset, PanelDock.Width,
                                         screenH - topOffset - StatusBar.Height);
-        _panelDock.Update(_state, mouse, _prevMouse, _font, dockBounds, gameTime, screenW, screenH);
-        _canvas.Update(_state, mouse, _prevMouse, keyboard, _prevKeyboard, GetCanvasBounds());
+        _panelDock.Update(_state, mouse, _prevMouse, input, _font, dockBounds, gameTime, screenW, screenH);
+        _canvas.Update(_state, input, keyboard, _prevKeyboard, GetCanvasBounds());
 
         HandleMapPanelActions();
         HandleQuestPanelActions();
@@ -456,7 +459,9 @@ public class TileForgeGame : Microsoft.Xna.Framework.Game
 
     private void HandleGroupEditorResult()
     {
-        if (_groupEditor.WasCancelled || _groupEditor.Result == null) return;
+        if (_groupEditor.WasCancelled || _groupEditor.Result == null)
+            return;
+
         var result = _groupEditor.Result;
 
         if (_groupEditor.IsNew)
@@ -477,10 +482,13 @@ public class TileForgeGame : Microsoft.Xna.Framework.Game
         else
         {
             string oldName = _groupEditor.OriginalName;
+
             if (result.Name != oldName)
             {
-                if (_state.GroupsByName.ContainsKey(result.Name)) result.Name = oldName;
-                else _state.RenameGroup(oldName, result.Name);
+                if (_state.GroupsByName.ContainsKey(result.Name))
+                    result.Name = oldName;
+                else
+                    _state.RenameGroup(oldName, result.Name);
             }
             if (_state.GroupsByName.TryGetValue(result.Name, out var existing))
             {

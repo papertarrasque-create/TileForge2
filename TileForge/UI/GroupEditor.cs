@@ -87,11 +87,12 @@ public class GroupEditor
     private static readonly int[] DmgTickValues = { 0, 1, 2, 5, 10, 25, 50 };
     private static readonly string[] EntTypeItems = { "NPC", "Item", "Trap", "Trigger", "Interactable" };
     private static readonly string[] BehaviorItems = { "idle", "chase", "patrol", "chase_patrol" };
+    private static readonly string[] EquipSlotItems = { "", "weapon", "armor", "accessory" };
 
     private static readonly Dictionary<EntityType, string[]> Presets = new()
     {
         { EntityType.NPC, new[] { "dialogue", "health", "attack", "defense", "behavior", "aggro_range", "on_kill_set_flag", "on_kill_increment" } },
-        { EntityType.Item, new[] { "heal", "on_collect_set_flag", "on_collect_increment" } },
+        { EntityType.Item, new[] { "heal", "equip_slot", "equip_attack", "equip_defense", "on_collect_set_flag", "on_collect_increment" } },
         { EntityType.Trap, new[] { "damage", "health", "on_kill_set_flag", "on_kill_increment" } },
         { EntityType.Trigger, new[] { "target_map", "target_x", "target_y" } },
         { EntityType.Interactable, new[] { "dialogue" } },
@@ -102,6 +103,7 @@ public class GroupEditor
         { "health", (1, 9999) }, { "attack", (0, 999) }, { "defense", (0, 999) },
         { "aggro_range", (1, 50) }, { "damage", (1, 9999) }, { "heal", (1, 9999) },
         { "target_x", (0, 999) }, { "target_y", (0, 999) },
+        { "equip_attack", (0, 999) }, { "equip_defense", (0, 999) },
     };
 
     // Completion
@@ -176,6 +178,7 @@ public class GroupEditor
         ed.SetFocus(null, null);
         ed.RebuildPropertyFields(group.DefaultProperties);
         foreach (var s in group.Sprites) ed._selection.AddCell(s.Col, s.Row);
+
         return ed;
     }
 
@@ -255,34 +258,36 @@ public class GroupEditor
         // Compute layout for this frame
         ComputeLayout(bounds, font);
 
+        // Create InputEvent for click consumption within this editor
+        var input = new InputEvent(mouse, prevMouse);
+
         bool isEntity = _typeDD.SelectedIndex == 1;
-        bool clicked = mouse.LeftButton == ButtonState.Pressed && prevMouse.LeftButton == ButtonState.Released;
         var sheetArea = GetSheetArea(bounds);
 
-        // Update header controls
+        // Update header controls (highest z-order — consume clicks first)
         int prevType = _typeDD.SelectedIndex;
-        if (_typeDD.Update(mouse, prevMouse, _typeRect, font, screenW, screenH))
+        if (_typeDD.Update(input, _typeRect, font, screenW, screenH))
         {
             if (_typeDD.SelectedIndex == 0) _playerCB.IsChecked = false;
             if (_typeDD.SelectedIndex == 1 && prevType == 0)
                 RebuildPropertyFields(CollectCurrentProperties());
         }
-        _solidCB.Update(mouse, prevMouse, _solidRect);
-        if (isEntity) _playerCB.Update(mouse, prevMouse, _playerRect);
+        _solidCB.Update(input, _solidRect);
+        if (isEntity) _playerCB.Update(input, _playerRect);
 
         // Row 2 controls
         if (!isEntity)
         {
-            _passableCB.Update(mouse, prevMouse, _passRect);
-            _hazardCB.Update(mouse, prevMouse, _hazRect);
-            _costDD.Update(mouse, prevMouse, _costRect, font, screenW, screenH);
-            _dmgTypeDD.Update(mouse, prevMouse, _dmgTypeRect, font, screenW, screenH);
-            _dmgTickDD.Update(mouse, prevMouse, _dmgTickRect, font, screenW, screenH);
+            _passableCB.Update(input, _passRect);
+            _hazardCB.Update(input, _hazRect);
+            _costDD.Update(input, _costRect, font, screenW, screenH);
+            _dmgTypeDD.Update(input, _dmgTypeRect, font, screenW, screenH);
+            _dmgTickDD.Update(input, _dmgTickRect, font, screenW, screenH);
         }
         else
         {
             int prevET = _entityTypeDD.SelectedIndex;
-            if (_entityTypeDD.Update(mouse, prevMouse, _entityTypeRect, font, screenW, screenH))
+            if (_entityTypeDD.Update(input, _entityTypeRect, font, screenW, screenH))
             {
                 if (_entityTypeDD.SelectedIndex != prevET)
                     RebuildPropertyFields(CollectCurrentProperties());
@@ -294,7 +299,7 @@ public class GroupEditor
         {
             if (pf.Kind == PFK.Dropdown)
             {
-                if (pf.DD.Update(mouse, prevMouse, pf.Bounds, font, screenW, screenH))
+                if (pf.DD.Update(input, pf.Bounds, font, screenW, screenH))
                 {
                     if (pf.DD.SelectedItem == ProjectContext.CreateNewItem)
                     {
@@ -305,28 +310,30 @@ public class GroupEditor
             }
         }
 
+        // Open dropdown popups consume all clicks (modal overlay)
+        if (AnyDropdownOpen())
+            input.ConsumeClick();
+
         // Click-to-focus for text/numeric fields
-        if (clicked)
+        if (input.HasUnconsumedClick)
         {
-            bool focusHandled = false;
             foreach (var pf in _propFields)
             {
-                if (pf.Bounds.Contains(mouse.X, mouse.Y) && pf.Kind is PFK.Text or PFK.Numeric)
+                if (pf.Kind is PFK.Text or PFK.Numeric && input.TryConsumeClick(pf.Bounds))
                 {
                     SetFocus(pf.Kind == PFK.Text ? pf.TF : null, pf.Kind == PFK.Numeric ? pf.NF : null);
-                    focusHandled = true;
                     break;
                 }
             }
-            if (!focusHandled)
-            {
-                var nameRect = new Rectangle(bounds.X + LayoutConstants.GroupEditorNameFieldX, bounds.Y + 4,
-                    LayoutConstants.GroupEditorNameFieldWidth, LayoutConstants.GroupEditorNameFieldHeight);
-                if (nameRect.Contains(mouse.X, mouse.Y))
-                    SetFocus(_nameField, null);
-                else if (sheetArea.Contains(mouse.X, mouse.Y))
-                    SetFocus(null, null);
-            }
+        }
+        if (input.HasUnconsumedClick)
+        {
+            var nameRect = new Rectangle(bounds.X + LayoutConstants.GroupEditorNameFieldX, bounds.Y + 4,
+                LayoutConstants.GroupEditorNameFieldWidth, LayoutConstants.GroupEditorNameFieldHeight);
+            if (input.TryConsumeClick(nameRect))
+                SetFocus(_nameField, null);
+            else if (sheetArea.Contains(mouse.X, mouse.Y))
+                SetFocus(null, null);
         }
 
         // Middle-mouse pan
@@ -343,16 +350,26 @@ public class GroupEditor
         int scroll = mouse.ScrollWheelValue - prevMouse.ScrollWheelValue;
         if (scroll != 0) _camera.AdjustZoom(scroll > 0 ? 1 : -1, sheetArea.Width, sheetArea.Height);
 
-        // Left-click sprite selection
-        if (clicked)
+        // Left-click sprite selection (only if not consumed by header controls)
+        if (!input.Consumed)
         {
-            var wp = _camera.ScreenToWorld(new Vector2(mouse.X, mouse.Y));
-            var (col, row) = state.Sheet.PixelToGrid(wp.X, wp.Y);
-            if (state.Sheet.InBounds(col, row))
+            bool clicked = mouse.LeftButton == ButtonState.Pressed && prevMouse.LeftButton == ButtonState.Released;
+            if (clicked)
             {
-                bool shift = kb.IsKeyDown(Keys.LeftShift) || kb.IsKeyDown(Keys.RightShift);
-                bool ctrl = kb.IsKeyDown(Keys.LeftControl) || kb.IsKeyDown(Keys.RightControl);
-                _selection.Select(col, row, shift, ctrl);
+                var wp = _camera.ScreenToWorld(new Vector2(mouse.X, mouse.Y));
+                var (col, row) = state.Sheet.PixelToGrid(wp.X, wp.Y);
+                if (state.Sheet.InBounds(col, row))
+                {
+                    bool shift = kb.IsKeyDown(Keys.LeftShift) || kb.IsKeyDown(Keys.RightShift);
+                    bool ctrl = kb.IsKeyDown(Keys.LeftControl) || kb.IsKeyDown(Keys.RightControl);
+
+                    // When editing an existing group, require Ctrl or Shift to change selection
+                    // to prevent accidental sprite changes from stray clicks
+                    if (_isNew || shift || ctrl)
+                    {
+                        _selection.Select(col, row, shift, ctrl);
+                    }
+                }
             }
         }
     }
@@ -472,8 +489,10 @@ public class GroupEditor
 
         // Hints
         string hints = isEntity
-            ? "[Enter] Save  [Esc] Cancel  [Tab] Fields"
-            : "[Enter] Save  [Esc] Cancel  Ctrl+Click multi";
+            ? (_isNew ? "[Enter] Save  [Esc] Cancel  [Tab] Fields"
+                      : "[Enter] Save  [Esc] Cancel  [Tab] Fields  Ctrl+Click sprite")
+            : (_isNew ? "[Enter] Save  [Esc] Cancel  Ctrl+Click multi"
+                      : "[Enter] Save  [Esc] Cancel  Ctrl+Click sprite");
         var hs = font.MeasureString(hints);
         sb.DrawString(font, hints, new Vector2(bounds.Right - hs.X - 10,
             _row2Y + (ddH - font.LineSpacing) / 2), HintColor);
@@ -581,6 +600,11 @@ public class GroupEditor
         {
             int idx = Array.IndexOf(BehaviorItems, value);
             return new PropField { Key = key, Kind = PFK.Dropdown, DD = new Dropdown(BehaviorItems, Math.Max(0, idx)) };
+        }
+        if (key == "equip_slot")
+        {
+            int idx = Array.IndexOf(EquipSlotItems, value?.ToLower() ?? "");
+            return new PropField { Key = key, Kind = PFK.Dropdown, DD = new Dropdown(EquipSlotItems, Math.Max(0, idx)) };
         }
         if (key == "target_map")
         {

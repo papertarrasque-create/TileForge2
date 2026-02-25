@@ -4,7 +4,7 @@ namespace TileForge.Game;
 
 public class GameState
 {
-    public int Version { get; set; } = 1;
+    public int Version { get; set; } = 2;
     public PlayerState Player { get; set; } = new();
     public string CurrentMapId { get; set; }
     public List<EntityInstance> ActiveEntities { get; set; } = new();

@@ -11,7 +11,7 @@ public class GameStateTests
     {
         var state = new GameState();
 
-        Assert.Equal(1, state.Version);
+        Assert.Equal(2, state.Version);
         Assert.NotNull(state.Player);
         Assert.NotNull(state.ActiveEntities);
         Assert.Empty(state.ActiveEntities);
@@ -163,7 +163,7 @@ public class GameStateTests
 
         var json = JsonSerializer.Serialize(state);
 
-        Assert.Contains("\"Version\":1", json);
+        Assert.Contains("\"Version\":2", json);
     }
 
     [Fact]

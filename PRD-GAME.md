@@ -5,9 +5,9 @@ Evolve TileForge's embedded play mode into a full RPG game runtime. The editor r
 
 ---
 
-## Completed Architecture (G1–G8 + Quest Editor + Dialogue Editor + UI Overhaul + Form Layout)
+## Completed Architecture (G1–G9 + Quest Editor + Dialogue Editor + UI Overhaul + Form Layout)
 
-1067 tests, 0 failures. All systems below are implemented and tested.
+1119 tests, 0 failures. All systems below are implemented and tested.
 
 ### Data Model & Registries (G1)
 TileGroup gained gameplay properties: `IsPassable`, `IsHazardous`, `MovementCost`, `DamageType`, `DamagePerTick`. Entity groups gained `EntityType` enum (NPC, Item, Trap, Trigger, Interactable) and `DefaultProperties` dictionary. `TileRegistry` and `EntityRegistry` wrap dictionary lookups. GroupEditor UI exposes all properties. Export format includes gameplay fields with backward compatibility.
@@ -72,8 +72,8 @@ Three seams that enable future systems with zero refactoring:
 
 ---
 
-### G9 — Equipment & Gear
-Equipment slots (weapon, armor, accessory) on PlayerState. Stat modifiers. Gear-based sprite changes. Extends inventory system with equip/unequip mechanics.
+### G9 — Equipment & Gear ✅
+`EquipmentSlot` enum (Weapon, Armor, Accessory). `PlayerState.Equipment` dictionary (slot key → item name). `GameStateManager` gained: `EquipItem`/`UnequipItem`, `GetEffectiveAttack()`/`GetEffectiveDefense()` (base + equipment bonuses via `ItemPropertyCache`), `GetItemEquipSlot()`, `IsEquipped()`. InventoryScreen evolved with equipment slots section (unequip on interact), inventory items (equip on interact for equippable items, heal for consumables). GroupEditor Item preset expanded: `equip_slot` dropdown, `equip_attack`/`equip_defense` NumericFields. Combat uses effective stats. HUD shows `ATK:{n} DEF:{n}` below health bar. `GameState.Version` bumped to 2 (backward compatible). Sprite overrides deferred.
 
 ### G10 — Visual Dialogue Tree Editor
 Upgrade the form-based Dialogue Editor (G8++) to a visual node-graph editor with draggable nodes and connection lines. The form-based editor already handles all data authoring; this phase adds visual layout for complex branching dialogues.
@@ -83,6 +83,11 @@ Enable projects to contain multiple maps that can share layers, groups, tiles, a
 
 ### G12 - Map Relationships
 Enable map switching through events such as walking to edge of map, entering a door/portal, or casting a spell.
+
+### G13 — Floating Combat Messages
+Refactor status messages from a single shared text line to per-entity floating text that appears over the affected entity's tile. Solves the core problem: bump combat triggers player attack + immediate enemy retaliation, and the single `StatusMessage` gets overwritten before the player sees their own hit land.
+
+**FloatingMessage data class:** text, color, tile position (X/Y from affected entity), timer, vertical offset (drifts upward over lifetime). **PlayState changes:** replace `StatusMessage`/`StatusMessageTimer` with `List<FloatingMessage>`. Add `AddFloatingMessage(text, color, tileX, tileY)` helper. **Message spawning:** each message spawns at the tile of the entity that was affected — player-hits-enemy floats over the enemy tile (gold), enemy-hits-player floats over the player tile (red), item collection floats over the item tile (lime green), hazard/status-effect damage floats over the player tile (red), quest updates float over the player tile (cyan). **Rendering:** MapCanvas draws floating messages in world space (tile position × tileSize × zoom + camera offset) so they track with the camera. Text drifts upward ~16px over lifetime and fades out via alpha decay. **Lifetime:** ~1.0s per message. **Coexistence:** multiple messages render simultaneously — both the player's attack and the enemy's retaliation are visible at once on their respective tiles. **Migration scope:** all `play.StatusMessage = ...` / `play.StatusMessageTimer = ...` call sites in GameplayScreen (~12 occurrences) refactored to `AddFloatingMessage()`. Bottom-of-screen status text rendering block replaced with world-space floating text loop. Status message timer tick logic replaced with list iteration + removal of expired messages. Color classification logic (red/gold/lime/cyan) moves from Draw-time string matching to spawn-time explicit color parameter.
 
 ### Standalone Registry Export
 Export `tiles.json` / `entities.json` as standalone files for external tooling. Low complexity — serialization task.
@@ -97,7 +102,8 @@ TileForge/Game/
   ├── TileRegistry.cs            # Tile property lookups
   ├── EntityRegistry.cs          # Entity type lookups
   ├── GameState.cs               # Central serializable state
-  ├── PlayerState.cs             # Position, health, inventory, effects
+  ├── PlayerState.cs             # Position, health, inventory, equipment, effects
+  ├── EquipmentSlot.cs           # Weapon, Armor, Accessory enum
   ├── Direction.cs               # Up/Down/Left/Right
   ├── EntityInstance.cs          # Runtime entity with properties + active flag
   ├── GameStateManager.cs        # State mutation API
@@ -147,7 +153,7 @@ TileForge/UI/
       ├── GameplayScreen.cs      # Main game loop + rendering
       ├── PauseScreen.cs         # Overlay: resume/save/load/settings/quit
       ├── SaveLoadScreen.cs      # Slot management UI
-      ├── InventoryScreen.cs     # Item display + use/drop
+      ├── InventoryScreen.cs     # Equipment slots + item display + equip/unequip/use
       ├── DialogueScreen.cs      # Typewriter text + branching
       ├── SettingsScreen.cs      # Key rebinding
       ├── GameOverScreen.cs      # Death: restart or quit
@@ -177,3 +183,4 @@ All 32 criteria met. See DEVLOG-GAME.md for verification details.
 | UI Overhaul (P1–P5) | 1031 | +75 |
 | G8++ (dialogue editor) | 1050 | +19 |
 | Form layout overhaul | 1067 | +17 |
+| G9 (equipment) | 1119 | +52 |
