@@ -5,7 +5,7 @@ namespace TileForge.Game;
 public class EntityInstance
 {
     public string Id { get; set; }
-    public string DefinitionName { get; set; }   // reference to TileGroup/EntityRegistry
+    public string DefinitionName { get; set; }   // reference to TileGroup name
     public int X { get; set; }
     public int Y { get; set; }
     public Dictionary<string, string> Properties { get; set; } = new();

@@ -21,7 +21,7 @@ public static class LayoutConstants
     public const int DefaultMapHeight = 30;
 
     // ---------------------------------------------------------------
-    //  Toolbar (legacy — kept for reference)
+    //  Toolbar (shared by ToolbarRibbon)
     // ---------------------------------------------------------------
     public const int ToolbarHeight = 28;
     public const int ToolbarButtonSize = 24;
@@ -44,10 +44,31 @@ public static class LayoutConstants
     public const int ToolbarRibbonHeight = 32;
 
     // ---------------------------------------------------------------
-    //  Top chrome (menu bar + toolbar ribbon)
+    //  Map tab bar
     // ---------------------------------------------------------------
-    /// <summary>Menu bar (22) + toolbar ribbon (32) in editor mode.</summary>
-    public const int TopChromeHeight = 54; // MenuBar.Height + ToolbarRibbonHeight
+    public const int MapTabBarHeight = 24;
+    public const int MapTabMinWidth = 60;
+    public const int MapTabMaxWidth = 160;
+    public const int MapTabPadding = 4;
+    public const int MapTabCloseSize = 12;
+    public const int MapTabAddWidth = 28;
+
+    public static readonly Color MapTabBarBackground = new(32, 32, 32);
+    public static readonly Color MapTabActive = new(55, 70, 95);
+    public static readonly Color MapTabInactive = new(45, 45, 45);
+    public static readonly Color MapTabHover = new(50, 55, 65);
+    public static readonly Color MapTabTextColor = new(200, 200, 200);
+    public static readonly Color MapTabDimTextColor = new(140, 140, 140);
+    public static readonly Color MapTabCloseColor = new(150, 80, 80);
+    public static readonly Color MapTabCloseHoverColor = new(200, 100, 100);
+    public static readonly Color MapTabAddColor = new(80, 160, 80);
+    public static readonly Color MapTabAddHoverColor = new(100, 200, 100);
+
+    // ---------------------------------------------------------------
+    //  Top chrome (menu bar + toolbar ribbon + map tab bar)
+    // ---------------------------------------------------------------
+    /// <summary>Menu bar (22) + toolbar ribbon (32) + map tab bar (24) in editor mode.</summary>
+    public const int TopChromeHeight = 78; // MenuBar.Height + ToolbarRibbonHeight + MapTabBarHeight
     /// <summary>Toolbar ribbon only (32) in play mode — no menu bar.</summary>
     public const int PlayTopChromeHeight = 32;
 
@@ -275,6 +296,38 @@ public static class LayoutConstants
     public static readonly Color DialogueEditorRemoveColor = new(180, 60, 60);
     public static readonly Color DialogueEditorRemoveHoverColor = new(210, 80, 80);
     public static readonly Color DialogueEditorNodeSeparator = new(60, 60, 60);
+
+    // ---------------------------------------------------------------
+    //  Dialogue tree editor (visual node graph)
+    // ---------------------------------------------------------------
+    public const int DialogueTreeMaxWidth = 1100;
+    public const int DialogueTreeMaxHeight = 700;
+    public const int DialogueTreeHeaderHeight = 32;
+    public const int DialogueTreeHintHeight = 22;
+    public const float DialogueTreeCanvasSplit = 0.6f;
+
+    public static readonly Color DialogueTreeOverlay = new(0, 0, 0, 180);
+    public static readonly Color DialogueTreePanelBg = new(35, 35, 35);
+    public static readonly Color DialogueTreeHeaderBg = new(45, 45, 45);
+    public static readonly Color DialogueTreeCanvasBg = new(28, 28, 32);
+    public static readonly Color DialogueTreeGridDotColor = new(50, 50, 55);
+    public static readonly Color DialogueTreeDividerColor = new(60, 60, 60);
+    public static readonly Color DialogueTreeHintColor = new(120, 120, 120);
+    public static readonly Color DialogueTreePropsBg = new(38, 38, 38);
+    public static readonly Color DialogueTreePropsSectionColor = new(140, 180, 220);
+
+    public static readonly Color DialogueNodeBg = new(50, 55, 60);
+    public static readonly Color DialogueNodeHeaderBg = new(70, 90, 130);
+    public static readonly Color DialogueNodeSelectedHeaderBg = new(80, 110, 160);
+    public static readonly Color DialogueNodeBorder = new(80, 80, 80);
+    public static readonly Color DialogueNodeSelectedBorder = new(100, 180, 255);
+    public static readonly Color DialogueNodeTextColor = new(200, 200, 200);
+    public static readonly Color DialogueNodeDimTextColor = new(140, 140, 140);
+    public static readonly Color DialogueNodePortColor = new(160, 160, 160);
+    public static readonly Color DialogueNodePortHoverColor = new(100, 180, 255);
+    public static readonly Color DialogueConnectionColor = new(140, 140, 140);
+    public static readonly Color DialogueConnectionActiveColor = new(100, 180, 255);
+    public static readonly Color DialogueConnectionDragColor = new(100, 180, 255, 180);
 
     // ---------------------------------------------------------------
     //  Form layout defaults (shared across modal editors)

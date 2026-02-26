@@ -331,7 +331,7 @@ public class ToolbarRibbon
         sb.DrawString(font, label, new Vector2(tipX + 4, tipY + 2), Color.White);
     }
 
-    // --- Icon drawing (reused from Toolbar.cs + ToolPanel.cs) ---
+    // --- Icon drawing ---
 
     private static void DrawNewIcon(SpriteBatch sb, Renderer r, int cx, int cy, Color c)
     {
@@ -400,7 +400,7 @@ public class ToolbarRibbon
         r.DrawRect(sb, new Rectangle(cx + 3, cy - 1, 2, 4), c);   // Box right
     }
 
-    // Tool icons (from ToolPanel.cs)
+    // Tool icons
 
     private static void DrawBrushIcon(SpriteBatch sb, Renderer r, int cx, int cy, Color c)
     {

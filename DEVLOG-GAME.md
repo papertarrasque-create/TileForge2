@@ -111,7 +111,10 @@ Notable design decisions:
 | UI Overhaul (P1-P5) | 1031 | +75 |
 | G8++ (dialogue editor) | 1050 | +19 |
 | Form layout overhaul | 1067 | +17 |
-| G9 (equipment) | 1119 | +52 |
+| G9 (equipment) | 1158 | +91 |
+| Cleanup phase | 1162 | −27 registry, +31 GameMenuList |
+| G10 (visual dialogue tree) | 1198 | +36 |
+| G11 (multimap projects) | 1266 | +68 |
 
 All phases: 0 failures, 0 regressions.
 
@@ -246,3 +249,107 @@ Addressed severe text overflow, label truncation, and field crowding in the moda
 | `TileForge/UI/QuestEditor.cs` | **MODIFIED** — Full layout refactor |
 | `TileForge.Tests/DojoUI/FormLayoutTests.cs` | **NEW** — Layout computation tests |
 | `TileForge.Tests/DojoUI/ScrollPanelTests.cs` | **NEW** — Scroll state tests |
+
+---
+
+### Cleanup Phase — Code Quality & Dead Code Removal
+
+Comprehensive audit and cleanup pass across the codebase.
+
+#### Bugs Fixed
+- **7 test failures:** 3 path-separator tests hardcoded Unix `/` (now use `Path.Combine` for cross-platform), 4 AutoSaveManager tests never set `Enabled = true`
+- **O(n²) SyncEntityRenderState:** `GameplayScreen` ran nested `foreach` every frame to sync entity positions. Replaced with `Dictionary<string, EntityInstance>` for O(1) lookups.
+- **QuestLogScreen scroll was dead code:** `_scrollOffset` field was updated on input but never read in `Draw()`. Now properly offsets rendering.
+- **FileBrowserDialog SetFilenameText workaround:** Was clearing text with a backspace loop + retyping each char. `TextInputField.SetText()` already existed — replaced with a direct call.
+
+#### Abstractions Extracted
+- **GameMenuList struct** (`TileForge/Game/GameMenuList.cs`): Shared cursor/scroll navigation for all 6 game screens. Replaced duplicated `_selectedIndex` wrapping and `_scrollOffset` clamping logic across PauseScreen, GameOverScreen, SaveLoadScreen, SettingsScreen, InventoryScreen, QuestLogScreen. 31 new tests.
+- **ModalResizeHandler struct** (`TileForge/UI/ModalResizeHandler.cs`): Shared resize-drag logic for modal editors. Eliminated ~110 lines of verbatim copy-paste between DialogueEditor and QuestEditor (7 state fields, ResizeEdge enum, HandleResize, DetectResizeEdge, DrawResizeGrip, ComputePanelRect).
+
+#### GC Allocation Reductions
+- `GameplayScreen`: static `JsonSerializerOptions` (was `new` per dialogue load)
+- `GameStateManager.ProcessStatusEffects()`: field-level reusable list with `.Clear()`
+- `QuestManager.CheckForUpdates()`: field-level buffer, returns copy only when non-empty, static empty list for common case
+- `QuestLogScreen`: field-level `_activeQuests`/`_completedQuests` lists
+- `InventoryScreen`: `_cachedMenuItems` built once in `Update()`, reused in `Draw()`
+
+#### Dead Code Removed
+- **Toolbar.cs, ToolPanel.cs** — Old editor UI replaced by ToolbarRibbon; neither class was instantiated anywhere.
+- **TileRegistry.cs, EntityRegistry.cs** + their test files (27 tests) — Early abstractions superseded by the `groupsByName` dictionary pattern in `GameStateManager`. Neither class was referenced outside its own file and tests. If registry-style lookups are needed in the future, the `groupsByName` dictionaries already in `GameStateManager.Initialize()` and `SwitchMap()` serve this purpose.
+
+#### Stale Artifacts Cleaned
+- DEVLOG.md title fixed from "TileForge3" to "TileForge"; structure diagram updated
+- LayoutConstants.cs: "legacy — kept for reference" comment corrected to "shared by ToolbarRibbon"
+- ToolbarRibbon.cs: removed stale references to deleted Toolbar.cs/ToolPanel.cs in comments
+- EntityInstance.cs: updated comment from "TileGroup/EntityRegistry" to "TileGroup name"
+- Documentation baselines corrected (test count, Screens path in PRD)
+
+#### Test Impact
+- Started: 1158 tests, 7 failures
+- After fixes + new GameMenuList tests: 1189 tests, 0 failures
+- After removing 27 dead registry tests: **1162 tests, 0 failures**
+
+---
+
+### G10 — Visual Dialogue Tree Editor
+Replaced form-based `DialogueEditor` with `DialogueTreeEditor` — a split-pane visual node-graph editor for dialogue authoring. **1162 → 1198 tests.**
+
+Notable design decisions:
+- **Split-pane modal.** Left 60% is a pannable/zoomable canvas showing dialogue nodes as rectangles with connection ports. Right 40% is a FormLayout-based properties panel for the selected node. This keeps the familiar form editing (from G8++) while adding visual structure overview.
+- **EditorX/EditorY on DialogueNode.** Nullable int properties for layout persistence. Omitted from JSON when null via existing `WhenWritingNull` serialization policy. No separate layout file — position data lives alongside the dialogue data, consistent with the property-bag philosophy.
+- **Deep copy on edit.** `ForExistingDialogue` creates a deep copy of the input `DialogueData`. Edits modify the copy; the original is untouched until the user saves. Cancel discards the copy.
+- **NodeGraphCamera for float-precision zoom.** The existing `Camera` class uses integer zoom levels for pixel-art grids. Node graphs need smooth 0.25×–3.0× zoom. New lightweight class (~40 lines) with stable-center zoom-to-cursor.
+- **Auto-layout via BFS.** `DialogueAutoLayout` traverses from root node (or "start" if present) via BFS, assigns column (depth) and row (index within column). Orphan nodes placed in a trailing column. Runs automatically on first edit of unpositioned dialogues and on-demand via header button.
+- **DrawLine via rotated pixel texture.** Standard MonoGame technique: rotate the 1×1 white texture by `atan2(dy, dx)` and scale to `(length, thickness)`. `DrawBezier` approximates cubic Bezier with 16 line segments. Both added to `Renderer.cs`.
+- **Canvas interaction model.** Middle-drag = pan, scroll = zoom, left-click = select, left-drag on node = move, left-drag from output port = connect, right-click = context menu. Context menus reuse existing `ContextMenu` class. Hit-testing operates in world space via `CanvasScreenToWorld` helper.
+- **Continuous flush.** Properties panel values are flushed to the data model every frame so the canvas always reflects current edits (node labels update as user types).
+- **ConnectionRenderer is standalone utility.** Created as a reusable static class for Bezier connections, though the editor draws connections inline with canvas-origin-aware coordinate transforms.
+
+New files:
+| File | Purpose |
+|------|---------|
+| `TileForge/UI/DialogueTreeEditor.cs` | Visual node-graph dialogue editor modal |
+| `TileForge/UI/NodeGraphCamera.cs` | Float-precision pan/zoom camera |
+| `TileForge/UI/DialogueAutoLayout.cs` | BFS auto-layout for node positions |
+| `TileForge/UI/DialogueNodeWidget.cs` | Node bounds, ports, hit-testing |
+| `TileForge/UI/ConnectionRenderer.cs` | Bezier connection rendering utility |
+| `DojoUI/Renderer.cs` | Added `DrawLine` + `DrawBezier` |
+| `TileForge/Game/DialogueData.cs` | Added `EditorX`/`EditorY` to `DialogueNode` |
+| `TileForge/LayoutConstants.cs` | Added 20+ node graph color/size constants |
+| `TileForge/TileForgeGame.cs` | Swapped `DialogueEditor` → `DialogueTreeEditor` |
+
+---
+
+### G11 — Multimap Projects
+Single-project, multi-map architecture. Projects now contain multiple named maps sharing a common spritesheet, TileGroups, quests, and dialogues. Tab bar UI for switching between maps. In-project map transitions during play mode. **1198 → 1266 tests.**
+
+Notable design decisions:
+- **Facade pattern for backward compatibility.** `EditorState.Map`, `UndoStack`, `ActiveLayerName`, `SelectedEntityId`, `TileSelection` all delegate to the active `MapDocumentState`. Every existing call site (`MapCanvas`, `MapPanel`, tools, commands) continues working unchanged — zero migration required for existing code.
+- **Auto-create pattern.** The `Map` setter auto-creates a `MapDocumentState` when none exists and value is non-null. This ensures backward compatibility with tests and legacy code that sets `state.Map = new MapData(...)` directly.
+- **Fallback fields.** `_fallbackActiveLayerName`, `_fallbackSelectedEntityId`, `_fallbackTileSelection` hold values when no MapDocument is active. Events fire correctly in both scenarios (with and without active document).
+- **UndoStack rewiring.** On tab switch, `StateChanged` event is unwired from the old document's UndoStack and wired to the new one. A `_fallbackUndoStack` handles the no-document case.
+- **Project file V2.** `ProjectData.Maps` (List<MapDocumentData>) replaces the V1 single `Map` + `Entities` fields. V1 files auto-upgrade on load (single map wrapped into one MapDocumentState). V2 saves set V1 fields to null (omitted by `WhenWritingNull`).
+- **Pre-exported project maps.** `PlayModeController.Enter()` exports all project maps to an in-memory `Dictionary<string, LoadedMap>` via `MapExporter.ExportJson()` + `MapLoader.Load()`. `ExecuteMapTransition()` checks this dictionary first — instant in-project transitions with no filesystem I/O. Falls back to filesystem for cross-project/external maps.
+- **Signal-based tab bar.** `MapTabBar` uses the same signal pattern as `ToolbarRibbon` and `MapPanel` — `WantsSelectTab`, `WantsNewMap`, `WantsCloseTab`, `WantsRenameTab`, `WantsDuplicateTab`. `TileForgeGame` consumes signals in `HandleMapTabBarActions()`.
+- **Group operations propagate.** `RemoveGroup()` and `RenameGroup()` iterate all `MapDocuments` instead of just the active `Map`, updating cell references and entity GroupNames across every map.
+- **ProjectContext returns project map names.** `GetAvailableMaps()` returns `MapDocuments.Select(d => d.Name)` instead of scanning the filesystem, so `target_map` BrowseDropdown in GroupEditor shows project maps directly.
+- **CRUD on ProjectManager.** `CreateNewMap`, `DeleteMap`, `RenameMap`, `DuplicateMap` with unique name enforcement and `target_map` reference updates on rename.
+
+Key bug fixed during development:
+- **106 test failures after EditorState refactor.** Tests set `state.Map = new MapData(...)` directly, but the new `Map` setter delegated to `ActiveMapDocument` which was null. Fixed by adding auto-create logic — when no MapDocumentState exists and value is non-null, auto-creates one named "main".
+- **2 additional test failures.** `ActiveLayerName` and `SelectedEntityId` setters didn't fire events when no MapDocument existed. Fixed by adding fallback fields that hold values and fire events regardless of active document state.
+
+New/Modified files:
+| File | Action |
+|------|--------|
+| `TileForge/Editor/MapDocumentState.cs` | **NEW** — Per-map state container |
+| `TileForge/Editor/EditorState.cs` | **MODIFIED** — MapDocuments, ActiveMapIndex, facade properties |
+| `TileForge/Data/ProjectFile.cs` | **MODIFIED** — V2 format with Maps list, backward-compatible load |
+| `TileForge/ProjectManager.cs` | **MODIFIED** — Multimap load/save, CRUD operations |
+| `TileForge/UI/MapTabBar.cs` | **NEW** — Tab bar UI component |
+| `TileForge/UI/IProjectContext.cs` | **MODIFIED** — GetAvailableMaps returns project map names |
+| `TileForge/UI/StatusBar.cs` | **MODIFIED** — Shows active map name |
+| `TileForge/LayoutConstants.cs` | **MODIFIED** — MapTabBar height/colors, TopChromeHeight 54→78 |
+| `TileForge/TileForgeGame.cs` | **MODIFIED** — Tab bar integration, signal wiring |
+| `TileForge/PlayModeController.cs` | **MODIFIED** — In-project map transitions |
+| `TileForge.Tests/Editor/MultimapTests.cs` | **NEW** — 68 tests (MapDocumentState, EditorState multimap, ProjectFile V2) |

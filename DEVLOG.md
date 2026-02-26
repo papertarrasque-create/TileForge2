@@ -1,4 +1,4 @@
-# TileForge3 — Development Log
+# TileForge — Development Log
 
 ---
 
@@ -601,10 +601,10 @@ Renamed all project artifacts from `TileForge2` to `TileForge` — folders, solu
 
 ### New Structure
 ```
-TileForge3/
+TileForge2/
 ├── TileForge.sln
-├── TileForge/          (was TileForge2/)
-├── TileForge.Tests/    (was TileForge2.Tests/)
+├── TileForge/
+├── TileForge.Tests/
 ├── DojoUI/
 ├── CLAUDE.md
 ├── PRD.md

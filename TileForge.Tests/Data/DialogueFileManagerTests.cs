@@ -269,10 +269,90 @@ public class DialogueFileManagerTests
     }
 
     [Fact]
+    public void ToJson_WithEditorPositions_IncludesCoordinates()
+    {
+        var dialogue = new DialogueData
+        {
+            Id = "editor_pos",
+            Nodes = new List<DialogueNode>
+            {
+                new()
+                {
+                    Id = "n1",
+                    Speaker = "Hero",
+                    Text = "Hello!",
+                    EditorX = 100,
+                    EditorY = 200,
+                }
+            }
+        };
+
+        string json = DialogueFileManager.ToJson(dialogue);
+
+        Assert.Contains("\"editorX\": 100", json);
+        Assert.Contains("\"editorY\": 200", json);
+    }
+
+    [Fact]
+    public void ToJson_NullEditorPositions_OmittedFromJson()
+    {
+        var dialogue = new DialogueData
+        {
+            Id = "no_pos",
+            Nodes = new List<DialogueNode>
+            {
+                new()
+                {
+                    Id = "n1",
+                    Speaker = "Narrator",
+                    Text = "The beginning.",
+                    // EditorX and EditorY are null by default
+                }
+            }
+        };
+
+        string json = DialogueFileManager.ToJson(dialogue);
+
+        Assert.DoesNotContain("\"editorX\"", json);
+        Assert.DoesNotContain("\"editorY\"", json);
+    }
+
+    [Fact]
+    public void RoundTrip_EditorPositions_Preserved()
+    {
+        var original = new DialogueData
+        {
+            Id = "roundtrip_pos",
+            Nodes = new List<DialogueNode>
+            {
+                new()
+                {
+                    Id = "n1",
+                    Speaker = "Sage",
+                    Text = "Wisdom awaits.",
+                    EditorX = 50,
+                    EditorY = 75,
+                }
+            }
+        };
+
+        string json = DialogueFileManager.ToJson(original);
+        var loaded = JsonSerializer.Deserialize<DialogueData>(json, new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+        });
+
+        Assert.NotNull(loaded);
+        Assert.Single(loaded.Nodes);
+        Assert.Equal(50, loaded.Nodes[0].EditorX);
+        Assert.Equal(75, loaded.Nodes[0].EditorY);
+    }
+
+    [Fact]
     public void GetDialoguesDir_ReturnsCorrectPath()
     {
         string dir = DialogueFileManager.GetDialoguesDir("/some/project");
-        Assert.Equal("/some/project/dialogues", dir);
+        Assert.Equal(Path.Combine("/some/project", "dialogues"), dir);
     }
 
     [Fact]

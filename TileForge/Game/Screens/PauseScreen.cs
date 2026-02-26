@@ -17,7 +17,7 @@ public class PauseScreen : GameScreen
     private readonly GameStateManager _gameStateManager;
     private readonly GameInputManager _inputManager;
     private readonly string _bindingsPath;
-    private int _selectedIndex;
+    private GameMenuList _menu;
 
     public override bool IsOverlay => true;
 
@@ -33,22 +33,14 @@ public class PauseScreen : GameScreen
     public override void Update(GameTime gameTime, GameInputManager input)
     {
         if (input.IsActionJustPressed(GameAction.MoveUp))
-        {
-            _selectedIndex--;
-            if (_selectedIndex < 0)
-                _selectedIndex = _menuItems.Length - 1;
-        }
+            _menu.MoveUp(_menuItems.Length);
 
         if (input.IsActionJustPressed(GameAction.MoveDown))
-        {
-            _selectedIndex++;
-            if (_selectedIndex >= _menuItems.Length)
-                _selectedIndex = 0;
-        }
+            _menu.MoveDown(_menuItems.Length);
 
         if (input.IsActionJustPressed(GameAction.Interact))
         {
-            switch (_selectedIndex)
+            switch (_menu.SelectedIndex)
             {
                 case 0: // Resume
                     ScreenManager.Pop();
@@ -99,7 +91,7 @@ public class PauseScreen : GameScreen
             var itemPos = new Vector2(
                 canvasBounds.X + (canvasBounds.Width - itemSize.X) / 2f,
                 menuStartY + i * (itemSize.Y + 8f));
-            var color = i == _selectedIndex ? Color.Yellow : Color.White;
+            var color = i == _menu.SelectedIndex ? Color.Yellow : Color.White;
             spriteBatch.DrawString(font, itemText, itemPos, color);
         }
     }

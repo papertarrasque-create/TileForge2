@@ -7,7 +7,7 @@ namespace TileForge.Game.Screens;
 public class GameOverScreen : GameScreen
 {
     private static readonly string[] MenuItems = { "Restart", "Return to Editor" };
-    private int _selectedIndex;
+    private GameMenuList _menu;
     private readonly GameStateManager _gameStateManager;
 
     public override bool IsOverlay => false;
@@ -20,15 +20,9 @@ public class GameOverScreen : GameScreen
     public override void Update(GameTime gameTime, GameInputManager input)
     {
         if (input.IsActionJustPressed(GameAction.MoveUp))
-        {
-            _selectedIndex--;
-            if (_selectedIndex < 0) _selectedIndex = MenuItems.Length - 1;
-        }
+            _menu.MoveUp(MenuItems.Length);
         if (input.IsActionJustPressed(GameAction.MoveDown))
-        {
-            _selectedIndex++;
-            if (_selectedIndex >= MenuItems.Length) _selectedIndex = 0;
-        }
+            _menu.MoveDown(MenuItems.Length);
 
         if (input.IsActionJustPressed(GameAction.Cancel))
         {
@@ -39,7 +33,7 @@ public class GameOverScreen : GameScreen
 
         if (input.IsActionJustPressed(GameAction.Interact))
         {
-            switch (_selectedIndex)
+            switch (_menu.SelectedIndex)
             {
                 case 0: // Restart
                     _gameStateManager.RestartRequested = true;
@@ -76,7 +70,7 @@ public class GameOverScreen : GameScreen
             var pos = new Vector2(
                 canvasBounds.X + (canvasBounds.Width - size.X) / 2f,
                 startY + i * (size.Y + 8f));
-            var color = i == _selectedIndex ? Color.Yellow : Color.White;
+            var color = i == _menu.SelectedIndex ? Color.Yellow : Color.White;
             spriteBatch.DrawString(font, text, pos, color);
         }
     }

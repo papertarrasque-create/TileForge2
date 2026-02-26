@@ -19,7 +19,7 @@ public class SaveLoadScreen : GameScreen
     private readonly GameStateManager _gameStateManager;
     private readonly SaveLoadMode _mode;
     private List<string> _slots;
-    private int _selectedIndex;
+    private GameMenuList _menu;
     private string _statusMessage;
     private float _statusTimer;
 
@@ -85,28 +85,20 @@ public class SaveLoadScreen : GameScreen
         }
 
         if (input.IsActionJustPressed(GameAction.MoveUp))
-        {
-            _selectedIndex--;
-            if (_selectedIndex < 0)
-                _selectedIndex = MenuItemCount - 1;
-        }
+            _menu.MoveUp(MenuItemCount);
 
         if (input.IsActionJustPressed(GameAction.MoveDown))
-        {
-            _selectedIndex++;
-            if (_selectedIndex >= MenuItemCount)
-                _selectedIndex = 0;
-        }
+            _menu.MoveDown(MenuItemCount);
 
         if (input.IsActionJustPressed(GameAction.Interact))
         {
-            if (IsBackItem(_selectedIndex))
+            if (IsBackItem(_menu.SelectedIndex))
             {
                 ScreenManager.Pop();
                 return;
             }
 
-            if (IsNewSaveItem(_selectedIndex))
+            if (IsNewSaveItem(_menu.SelectedIndex))
             {
                 // Auto-generate a slot name based on existing count
                 string slotName = "save_" + (_slots.Count + 1).ToString("D2");
@@ -118,7 +110,7 @@ public class SaveLoadScreen : GameScreen
             }
 
             // Existing slot selected
-            string selectedSlot = _slots[_selectedIndex];
+            string selectedSlot = _slots[_menu.SelectedIndex];
             if (_mode == SaveLoadMode.Save)
             {
                 _saveManager.Save(_gameStateManager.State, selectedSlot);
@@ -165,7 +157,7 @@ public class SaveLoadScreen : GameScreen
             var itemPos = new Vector2(
                 canvasBounds.X + (canvasBounds.Width - itemSize.X) / 2f,
                 menuStartY + i * (itemSize.Y + 8f));
-            var color = i == _selectedIndex ? Color.Yellow : Color.White;
+            var color = i == _menu.SelectedIndex ? Color.Yellow : Color.White;
             spriteBatch.DrawString(font, text, itemPos, color);
         }
 

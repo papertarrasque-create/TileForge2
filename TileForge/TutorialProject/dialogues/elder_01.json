@@ -11,15 +11,17 @@
           "nextNodeId": "explain"
         },
         {
-          "text": "I'm just passing through.",
+          "text": "I\u0027m just passing through.",
           "nextNodeId": "decline"
         }
-      ]
+      ],
+      "editorX": 56,
+      "editorY": -174
     },
     {
       "id": "explain",
       "speaker": "Village Elder",
-      "text": "Dark creatures have invaded the caves to the north. We need a brave soul to investigate.",
+      "text": "Strange creatures have invaded the caves to the north. We need a brave soul to investigate.",
       "choices": [
         {
           "text": "I will help!",
@@ -30,23 +32,31 @@
           "text": "That sounds dangerous...",
           "nextNodeId": "quest_decline"
         }
-      ]
+      ],
+      "editorX": 398,
+      "editorY": -71
     },
     {
       "id": "decline",
       "speaker": "Village Elder",
-      "text": "Safe travels then. Return if you change your mind."
+      "text": "Safe travels then. Return if you change your mind.",
+      "editorX": 233,
+      "editorY": 302
     },
     {
       "id": "quest_accept",
       "speaker": "Village Elder",
       "text": "Thank you! Take this healing potion. The cave entrance is to the north.",
-      "setsFlag": "received_potion"
+      "setsFlag": "received_potion",
+      "editorX": 758,
+      "editorY": -150
     },
     {
       "id": "quest_decline",
       "speaker": "Village Elder",
-      "text": "I understand. But please, reconsider. We have little time."
+      "text": "I understand. But please, reconsider. We have little time.",
+      "editorX": 626,
+      "editorY": 161
     }
   ]
 }

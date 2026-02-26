@@ -15,6 +15,8 @@ public class GameStateManager
 
     public GameState State { get; private set; } = new();
 
+    private readonly List<string> _statusEffectMessages = new();
+
     /// <summary>
     /// Set by GameplayScreen when a Trigger entity is stepped on.
     /// Consumed by PlayModeController to execute the transition.
@@ -215,7 +217,8 @@ public class GameStateManager
     /// </summary>
     public List<string> ProcessStatusEffects()
     {
-        var messages = new List<string>();
+        _statusEffectMessages.Clear();
+        var messages = _statusEffectMessages;
         var effects = State.Player.ActiveEffects;
 
         for (int i = effects.Count - 1; i >= 0; i--)

@@ -5088,10 +5088,14 @@
     "cameraY": -50.5,
     "zoomIndex": 0,
     "panelOrder": [
-      "Tools",
-      "Map"
+      "Map",
+      "Quests",
+      "Dialogues",
+      "Tileset"
     ],
-    "collapsedPanels": [],
+    "collapsedPanels": [
+      "Tileset"
+    ],
     "collapsedLayers": [
       "Ground",
       "Entities",

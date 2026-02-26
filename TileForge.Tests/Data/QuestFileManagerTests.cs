@@ -174,7 +174,7 @@ public class QuestFileManagerTests
     public void GetQuestPath_ReturnsCorrectPath()
     {
         string path = QuestFileManager.GetQuestPath("/some/dir");
-        Assert.Equal("/some/dir/quests.json", path);
+        Assert.Equal(Path.Combine("/some/dir", "quests.json"), path);
     }
 
     [Fact]

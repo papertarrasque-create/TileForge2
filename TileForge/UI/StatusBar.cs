@@ -56,6 +56,8 @@ public class StatusBar
             }
         }
 
+        if (state.ActiveMapDocument != null)
+            left += $"  Map: {state.ActiveMapDocument.Name}";
         left += $"  Layer: {state.ActiveLayerName ?? "-"}";
         string gridLabel = state.Grid.Mode switch
         {

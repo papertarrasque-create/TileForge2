@@ -18,6 +18,8 @@ public class DialogueNode
     public string RequiresFlag { get; set; }             // conditional node
     public string SetsFlag { get; set; }                 // flag set when node is shown
     public string SetsVariable { get; set; }             // "key=value" format
+    public int? EditorX { get; set; }
+    public int? EditorY { get; set; }
 }
 
 public class DialogueChoice

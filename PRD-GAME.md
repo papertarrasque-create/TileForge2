@@ -5,9 +5,9 @@ Evolve TileForge's embedded play mode into a full RPG game runtime. The editor r
 
 ---
 
-## Completed Architecture (G1–G9 + Quest Editor + Dialogue Editor + UI Overhaul + Form Layout)
+## Completed Architecture (G1–G11 + Quest Editor + Dialogue Editor + UI Overhaul + Form Layout)
 
-1119 tests, 0 failures. All systems below are implemented and tested.
+1266 tests, 0 failures. All systems below are implemented and tested.
 
 ### Data Model & Registries (G1)
 TileGroup gained gameplay properties: `IsPassable`, `IsHazardous`, `MovementCost`, `DamageType`, `DamagePerTick`. Entity groups gained `EntityType` enum (NPC, Item, Trap, Trigger, Interactable) and `DefaultProperties` dictionary. `TileRegistry` and `EntityRegistry` wrap dictionary lookups. GroupEditor UI exposes all properties. Export format includes gameplay fields with backward compatibility.
@@ -75,11 +75,11 @@ Three seams that enable future systems with zero refactoring:
 ### G9 — Equipment & Gear ✅
 `EquipmentSlot` enum (Weapon, Armor, Accessory). `PlayerState.Equipment` dictionary (slot key → item name). `GameStateManager` gained: `EquipItem`/`UnequipItem`, `GetEffectiveAttack()`/`GetEffectiveDefense()` (base + equipment bonuses via `ItemPropertyCache`), `GetItemEquipSlot()`, `IsEquipped()`. InventoryScreen evolved with equipment slots section (unequip on interact), inventory items (equip on interact for equippable items, heal for consumables). GroupEditor Item preset expanded: `equip_slot` dropdown, `equip_attack`/`equip_defense` NumericFields. Combat uses effective stats. HUD shows `ATK:{n} DEF:{n}` below health bar. `GameState.Version` bumped to 2 (backward compatible). Sprite overrides deferred.
 
-### G10 — Visual Dialogue Tree Editor
-Upgrade the form-based Dialogue Editor (G8++) to a visual node-graph editor with draggable nodes and connection lines. The form-based editor already handles all data authoring; this phase adds visual layout for complex branching dialogues.
+### G10 — Visual Dialogue Tree Editor ✅
+Upgraded the form-based Dialogue Editor to a visual node-graph editor. `DialogueTreeEditor` replaces `DialogueEditor` as the modal overlay opened from `DialoguePanel`. Split-pane layout: pannable/zoomable node-graph canvas (left 60%) + FormLayout-based properties panel (right 40%). `DialogueNode` gained `EditorX`/`EditorY` nullable int properties for layout persistence (omitted from JSON when null via `WhenWritingNull`). `NodeGraphCamera` provides float-precision zoom (0.25×–3.0×) with stable-center zoom-to-cursor. `DialogueAutoLayout` runs BFS from root node to assign column/row positions. `DialogueNodeWidget` computes world-space node bounds, input/output ports, hit-testing. `Renderer` gained `DrawLine` (rotated pixel texture) and `DrawBezier` (cubic approximation with 16 segments). Canvas features: middle-drag pan, scroll-wheel zoom, left-click select, left-drag move nodes, left-drag from output port to connect, right-click context menu (Add Node / Delete Node / Disconnect All), Bezier connection curves, grid dot background, node shadow, port hover highlights. Properties panel: selected node's fields (Id, Speaker, Text, Next, flags), choice sub-section with add/remove, ScrollPanel overflow. Auto-layout button in header. Deep copy on edit prevents mutation of original data until save. Backward compatible — existing dialogues without positions auto-layout on first open.
 
-### G11 - Multimap Projects
-Enable projects to contain multiple maps that can share layers, groups, tiles, and entities
+### G11 — Multimap Projects ✅
+Single-project, multi-map architecture. `MapDocumentState` holds per-map data (MapData, UndoStack, camera, active layer, selection, collapsed layers). `EditorState` gained facade properties (`Map`, `UndoStack`, `ActiveLayerName`, `SelectedEntityId`, `TileSelection`) that delegate to the active `MapDocumentState` — all existing code continues working unchanged. `ProjectFile` V2 format stores multiple maps in a single `.tileforge` file with backward-compatible V1 loading. `ProjectManager` handles multimap load/save and CRUD operations (create/delete/rename/duplicate maps). `MapTabBar` UI component (24px tab strip between toolbar ribbon and canvas) with active/inactive/hover tab states, close buttons, right-click context menu (Rename/Duplicate/Delete), double-click rename, and "+" add button. `PlayModeController` pre-exports all project maps on Enter() for instant in-project map transitions via `target_map` references. Group rename/delete propagates across all maps. `ProjectContext.GetAvailableMaps()` returns project map names for entity property dropdowns. StatusBar shows active map name.
 
 ### G12 - Map Relationships
 Enable map switching through events such as walking to edge of map, entering a door/portal, or casting a spell.
@@ -116,7 +116,7 @@ TileForge/Game/
   ├── MapTransitionRequest.cs    # Transition target data
   ├── SaveManager.cs             # Slot-based save/load
   ├── StatusEffect.cs            # Burn/poison/ice/spikes
-  ├── DialogueData.cs            # Dialogue nodes + choices
+  ├── DialogueData.cs            # Dialogue nodes + choices (EditorX/EditorY for graph layout)
   ├── CombatHelper.cs            # CalculateDamage + AttackResult
   ├── IPathfinder.cs             # Pathfinding interface
   ├── SimplePathfinder.cs        # Axis-priority movement + Bresenham LOS
@@ -130,6 +130,7 @@ TileForge/Data/
   ├── QuestFileManager.cs        # Load/save quests.json (editor-side, snake_case serialization)
   ├── DialogueFileManager.cs     # Load/save dialogues/*.json (per-file, camelCase serialization)
 DojoUI/
+  ├── Renderer.cs                # DrawRect, DrawRectOutline, DrawLine, DrawBezier
   ├── Dropdown.cs                # Combo-box control with popup list
   ├── MenuBar.cs                 # Horizontal menu bar with submenus + hotkey hints
   ├── Checkbox.cs                # 14×14 toggle checkbox
@@ -137,27 +138,35 @@ DojoUI/
   ├── TooltipManager.cs          # 500ms delay hover tooltip
   ├── FormLayout.cs              # Immediate-mode form layout helper (label+field rows)
   ├── ScrollPanel.cs             # Scissor-clipped scroll region with visual scroll bar
+TileForge/Editor/
+  ├── MapDocumentState.cs        # Per-map state container (data, undo, camera, selection)
 TileForge/UI/
   ├── EditorMenus.cs             # Menu definitions + index constants
   ├── ToolbarRibbon.cs           # Icon toolbar ribbon (replaces Toolbar + ToolPanel)
   ├── MenuActionDispatcher.cs    # Menu (index, item) → action routing
+  ├── MapTabBar.cs               # Multimap tab strip (tabs, close, add, context menu)
   ├── IProjectContext.cs         # Project data for browse-dropdowns + Create New
   ├── GroupEditor.cs             # Smart property editing (Dropdown/Checkbox/NumericField)
   ├── QuestPanel.cs              # Sidebar panel: quest list with add/edit/delete
   ├── QuestEditor.cs             # Quest editing with Dropdown objective types
   ├── DialoguePanel.cs           # Sidebar panel: dialogue list with add/edit/delete
-  ├── DialogueEditor.cs          # Dialogue node/choice editing (form-based modal)
+  ├── DialogueEditor.cs          # Dialogue node/choice editing (form-based modal, legacy)
+  ├── DialogueTreeEditor.cs      # Visual node-graph dialogue editor (replaces DialogueEditor)
+  ├── NodeGraphCamera.cs         # Float-precision pan/zoom camera for node graph
+  ├── DialogueAutoLayout.cs      # BFS-based auto-layout for dialogue node positions
+  ├── DialogueNodeWidget.cs      # Node visual representation + port hit-testing
+  ├── ConnectionRenderer.cs      # Bezier connection drawing between node ports
   ├── ShortcutsDialog.cs         # Categorized hotkey reference dialog
   ├── AboutDialog.cs             # About info dialog
-  └── Screens/
-      ├── GameplayScreen.cs      # Main game loop + rendering
-      ├── PauseScreen.cs         # Overlay: resume/save/load/settings/quit
-      ├── SaveLoadScreen.cs      # Slot management UI
-      ├── InventoryScreen.cs     # Equipment slots + item display + equip/unequip/use
-      ├── DialogueScreen.cs      # Typewriter text + branching
-      ├── SettingsScreen.cs      # Key rebinding
-      ├── GameOverScreen.cs      # Death: restart or quit
-      └── QuestLogScreen.cs    # Quest log overlay (active + completed)
+TileForge/Game/Screens/
+  ├── GameplayScreen.cs        # Main game loop + rendering
+  ├── PauseScreen.cs           # Overlay: resume/save/load/settings/quit
+  ├── SaveLoadScreen.cs        # Slot management UI
+  ├── InventoryScreen.cs       # Equipment slots + item display + equip/unequip/use
+  ├── DialogueScreen.cs        # Typewriter text + branching
+  ├── SettingsScreen.cs        # Key rebinding
+  ├── GameOverScreen.cs        # Death: restart or quit
+  └── QuestLogScreen.cs        # Quest log overlay (active + completed)
 ```
 
 ---
@@ -183,4 +192,7 @@ All 32 criteria met. See DEVLOG-GAME.md for verification details.
 | UI Overhaul (P1–P5) | 1031 | +75 |
 | G8++ (dialogue editor) | 1050 | +19 |
 | Form layout overhaul | 1067 | +17 |
-| G9 (equipment) | 1119 | +52 |
+| G9 (equipment) | 1158 | +91 |
+| Cleanup phase | 1162 | +4 |
+| G10 (visual dialogue tree) | 1198 | +36 |
+| G11 (multimap projects) | 1266 | +68 |

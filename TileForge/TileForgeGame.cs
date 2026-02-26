@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
@@ -34,7 +36,8 @@ public class TileForgeGame : Microsoft.Xna.Framework.Game
     private QuestPanel _questPanel;
     private QuestEditor _questEditor;
     private DialoguePanel _dialoguePanel;
-    private DialogueEditor _dialogueEditor;
+    private DialogueTreeEditor _dialogueEditor;
+    private MapTabBar _mapTabBar;
 
     // Central state
     private EditorState _state;
@@ -83,6 +86,7 @@ public class TileForgeGame : Microsoft.Xna.Framework.Game
 
         _menuBar = new MenuBar(EditorMenus.CreateMenus());
         _toolbarRibbon = new ToolbarRibbon();
+        _mapTabBar = new MapTabBar();
         _canvas = new MapCanvas();
         _statusBar = new StatusBar();
         _mapPanel = new MapPanel();
@@ -127,7 +131,9 @@ public class TileForgeGame : Microsoft.Xna.Framework.Game
             () => { if (_state.IsPlayMode) ExitPlayMode(); else EnterPlayMode(); },
             () => _dialogManager.Show(new ShortcutsDialog(), _ => { }),
             () => _dialogManager.Show(new AboutDialog(), _ => { }));
-        _projectContext = new ProjectContext(() => _projectManager.ProjectPath);
+        _projectContext = new ProjectContext(
+            () => _projectManager.ProjectPath,
+            () => _state.MapDocuments.Select(d => d.Name).ToList());
         _autoSave = new AutoSaveManager(_state,
             () => _projectManager.ProjectPath, _projectManager.SaveToPath);
 
@@ -349,6 +355,10 @@ public class TileForgeGame : Microsoft.Xna.Framework.Game
         // Toolbar ribbon (consumes before panels/canvas)
         _toolbarRibbon.Update(_state, input, screenW, _font, gameTime);
 
+        // Map tab bar
+        _mapTabBar.Update(_state, mouse, _prevMouse, screenW, _font, gameTime);
+        HandleMapTabBarActions();
+
         // Editor panels (consumes before canvas)
         int topOffset = LayoutConstants.TopChromeHeight;
         var dockBounds = new Rectangle(0, topOffset, PanelDock.Width,
@@ -457,6 +467,97 @@ public class TileForgeGame : Microsoft.Xna.Framework.Game
         }
     }
 
+    private void HandleMapTabBarActions()
+    {
+        if (_mapTabBar.WantsSelectTab >= 0 && _mapTabBar.WantsSelectTab != _state.ActiveMapIndex)
+        {
+            _projectManager.SyncCameraToActiveDocument();
+            _state.ActiveMapIndex = _mapTabBar.WantsSelectTab;
+            _projectManager.RestoreCameraFromActiveDocument();
+        }
+
+        if (_mapTabBar.WantsNewMap)
+        {
+            _dialogManager.Show(new InputDialog("New map name (e.g. dungeon 20x15):", ""), dialog =>
+            {
+                var input = (InputDialog)dialog;
+                if (input.WasCancelled) return;
+                string text = input.ResultText.Trim();
+                if (string.IsNullOrEmpty(text)) return;
+
+                // Parse "name WxH" or just "name"
+                string name = text;
+                int width = LayoutConstants.DefaultMapWidth;
+                int height = LayoutConstants.DefaultMapHeight;
+                int spaceIdx = text.LastIndexOf(' ');
+                if (spaceIdx > 0)
+                {
+                    string sizePart = text[(spaceIdx + 1)..];
+                    int xIdx = sizePart.IndexOf('x', StringComparison.OrdinalIgnoreCase);
+                    if (xIdx > 0
+                        && int.TryParse(sizePart[..xIdx], out int w)
+                        && int.TryParse(sizePart[(xIdx + 1)..], out int h)
+                        && w > 0 && h > 0)
+                    {
+                        name = text[..spaceIdx].Trim();
+                        width = w;
+                        height = h;
+                    }
+                }
+
+                _projectManager.SyncCameraToActiveDocument();
+                _projectManager.CreateNewMap(name, width, height);
+                _projectManager.RestoreCameraFromActiveDocument();
+            });
+        }
+
+        if (_mapTabBar.WantsCloseTab >= 0)
+        {
+            int idx = _mapTabBar.WantsCloseTab;
+            if (idx < _state.MapDocuments.Count && _state.MapDocuments.Count > 1)
+            {
+                string mapName = _state.MapDocuments[idx].Name;
+                _dialogManager.Show(new ConfirmDialog($"Delete map \"{mapName}\"?"), dialog =>
+                {
+                    if (!dialog.WasCancelled)
+                    {
+                        _projectManager.SyncCameraToActiveDocument();
+                        _projectManager.DeleteMap(idx);
+                        _projectManager.RestoreCameraFromActiveDocument();
+                    }
+                });
+            }
+        }
+
+        if (_mapTabBar.WantsRenameTab >= 0)
+        {
+            int idx = _mapTabBar.WantsRenameTab;
+            if (idx < _state.MapDocuments.Count)
+            {
+                string oldName = _state.MapDocuments[idx].Name;
+                _dialogManager.Show(new InputDialog("Rename map:", oldName), dialog =>
+                {
+                    var input = (InputDialog)dialog;
+                    if (input.WasCancelled) return;
+                    string newName = input.ResultText.Trim();
+                    if (!string.IsNullOrEmpty(newName) && newName != oldName)
+                        _projectManager.RenameMap(idx, newName);
+                });
+            }
+        }
+
+        if (_mapTabBar.WantsDuplicateTab >= 0)
+        {
+            int idx = _mapTabBar.WantsDuplicateTab;
+            if (idx < _state.MapDocuments.Count)
+            {
+                _projectManager.SyncCameraToActiveDocument();
+                _projectManager.DuplicateMap(idx);
+                _projectManager.RestoreCameraFromActiveDocument();
+            }
+        }
+    }
+
     private void HandleGroupEditorResult()
     {
         if (_groupEditor.WasCancelled || _groupEditor.Result == null)
@@ -527,17 +628,17 @@ public class TileForgeGame : Microsoft.Xna.Framework.Game
                 if (input.WasCancelled || _groupEditor == null) return;
                 string name = input.ResultText.Trim();
                 if (string.IsNullOrEmpty(name)) return;
-                if (!name.EndsWith(".tileforge", StringComparison.OrdinalIgnoreCase))
-                    name += ".tileforge";
-                string dir = _projectContext.ProjectDirectory;
-                if (dir != null)
-                {
-                    string path = Path.Combine(dir, name);
-                    if (!File.Exists(path))
-                        File.WriteAllText(path, "{}");
-                    _groupEditor.RefreshBrowseField("target_map",
-                        Path.GetFileNameWithoutExtension(name));
-                }
+                // Strip .tileforge extension if user typed it
+                if (name.EndsWith(".tileforge", StringComparison.OrdinalIgnoreCase))
+                    name = name[..^10];
+
+                // Create a new map document within the project
+                _projectManager.CreateNewMap(name,
+                    LayoutConstants.DefaultMapWidth, LayoutConstants.DefaultMapHeight);
+                // Switch back to the previous tab so the user stays in the GroupEditor
+                if (_state.MapDocuments.Count > 1)
+                    _state.ActiveMapIndex = _state.MapDocuments.Count - 2;
+                _groupEditor.RefreshBrowseField("target_map", name);
             });
         }
 
@@ -632,13 +733,13 @@ public class TileForgeGame : Microsoft.Xna.Framework.Game
     {
         if (_dialoguePanel.WantsNewDialogue)
         {
-            _dialogueEditor = DialogueEditor.ForNewDialogue();
+            _dialogueEditor = DialogueTreeEditor.ForNewDialogue();
         }
         else if (_dialoguePanel.WantsEditDialogueIndex >= 0)
         {
             int idx = _dialoguePanel.WantsEditDialogueIndex;
             if (idx < _state.Dialogues.Count)
-                _dialogueEditor = DialogueEditor.ForExistingDialogue(_state.Dialogues[idx]);
+                _dialogueEditor = DialogueTreeEditor.ForExistingDialogue(_state.Dialogues[idx]);
         }
         else if (_dialoguePanel.WantsDeleteDialogueIndex >= 0)
         {
@@ -739,6 +840,7 @@ public class TileForgeGame : Microsoft.Xna.Framework.Game
         {
             _panelDock.Draw(_spriteBatch, _font, _state, _renderer);
             _menuBar.Draw(_spriteBatch, _font, _renderer, screenW);
+            _mapTabBar.Draw(_spriteBatch, _font, _renderer, _state, screenW);
         }
         _toolbarRibbon.Draw(_spriteBatch, _font, _state, _renderer, screenW);
         _statusBar.Draw(_spriteBatch, _font, _state, _renderer, _canvas, screenW, screenH);

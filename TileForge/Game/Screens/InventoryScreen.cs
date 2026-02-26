@@ -16,7 +16,8 @@ namespace TileForge.Game.Screens;
 public class InventoryScreen : GameScreen
 {
     private readonly GameStateManager _gameStateManager;
-    private int _selectedIndex;
+    private GameMenuList _menu;
+    private List<MenuItem> _cachedMenuItems;
     private string _statusMessage;
     private float _statusTimer;
 
@@ -84,29 +85,23 @@ public class InventoryScreen : GameScreen
                 _statusMessage = null;
         }
 
-        var menuItems = BuildMenuItems();
+        _cachedMenuItems = BuildMenuItems();
+        var menuItems = _cachedMenuItems;
         int count = menuItems.Count;
 
         if (input.IsActionJustPressed(GameAction.MoveUp))
-        {
-            _selectedIndex--;
-            if (_selectedIndex < 0) _selectedIndex = count - 1;
-        }
+            _menu.MoveUp(count);
         if (input.IsActionJustPressed(GameAction.MoveDown))
-        {
-            _selectedIndex++;
-            if (_selectedIndex >= count) _selectedIndex = 0;
-        }
+            _menu.MoveDown(count);
 
         // Clamp in case inventory changed
-        if (_selectedIndex >= count)
-            _selectedIndex = count > 0 ? count - 1 : 0;
+        _menu.ClampIndex(count);
 
         if (input.IsActionJustPressed(GameAction.Interact))
         {
-            if (_selectedIndex < count)
+            if (_menu.SelectedIndex < count)
             {
-                var item = menuItems[_selectedIndex];
+                var item = menuItems[_menu.SelectedIndex];
                 switch (item.Section)
                 {
                     case MenuSection.Close:
@@ -196,8 +191,8 @@ public class InventoryScreen : GameScreen
             canvasBounds.Y + 40f);
         spriteBatch.DrawString(font, titleText, titlePos, Color.White);
 
-        // Menu items
-        var menuItems = BuildMenuItems();
+        // Menu items (cached from last Update)
+        var menuItems = _cachedMenuItems ?? BuildMenuItems();
         float startY = titlePos.Y + titleSize.Y + 20f;
 
         // Check if inventory section is empty (only equip slots + close, no actual items)
@@ -214,7 +209,7 @@ public class InventoryScreen : GameScreen
                 startY + i * (itemSize.Y + 6f));
 
             Color color;
-            if (i == _selectedIndex)
+            if (i == _menu.SelectedIndex)
                 color = Color.Yellow;
             else if (item.Section == MenuSection.EquipSlot && item.ItemName != null)
                 color = Color.Cyan;

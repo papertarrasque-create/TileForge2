@@ -49,13 +49,7 @@ public class QuestEditor
     private const int TypeDDWidth = 70;
 
     // Resize state
-    private int? _userWidth;
-    private int? _userHeight;
-    private bool _resizing;
-    private ResizeEdge _resizeEdge;
-    private Point _resizeDragStart;
-    private int _resizeDragStartW;
-    private int _resizeDragStartH;
+    private ModalResizeHandler _resize;
 
     // Colors
     private static readonly Color Overlay = LayoutConstants.QuestEditorOverlay;
@@ -83,8 +77,6 @@ public class QuestEditor
 
     // Tooltip tracking
     private readonly List<(Rectangle Rect, TextInputField Field)> _tooltipFields = new();
-
-    private enum ResizeEdge { None, Right, Bottom, BottomRight }
 
     private QuestEditor() { }
 
@@ -178,17 +170,12 @@ public class QuestEditor
             }
         }
 
-        // Compute panel layout for dropdown updates
-        int maxW = _userWidth ?? DefaultMaxWidth;
-        int maxH = _userHeight ?? DefaultMaxHeight;
-        int panelW = Math.Min(maxW, bounds.Width - 40);
-        int panelH = Math.Min(maxH, bounds.Height - 40);
-        int px = bounds.X + (bounds.Width - panelW) / 2;
-        int py = bounds.Y + (bounds.Height - panelH) / 2;
-        _panelRect = new Rectangle(px, py, panelW, panelH);
+        // Compute panel rect + handle resize
+        _panelRect = _resize.ComputePanelRect(DefaultMaxWidth, DefaultMaxHeight, bounds);
+        _resize.HandleResize(mouse, prevMouse, bounds);
 
-        // Handle resize
-        HandleResize(mouse, prevMouse, bounds);
+        int px = _panelRect.X, py = _panelRect.Y;
+        int panelW = _panelRect.Width, panelH = _panelRect.Height;
 
         int contentTop = py + 30;
         int contentBottom = py + panelH - 26;
@@ -232,7 +219,7 @@ public class QuestEditor
         }
 
         // Mouse handling — skip if a dropdown consumed the click
-        if (input.HasUnconsumedClick && !_resizing)
+        if (input.HasUnconsumedClick && !_resize.IsResizing)
         {
             bool clickHandled = false;
 
@@ -302,14 +289,10 @@ public class QuestEditor
         // Dim background
         renderer.DrawRect(spriteBatch, bounds, Overlay);
 
-        // Compute panel rect (centered, respecting user resize)
-        int maxW = _userWidth ?? DefaultMaxWidth;
-        int maxH = _userHeight ?? DefaultMaxHeight;
-        int panelW = Math.Min(maxW, bounds.Width - 40);
-        int panelH = Math.Min(maxH, bounds.Height - 40);
-        int px = bounds.X + (bounds.Width - panelW) / 2;
-        int py = bounds.Y + (bounds.Height - panelH) / 2;
-        _panelRect = new Rectangle(px, py, panelW, panelH);
+        // Panel rect (already computed in Update, recompute for Draw in case bounds changed)
+        _panelRect = _resize.ComputePanelRect(DefaultMaxWidth, DefaultMaxHeight, bounds);
+        int px = _panelRect.X, py = _panelRect.Y;
+        int panelW = _panelRect.Width, panelH = _panelRect.Height;
 
         // Panel background
         renderer.DrawRect(spriteBatch, _panelRect, PanelBg);
@@ -321,7 +304,7 @@ public class QuestEditor
         spriteBatch.DrawString(font, title, new Vector2(px + Padding, py + (30 - font.LineSpacing) / 2), Color.White);
 
         // Resize grip
-        DrawResizeGrip(spriteBatch, renderer);
+        _resize.DrawResizeGrip(spriteBatch, renderer);
 
         // Content area
         int contentTop = py + 30;
@@ -489,70 +472,6 @@ public class QuestEditor
         }
         if (!foundOverflow)
             _tooltipManager.ClearHover();
-    }
-
-    private void HandleResize(MouseState mouse, MouseState prevMouse, Rectangle bounds)
-    {
-        bool leftDown = mouse.LeftButton == ButtonState.Pressed;
-        bool leftClick = leftDown && prevMouse.LeftButton == ButtonState.Released;
-        int grab = LayoutConstants.ModalEdgeGrabSize;
-
-        if (_resizing)
-        {
-            if (!leftDown)
-            {
-                _resizing = false;
-                return;
-            }
-
-            int dx = mouse.X - _resizeDragStart.X;
-            int dy = mouse.Y - _resizeDragStart.Y;
-
-            if (_resizeEdge == ResizeEdge.Right || _resizeEdge == ResizeEdge.BottomRight)
-                _userWidth = Math.Clamp(_resizeDragStartW + dx * 2, LayoutConstants.ModalMinWidth, bounds.Width - 40);
-            if (_resizeEdge == ResizeEdge.Bottom || _resizeEdge == ResizeEdge.BottomRight)
-                _userHeight = Math.Clamp(_resizeDragStartH + dy * 2, LayoutConstants.ModalMinHeight, bounds.Height - 40);
-            return;
-        }
-
-        if (leftClick)
-        {
-            var edge = DetectResizeEdge(mouse.X, mouse.Y, grab);
-            if (edge != ResizeEdge.None)
-            {
-                _resizing = true;
-                _resizeEdge = edge;
-                _resizeDragStart = new Point(mouse.X, mouse.Y);
-                _resizeDragStartW = _panelRect.Width;
-                _resizeDragStartH = _panelRect.Height;
-            }
-        }
-    }
-
-    private ResizeEdge DetectResizeEdge(int mx, int my, int grab)
-    {
-        bool nearRight = mx >= _panelRect.Right - grab && mx <= _panelRect.Right + grab &&
-                         my >= _panelRect.Y && my <= _panelRect.Bottom;
-        bool nearBottom = my >= _panelRect.Bottom - grab && my <= _panelRect.Bottom + grab &&
-                          mx >= _panelRect.X && mx <= _panelRect.Right;
-
-        if (nearRight && nearBottom) return ResizeEdge.BottomRight;
-        if (nearRight) return ResizeEdge.Right;
-        if (nearBottom) return ResizeEdge.Bottom;
-        return ResizeEdge.None;
-    }
-
-    private void DrawResizeGrip(SpriteBatch spriteBatch, Renderer renderer)
-    {
-        int gx = _panelRect.Right - 12;
-        int gy = _panelRect.Bottom - 12;
-        var gripColor = new Color(80, 80, 80);
-        renderer.DrawRect(spriteBatch, new Rectangle(gx + 8, gy + 8, 2, 2), gripColor);
-        renderer.DrawRect(spriteBatch, new Rectangle(gx + 4, gy + 8, 2, 2), gripColor);
-        renderer.DrawRect(spriteBatch, new Rectangle(gx + 8, gy + 4, 2, 2), gripColor);
-        renderer.DrawRect(spriteBatch, new Rectangle(gx, gy + 8, 2, 2), gripColor);
-        renderer.DrawRect(spriteBatch, new Rectangle(gx + 4, gy + 4, 2, 2), gripColor);
-        renderer.DrawRect(spriteBatch, new Rectangle(gx + 8, gy, 2, 2), gripColor);
     }
 
     private static void DrawButton(SpriteBatch spriteBatch, SpriteFont font, Renderer renderer,

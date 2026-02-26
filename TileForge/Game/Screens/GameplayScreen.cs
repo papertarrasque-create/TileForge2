@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 using Microsoft.Xna.Framework;
@@ -28,6 +29,9 @@ public class GameplayScreen : GameScreen
     private readonly QuestManager _questManager;
     private readonly Func<Rectangle> _getCanvasBounds;
     private IPathfinder _pathfinder;
+
+    private static readonly JsonSerializerOptions _dialogueJsonOptions =
+        new() { PropertyNameCaseInsensitive = true };
 
     public GameplayScreen(EditorState state, MapCanvas canvas,
         GameStateManager gameStateManager, SaveManager saveManager,
@@ -220,15 +224,17 @@ public class GameplayScreen : GameScreen
     private void SyncEntityRenderState()
     {
         var play = _state.PlayState;
+        var activeById = new Dictionary<string, EntityInstance>();
+        foreach (var instance in _gameStateManager.State.ActiveEntities)
+            activeById[instance.Id] = instance;
+
         for (int i = _state.Map.Entities.Count - 1; i >= 0; i--)
         {
             var editorEntity = _state.Map.Entities[i];
             if (editorEntity == play?.PlayerEntity) continue;
 
-            foreach (var instance in _gameStateManager.State.ActiveEntities)
+            if (activeById.TryGetValue(editorEntity.Id, out var instance))
             {
-                if (instance.Id != editorEntity.Id) continue;
-
                 if (instance.IsActive)
                 {
                     editorEntity.X = instance.X;
@@ -238,7 +244,6 @@ public class GameplayScreen : GameScreen
                 {
                     _state.Map.Entities.RemoveAt(i);
                 }
-                break;
             }
         }
     }
@@ -672,8 +677,7 @@ public class GameplayScreen : GameScreen
         try
         {
             string json = File.ReadAllText(path);
-            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-            return JsonSerializer.Deserialize<DialogueData>(json, options);
+            return JsonSerializer.Deserialize<DialogueData>(json, _dialogueJsonOptions);
         }
         catch
         {

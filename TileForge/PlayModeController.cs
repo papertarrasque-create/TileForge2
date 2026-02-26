@@ -8,6 +8,7 @@ using Microsoft.Xna.Framework.Input;
 using DojoUI;
 using TileForge.Data;
 using TileForge.Editor;
+using TileForge.Export;
 using TileForge.Game;
 using TileForge.Game.Screens;
 using TileForge.Play;
@@ -23,7 +24,8 @@ public class PlayModeController
 
     private Vector2 _savedCameraOffset;
     private int _savedZoomIndex;
-    private MapData _savedMap;
+    private int _savedActiveMapIndex;
+    private List<MapDocumentState> _savedMapDocuments;
     private List<TileGroup> _savedGroups;
     private GameStateManager _gameStateManager;
     private GameInputManager _inputManager;
@@ -31,6 +33,9 @@ public class PlayModeController
     private SaveManager _saveManager;
     private QuestManager _questManager;
     private string _bindingsPath;
+
+    // Pre-exported project maps for in-project transitions
+    private Dictionary<string, LoadedMap> _projectMaps;
 
     public GameStateManager GameStateManager => _gameStateManager;
     public ScreenManager ScreenManager => _screenManager;
@@ -72,8 +77,27 @@ public class PlayModeController
         // Save editor state for restoration on exit
         _savedCameraOffset = _canvas.Camera.Offset;
         _savedZoomIndex = _canvas.Camera.ZoomIndex;
-        _savedMap = _state.Map;
+        _savedActiveMapIndex = _state.ActiveMapIndex;
+        _savedMapDocuments = new List<MapDocumentState>(_state.MapDocuments);
         _savedGroups = new List<TileGroup>(_state.Groups);
+
+        // Pre-export all project maps for in-project transitions
+        _projectMaps = new Dictionary<string, LoadedMap>(StringComparer.OrdinalIgnoreCase);
+        foreach (var doc in _state.MapDocuments)
+        {
+            if (doc.Map == null) continue;
+            try
+            {
+                string json = MapExporter.ExportJson(doc.Map, _state.Groups);
+                var loader = new MapLoader();
+                var loadedMap = loader.Load(json, doc.Name);
+                _projectMaps[doc.Name] = loadedMap;
+            }
+            catch
+            {
+                // Skip maps that fail to export
+            }
+        }
 
         // Initialize game state
         _gameStateManager = new GameStateManager();
@@ -110,13 +134,15 @@ public class PlayModeController
         _canvas.Camera.Offset = _savedCameraOffset;
         _canvas.Camera.ZoomIndex = _savedZoomIndex;
 
-        // Restore editor state
-        if (_savedMap != null)
+        // Restore editor state (multimap-aware)
+        if (_savedMapDocuments != null)
         {
-            _state.Map = _savedMap;
+            _state.MapDocuments.Clear();
+            _state.MapDocuments.AddRange(_savedMapDocuments);
             _state.Groups = new List<TileGroup>(_savedGroups);
             _state.RebuildGroupIndex();
-            _savedMap = null;
+            _state.ActiveMapIndex = _savedActiveMapIndex;
+            _savedMapDocuments = null;
             _savedGroups = null;
         }
 
@@ -128,6 +154,7 @@ public class PlayModeController
         _saveManager = null;
         _questManager = null;
         _bindingsPath = null;
+        _projectMaps = null;
     }
 
     public void Update(GameTime gameTime, KeyboardState keyboard)
@@ -165,7 +192,14 @@ public class PlayModeController
 
     private void ExecuteMapTransition(MapTransitionRequest request)
     {
-        // Resolve map path
+        // Try in-project maps first
+        if (_projectMaps != null && _projectMaps.TryGetValue(request.TargetMap, out var projectMap))
+        {
+            ExecuteTransitionWithLoadedMap(projectMap, request);
+            return;
+        }
+
+        // Fallback to filesystem (for cross-project/external maps)
         string mapPath = request.TargetMap;
         if (MapBaseDirectory != null && !Path.IsPathRooted(mapPath))
             mapPath = Path.Combine(MapBaseDirectory, mapPath);
@@ -177,11 +211,16 @@ public class PlayModeController
             return;
         }
 
-        // Load the target map
+        // Load the target map from file
         string json = File.ReadAllText(mapPath);
         var loader = new MapLoader();
         var loadedMap = loader.Load(json, Path.GetFileNameWithoutExtension(mapPath));
 
+        ExecuteTransitionWithLoadedMap(loadedMap, request);
+    }
+
+    private void ExecuteTransitionWithLoadedMap(LoadedMap loadedMap, MapTransitionRequest request)
+    {
         // Switch game state (preserves flags, variables, inventory, health)
         _gameStateManager.SwitchMap(loadedMap, request.TargetX, request.TargetY);
 

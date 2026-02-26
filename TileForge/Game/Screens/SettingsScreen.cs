@@ -19,7 +19,7 @@ public class SettingsScreen : GameScreen
     private readonly GameInputManager _inputManager;
     private readonly string _bindingsPath;
     private readonly GameAction[] _actions;
-    private int _selectedIndex;
+    private GameMenuList _menu;
     private bool _waitingForKey;
     private KeyboardState _previousKeyState;
 
@@ -57,7 +57,7 @@ public class SettingsScreen : GameScreen
                     }
 
                     // Apply the new binding and persist it immediately
-                    _inputManager.RebindAction(_actions[_selectedIndex], key);
+                    _inputManager.RebindAction(_actions[_menu.SelectedIndex], key);
                     _inputManager.SaveBindings(_bindingsPath);
                     _waitingForKey = false;
                     _previousKeyState = currentKeyState;
@@ -71,25 +71,19 @@ public class SettingsScreen : GameScreen
 
         // Normal menu navigation via GameInputManager (abstract action layer)
         if (input.IsActionJustPressed(GameAction.MoveUp))
-        {
-            _selectedIndex--;
-            if (_selectedIndex < 0) _selectedIndex = MenuItemCount - 1;
-        }
+            _menu.MoveUp(MenuItemCount);
 
         if (input.IsActionJustPressed(GameAction.MoveDown))
-        {
-            _selectedIndex++;
-            if (_selectedIndex >= MenuItemCount) _selectedIndex = 0;
-        }
+            _menu.MoveDown(MenuItemCount);
 
         if (input.IsActionJustPressed(GameAction.Interact))
         {
-            if (IsBackItem(_selectedIndex))
+            if (IsBackItem(_menu.SelectedIndex))
             {
                 ScreenManager.Pop();
                 return;
             }
-            if (IsResetItem(_selectedIndex))
+            if (IsResetItem(_menu.SelectedIndex))
             {
                 _inputManager.ResetDefaults();
                 _inputManager.SaveBindings(_bindingsPath);
@@ -136,7 +130,7 @@ public class SettingsScreen : GameScreen
                     ? string.Join(", ", keys.Select(k => k.ToString()))
                     : "???";
 
-                text = (_waitingForKey && i == _selectedIndex)
+                text = (_waitingForKey && i == _menu.SelectedIndex)
                     ? $"{action}: [Press a key...]"
                     : $"{action}: {keysText}";
             }
@@ -153,7 +147,7 @@ public class SettingsScreen : GameScreen
             var itemPos = new Vector2(
                 canvasBounds.X + (canvasBounds.Width - itemSize.X) / 2f,
                 startY + i * (itemSize.Y + 6f));
-            var color = i == _selectedIndex ? Color.Yellow : Color.White;
+            var color = i == _menu.SelectedIndex ? Color.Yellow : Color.White;
             spriteBatch.DrawString(font, text, itemPos, color);
         }
     }

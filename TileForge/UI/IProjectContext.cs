@@ -36,10 +36,12 @@ public class ProjectContext : IProjectContext
     public const string CreateNewItem = "+ Create New...";
 
     private readonly Func<string> _getProjectPath;
+    private readonly Func<List<string>> _getMapNames;
 
-    public ProjectContext(Func<string> getProjectPath)
+    public ProjectContext(Func<string> getProjectPath, Func<List<string>> getMapNames = null)
     {
         _getProjectPath = getProjectPath;
+        _getMapNames = getMapNames;
     }
 
     public string ProjectDirectory
@@ -53,6 +55,16 @@ public class ProjectContext : IProjectContext
 
     public string[] GetAvailableMaps()
     {
+        // Return project map names if available (multimap project)
+        var mapNames = _getMapNames?.Invoke();
+        if (mapNames != null && mapNames.Count > 0)
+        {
+            var result = new List<string>(mapNames);
+            result.Add(CreateNewItem);
+            return result.ToArray();
+        }
+
+        // Fallback to filesystem scan
         var dir = ProjectDirectory;
         if (dir == null || !Directory.Exists(dir))
             return new[] { CreateNewItem };

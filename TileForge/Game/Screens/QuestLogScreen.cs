@@ -14,7 +14,9 @@ public class QuestLogScreen : GameScreen
 {
     private readonly QuestManager _questManager;
     private readonly GameStateManager _gameStateManager;
-    private int _scrollOffset;
+    private GameMenuList _menu;
+    private readonly List<QuestDefinition> _activeQuests = new();
+    private readonly List<QuestDefinition> _completedQuests = new();
 
     public override bool IsOverlay => true;
 
@@ -27,9 +29,9 @@ public class QuestLogScreen : GameScreen
     public override void Update(GameTime gameTime, GameInputManager input)
     {
         if (input.IsActionJustPressed(GameAction.MoveUp))
-            _scrollOffset = System.Math.Max(0, _scrollOffset - 1);
+            _menu.ScrollUp();
         if (input.IsActionJustPressed(GameAction.MoveDown))
-            _scrollOffset++;
+            _menu.ScrollOffset++;
 
         if (input.IsActionJustPressed(GameAction.Cancel) ||
             input.IsActionJustPressed(GameAction.OpenQuestLog))
@@ -52,33 +54,56 @@ public class QuestLogScreen : GameScreen
             canvasBounds.Y + 40f);
         spriteBatch.DrawString(font, titleText, titlePos, Color.White);
 
-        float y = titlePos.Y + titleSize.Y + 20f;
+        float contentStartY = titlePos.Y + titleSize.Y + 20f;
         float leftMargin = canvasBounds.X + 40f;
         float indentMargin = leftMargin + 20f;
         float lineHeight = font.LineSpacing + 2f;
 
         // Separate active and completed quests
-        var activeQuests = new List<QuestDefinition>();
-        var completedQuests = new List<QuestDefinition>();
+        _activeQuests.Clear();
+        _completedQuests.Clear();
 
         foreach (var quest in _questManager.Quests)
         {
             var status = _questManager.GetQuestStatus(quest, _gameStateManager);
             if (status == QuestStatus.Active)
-                activeQuests.Add(quest);
+                _activeQuests.Add(quest);
             else if (status == QuestStatus.Completed)
-                completedQuests.Add(quest);
+                _completedQuests.Add(quest);
         }
+
+        var activeQuests = _activeQuests;
+        var completedQuests = _completedQuests;
 
         if (activeQuests.Count == 0 && completedQuests.Count == 0)
         {
             var emptyText = "No quests";
             var emptySize = font.MeasureString(emptyText);
             spriteBatch.DrawString(font, emptyText,
-                new Vector2(canvasBounds.X + (canvasBounds.Width - emptySize.X) / 2f, y),
+                new Vector2(canvasBounds.X + (canvasBounds.Width - emptySize.X) / 2f, contentStartY),
                 Color.Gray);
             return;
         }
+
+        // Count total content lines for scroll clamping
+        int totalLines = 0;
+        foreach (var quest in activeQuests)
+        {
+            totalLines++; // quest name
+            if (!string.IsNullOrEmpty(quest.Description))
+                totalLines++;
+            totalLines += quest.Objectives.Count;
+        }
+        if (completedQuests.Count > 0)
+        {
+            totalLines++; // "-- Completed --" header
+            totalLines += completedQuests.Count;
+        }
+
+        int visibleLines = (int)((canvasBounds.Bottom - contentStartY) / lineHeight);
+        _menu.ClampScroll(totalLines, visibleLines);
+
+        float y = contentStartY - _menu.ScrollOffset * lineHeight;
 
         // Active quests
         foreach (var quest in activeQuests)

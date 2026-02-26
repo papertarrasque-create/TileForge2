@@ -22,6 +22,8 @@ public class QuestManager
     // Session-only — not serialized. On load, re-evaluates from flags.
     private readonly HashSet<string> _reportedObjectives = new();
     private readonly HashSet<string> _reportedStarts = new();
+    private static readonly List<QuestEvent> EmptyEvents = new();
+    private readonly List<QuestEvent> _reusableEvents = new();
 
     public IReadOnlyList<QuestDefinition> Quests => _quests;
 
@@ -38,7 +40,8 @@ public class QuestManager
     /// </summary>
     public List<QuestEvent> CheckForUpdates(GameStateManager gsm)
     {
-        var events = new List<QuestEvent>();
+        _reusableEvents.Clear();
+        var events = _reusableEvents;
 
         foreach (var quest in _quests)
         {
@@ -103,7 +106,7 @@ public class QuestManager
             }
         }
 
-        return events;
+        return events.Count > 0 ? new List<QuestEvent>(events) : EmptyEvents;
     }
 
     /// <summary>

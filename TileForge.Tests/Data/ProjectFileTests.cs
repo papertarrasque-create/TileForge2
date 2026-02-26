@@ -780,7 +780,7 @@ public class ProjectFileTests : IDisposable
         // Read the raw JSON to verify the path is stored as relative
         string rawJson = File.ReadAllText(projectPath);
         var rawData = JsonSerializer.Deserialize<ProjectFile.ProjectData>(rawJson, JsonOptions);
-        Assert.Equal("sprites/sheet.png", rawData.Spritesheet.Path);
+        Assert.Equal(Path.Combine("sprites", "sheet.png"), rawData.Spritesheet.Path);
 
         // After Load, it should be resolved to absolute
         var loaded = ProjectFile.Load(projectPath);
