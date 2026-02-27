@@ -14,5 +14,7 @@ public class PlayerState
     public int Attack { get; set; } = 5;
     public int Defense { get; set; } = 2;
     public int MaxAP { get; set; } = 2;
+    public int Poise { get; set; } = 20;
+    public int MaxPoise { get; set; } = 20;
     public Dictionary<string, string> Equipment { get; set; } = new();
 }

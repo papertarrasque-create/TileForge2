@@ -124,7 +124,7 @@ public class EntityTurnTests
         var map = CreateMap(10, 10);
         var state = new GameState
         {
-            Player = new PlayerState { X = 3, Y = 3, Health = 100, MaxHealth = 100, Defense = 2 },
+            Player = new PlayerState { X = 3, Y = 3, Health = 100, MaxHealth = 100, Defense = 2, Poise = 0 },
         };
         var enemy = new EntityInstance
         {
@@ -251,7 +251,7 @@ public class EntityTurnTests
         var map = CreateMap(10, 10);
         var state = new GameState
         {
-            Player = new PlayerState { X = 3, Y = 3, Health = 3, MaxHealth = 100, Defense = 0 },
+            Player = new PlayerState { X = 3, Y = 3, Health = 3, MaxHealth = 100, Defense = 0, Poise = 0 },
         };
         var enemy = new EntityInstance
         {

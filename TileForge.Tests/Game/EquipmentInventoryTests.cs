@@ -155,6 +155,7 @@ public class EquipmentInventoryTests
     public void HealItem_StillUsable()
     {
         var gsm = CreateManagerWithItems();
+        gsm.State.Player.Poise = 0;
         gsm.DamagePlayer(30);
         int healthBefore = gsm.State.Player.Health;
 

@@ -110,6 +110,9 @@ public class GameplayScreen : GameScreen
                 // Apply hazard damage at destination
                 CheckHazardAtPosition(play, play.PlayerEntity.X, play.PlayerEntity.Y);
 
+                // Propagate noise to nearby dormant entities
+                PropagateNoise(play, play.PlayerEntity.X, play.PlayerEntity.Y);
+
                 // Check for entity interaction at destination
                 CheckEntityInteractionAt(play, play.PlayerEntity.X, play.PlayerEntity.Y);
 
@@ -322,10 +325,35 @@ public class GameplayScreen : GameScreen
                 renderer.DrawRect(spriteBatch, new Rectangle(barX, barY, fillWidth, barHeight), healthColor);
             }
 
+            // Poise bar (below health bar)
+            int poiseBarY = barY + barHeight + 2;
+            int maxPoise = _gameStateManager.GetEffectiveMaxPoise();
+            renderer.DrawRect(spriteBatch, new Rectangle(barX, poiseBarY, barWidth, barHeight), new Color(40, 40, 40));
+            float poisePct = maxPoise > 0 ? (float)player.Poise / maxPoise : 0;
+            int poiseFill = (int)(barWidth * poisePct);
+            if (poiseFill > 0)
+            {
+                Color poiseColor = poisePct > 0.5f ? Color.CornflowerBlue : poisePct > 0.25f ? Color.Yellow : Color.Red;
+                renderer.DrawRect(spriteBatch, new Rectangle(barX, poiseBarY, poiseFill, barHeight), poiseColor);
+            }
+
             // ATK/DEF stats readout
             string statsText = $"ATK:{_gameStateManager.GetEffectiveAttack()} DEF:{_gameStateManager.GetEffectiveDefense()}";
-            var statsPos = new Vector2(barX, barY + barHeight + 2);
+            var statsPos = new Vector2(barX, poiseBarY + barHeight + 2);
             spriteBatch.DrawString(font, statsText, statsPos, Color.White);
+
+            // Terrain cover readout
+            var playForCover = _state.PlayState;
+            if (playForCover?.PlayerEntity != null)
+            {
+                int cover = GetDefenseBonusAt(playForCover.PlayerEntity.X, playForCover.PlayerEntity.Y);
+                if (cover > 0)
+                {
+                    string coverText = $"COVER:+{cover}";
+                    var coverPos = new Vector2(statsPos.X + font.MeasureString(statsText).X + 8, statsPos.Y);
+                    spriteBatch.DrawString(font, coverText, coverPos, Color.CornflowerBlue);
+                }
+            }
 
             // AP pips
             var playForHud = _state.PlayState;
@@ -573,6 +601,67 @@ public class GameplayScreen : GameScreen
         return maxCost;
     }
 
+    internal int GetDefenseBonusAt(int x, int y)
+    {
+        int maxBonus = 0;
+        foreach (var layer in _state.Map.Layers)
+        {
+            string groupName = layer.GetCell(x, y, _state.Map.Width);
+            if (groupName != null
+                && _state.GroupsByName.TryGetValue(groupName, out var group))
+            {
+                if (group.DefenseBonus > maxBonus)
+                    maxBonus = group.DefenseBonus;
+            }
+        }
+        return maxBonus;
+    }
+
+    internal int GetNoiseLevelAt(int x, int y)
+    {
+        int maxNoise = 0;
+        foreach (var layer in _state.Map.Layers)
+        {
+            string groupName = layer.GetCell(x, y, _state.Map.Width);
+            if (groupName != null
+                && _state.GroupsByName.TryGetValue(groupName, out var group))
+            {
+                if (group.NoiseLevel > maxNoise)
+                    maxNoise = group.NoiseLevel;
+            }
+        }
+        return maxNoise;
+    }
+
+    private void PropagateNoise(PlayState play, int x, int y)
+    {
+        int noiseLevel = GetNoiseLevelAt(x, y);
+        if (noiseLevel <= 0) return;
+
+        int noiseRadius = 3 * noiseLevel;
+        var player = _gameStateManager.State.Player;
+
+        foreach (var entity in _gameStateManager.State.ActiveEntities)
+        {
+            if (!entity.IsActive) continue;
+            if (!entity.Properties.ContainsKey("behavior")) continue;
+            if (!_gameStateManager.IsEntityHostile(entity)) continue;
+
+            int aggroRange = _gameStateManager.GetEntityIntProperty(entity, "aggro_range", 5);
+            int distance = Math.Abs(entity.X - player.X) + Math.Abs(entity.Y - player.Y);
+
+            // Only alert entities outside their normal aggro range but within noise radius
+            if (distance <= aggroRange || distance > noiseRadius) continue;
+
+            // Already alerted entities don't get re-alerted
+            int existingAlert = _gameStateManager.GetEntityIntProperty(entity, "alert_turns", 0);
+            if (existingAlert > 0) continue;
+
+            _gameStateManager.SetEntityIntProperty(entity, "alert_turns", 3);
+            play.AddFloatingMessage("!", Color.Yellow, entity.X, entity.Y);
+        }
+    }
+
     private void CenterCameraOnPlayer()
     {
         var play = _state.PlayState;
@@ -624,7 +713,23 @@ public class GameplayScreen : GameScreen
 
             if (_gameStateManager.IsAttackable(instance, _state.GroupsByName))
             {
-                var result = _gameStateManager.AttackEntity(instance, _gameStateManager.GetEffectiveAttack());
+                int terrainBonus = GetDefenseBonusAt(instance.X, instance.Y);
+
+                // Flanking: check entity facing
+                Direction entityFacing = play.EntityFacings.TryGetValue(instance.Id, out var ef) ? ef : Direction.Down;
+                var attackPos = CombatHelper.GetAttackPosition(
+                    play.PlayerEntity.X, play.PlayerEntity.Y,
+                    instance.X, instance.Y, entityFacing);
+                float posMult = CombatHelper.GetPositionMultiplier(attackPos);
+
+                var result = _gameStateManager.AttackEntity(instance, _gameStateManager.GetEffectiveAttack(), terrainBonus, posMult);
+
+                // Show position-based floating message
+                if (attackPos == AttackPosition.Backstab)
+                    play.AddFloatingMessage("BACKSTAB!", Color.OrangeRed, instance.X, instance.Y);
+                else if (attackPos == AttackPosition.Flank)
+                    play.AddFloatingMessage("Flanked!", Color.Orange, instance.X, instance.Y);
+
                 play.AddFloatingMessage(result.Message, Color.Gold, instance.X, instance.Y);
                 TriggerEntityFlash(instance.Id);
                 return true;
@@ -647,6 +752,10 @@ public class GameplayScreen : GameScreen
             if (!_gameStateManager.IsEntityHostile(entity)) continue;
 
             int aggroRange = _gameStateManager.GetEntityIntProperty(entity, "aggro_range", 5);
+            int alertTurns = _gameStateManager.GetEntityIntProperty(entity, "alert_turns", 0);
+            if (alertTurns > 0)
+                aggroRange *= 2;
+
             int distance = Math.Abs(entity.X - player.X) + Math.Abs(entity.Y - player.Y);
             if (distance <= aggroRange)
                 return true;
@@ -661,6 +770,14 @@ public class GameplayScreen : GameScreen
     {
         play.PlayerAP = _gameStateManager.GetEffectiveMaxAP();
         play.IsPlayerTurn = true;
+
+        // Poise regeneration when no hostiles nearby
+        if (!AnyHostileNearby())
+        {
+            int regenAmount = _gameStateManager.RegeneratePoise();
+            if (regenAmount > 0)
+                play.AddFloatingMessage($"+{regenAmount} Poise", Color.CornflowerBlue, play.PlayerEntity.X, play.PlayerEntity.Y);
+        }
     }
 
     /// <summary>
@@ -723,8 +840,12 @@ public class GameplayScreen : GameScreen
                 {
                     case EntityActionType.Move:
                         int moveDx = action.TargetX - entity.X;
+                        int moveDy = action.TargetY - entity.Y;
+                        // 4-directional facing: horizontal takes priority for sprite flip
                         if (moveDx < 0) play.EntityFacings[entity.Id] = Direction.Left;
                         else if (moveDx > 0) play.EntityFacings[entity.Id] = Direction.Right;
+                        else if (moveDy < 0) play.EntityFacings[entity.Id] = Direction.Up;
+                        else if (moveDy > 0) play.EntityFacings[entity.Id] = Direction.Down;
                         entity.X = action.TargetX;
                         entity.Y = action.TargetY;
                         break;
@@ -733,10 +854,27 @@ public class GameplayScreen : GameScreen
                         if (action.AttackTargetX == null)
                         {
                             var atk = _gameStateManager.GetEntityIntProperty(entity, "attack", 3);
-                            var damage = CombatHelper.CalculateDamage(atk, _gameStateManager.GetEffectiveDefense());
+                            int terrainBonus = GetDefenseBonusAt(play.PlayerEntity.X, play.PlayerEntity.Y);
+
+                            // Flanking: entity attacks player — check player facing
+                            Direction entityFacing = play.EntityFacings.TryGetValue(entity.Id, out var ef2) ? ef2 : Direction.Down;
+                            var attackPos = CombatHelper.GetAttackPosition(
+                                entity.X, entity.Y,
+                                play.PlayerEntity.X, play.PlayerEntity.Y,
+                                play.PlayerFacing);
+                            float posMult = CombatHelper.GetPositionMultiplier(attackPos);
+
+                            var damage = CombatHelper.CalculateDamage(atk, _gameStateManager.GetEffectiveDefense(), terrainBonus, posMult);
                             _gameStateManager.DamagePlayer(damage);
                             TriggerDamageFlash();
-                            play.AddFloatingMessage($"{entity.DefinitionName} hit you for {damage} damage!", Color.Red, play.PlayerEntity.X, play.PlayerEntity.Y);
+
+                            string posLabel = attackPos == AttackPosition.Backstab ? " (Backstab!)"
+                                            : attackPos == AttackPosition.Flank ? " (Flanked!)"
+                                            : "";
+                            play.AddFloatingMessage($"{entity.DefinitionName} hit you for {damage}{posLabel}!", Color.Red, play.PlayerEntity.X, play.PlayerEntity.Y);
+
+                            if (_gameStateManager.LastDamageBrokePoise)
+                                play.AddFloatingMessage("POISE BROKEN!", Color.OrangeRed, play.PlayerEntity.X, play.PlayerEntity.Y);
                         }
                         break;
                 }
@@ -749,6 +887,11 @@ public class GameplayScreen : GameScreen
                     return;
                 }
             }
+
+            // Alert tick-down after each entity's turn
+            int alertTurns = _gameStateManager.GetEntityIntProperty(entity, "alert_turns", 0);
+            if (alertTurns > 0)
+                _gameStateManager.SetEntityIntProperty(entity, "alert_turns", alertTurns - 1);
         }
 
         // Check player death after all entities have acted

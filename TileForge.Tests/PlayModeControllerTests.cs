@@ -1116,6 +1116,7 @@ public class PlayModeControllerTests
             s.Map.GetLayer("Ground").SetCell(6, 5, s.Map.Width, "lava");
         });
         controller.Enter();
+        controller.GameStateManager.State.Player.Poise = 0;
 
         SimulateFullMove(controller, Keys.Right);
 
@@ -1394,6 +1395,7 @@ public class PlayModeControllerTests
             });
         });
         controller.Enter();
+        controller.GameStateManager.State.Player.Poise = 0;
 
         SimulateFullMove(controller, Keys.Right);
 

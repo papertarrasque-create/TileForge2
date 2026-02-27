@@ -56,6 +56,10 @@ public class GroupEditor
     private Dropdown _dmgTypeDD;
     private Dropdown _dmgTickDD;
 
+    // Tile row 3
+    private Dropdown _defBonusDD;
+    private Dropdown _noiseLevelDD;
+
     // Entity row 2
     private Dropdown _entityTypeDD;
 
@@ -70,8 +74,9 @@ public class GroupEditor
     // Layout rects (computed by ComputeLayout)
     private Rectangle _typeRect, _solidRect, _playerRect;
     private Rectangle _passRect, _hazRect, _costRect, _dmgTypeRect, _dmgTickRect;
+    private Rectangle _defBonusRect, _noiseLevelRect;
     private Rectangle _entityTypeRect;
-    private int _row2Y;
+    private int _row2Y, _row3Y;
 
     // Signals
     public bool WantsCreateMap { get; private set; }
@@ -85,6 +90,10 @@ public class GroupEditor
     private static readonly string[] DmgTypeValues = { null, "fire", "poison", "spikes", "ice" };
     private static readonly string[] DmgTickItems = { "0", "1", "2", "5", "10", "25", "50" };
     private static readonly int[] DmgTickValues = { 0, 1, 2, 5, 10, 25, 50 };
+    private static readonly string[] DefBonusItems = { "0", "1", "2", "3", "5" };
+    private static readonly int[] DefBonusValues = { 0, 1, 2, 3, 5 };
+    private static readonly string[] NoiseLevelItems = { "0 (Silent)", "1 (Normal)", "2 (Loud)" };
+    private static readonly int[] NoiseLevelValues = { 0, 1, 2 };
     private static readonly string[] EntTypeItems = { "NPC", "Item", "Trap", "Trigger", "Interactable" };
     private static readonly string[] BehaviorItems = { "idle", "chase", "patrol", "chase_patrol" };
     private static readonly string[] EquipSlotItems = { "", "weapon", "armor", "accessory" };
@@ -93,8 +102,8 @@ public class GroupEditor
 
     private static readonly Dictionary<EntityType, string[]> Presets = new()
     {
-        { EntityType.NPC, new[] { "dialogue", "health", "attack", "defense", "behavior", "speed", "default_facing", "hostile", "hostile_flag", "friendly_flag", "aggro_range", "on_kill_set_flag", "on_kill_increment" } },
-        { EntityType.Item, new[] { "heal", "equip_slot", "equip_attack", "equip_defense", "equip_ap", "on_collect_set_flag", "on_collect_increment" } },
+        { EntityType.NPC, new[] { "dialogue", "health", "attack", "defense", "poise", "behavior", "speed", "default_facing", "hostile", "hostile_flag", "friendly_flag", "aggro_range", "on_kill_set_flag", "on_kill_increment" } },
+        { EntityType.Item, new[] { "heal", "equip_slot", "equip_attack", "equip_defense", "equip_ap", "equip_poise", "on_collect_set_flag", "on_collect_increment" } },
         { EntityType.Trap, new[] { "damage", "health", "on_kill_set_flag", "on_kill_increment" } },
         { EntityType.Trigger, new[] { "target_map", "target_x", "target_y" } },
         { EntityType.Interactable, new[] { "dialogue" } },
@@ -106,6 +115,7 @@ public class GroupEditor
         { "aggro_range", (1, 50) }, { "damage", (1, 9999) }, { "heal", (1, 9999) },
         { "target_x", (0, 999) }, { "target_y", (0, 999) },
         { "equip_attack", (0, 999) }, { "equip_defense", (0, 999) }, { "equip_ap", (0, 5) },
+        { "equip_poise", (0, 999) }, { "poise", (0, 9999) },
         { "speed", (1, 3) },
     };
 
@@ -144,6 +154,8 @@ public class GroupEditor
         _costDD = new Dropdown(CostItems, 1);
         _dmgTypeDD = new Dropdown(DmgTypeItems, 0);
         _dmgTickDD = new Dropdown(DmgTickItems, 0);
+        _defBonusDD = new Dropdown(DefBonusItems, 0);
+        _noiseLevelDD = new Dropdown(NoiseLevelItems, 1);
         _entityTypeDD = new Dropdown(EntTypeItems, 4);
     }
 
@@ -177,6 +189,8 @@ public class GroupEditor
         ed._costDD = new Dropdown(CostItems, FindClosestIndex(CostValues, group.MovementCost));
         ed._dmgTypeDD = new Dropdown(DmgTypeItems, FindDmgTypeIdx(group.DamageType));
         ed._dmgTickDD = new Dropdown(DmgTickItems, FindClosestIndex(DmgTickValues, group.DamagePerTick));
+        ed._defBonusDD = new Dropdown(DefBonusItems, FindClosestIndex(DefBonusValues, group.DefenseBonus));
+        ed._noiseLevelDD = new Dropdown(NoiseLevelItems, FindClosestIndex(NoiseLevelValues, group.NoiseLevel));
         ed._entityTypeDD = new Dropdown(EntTypeItems, (int)group.EntityType);
         ed.SetFocus(null, null);
         ed.RebuildPropertyFields(group.DefaultProperties);
@@ -286,6 +300,8 @@ public class GroupEditor
             _costDD.Update(input, _costRect, font, screenW, screenH);
             _dmgTypeDD.Update(input, _dmgTypeRect, font, screenW, screenH);
             _dmgTickDD.Update(input, _dmgTickRect, font, screenW, screenH);
+            _defBonusDD.Update(input, _defBonusRect, font, screenW, screenH);
+            _noiseLevelDD.Update(input, _noiseLevelRect, font, screenW, screenH);
         }
         else
         {
@@ -467,6 +483,13 @@ public class GroupEditor
 
             DrawLabel(sb, font, "Hit:", _dmgTickRect.X - (int)font.MeasureString("Hit:").X - 2, _row2Y, ddH);
             _dmgTickDD.Draw(sb, font, r, _dmgTickRect);
+
+            // Row 3: DefenseBonus + NoiseLevel
+            DrawLabel(sb, font, "Def:", _defBonusRect.X - (int)font.MeasureString("Def:").X - 2, _row3Y, ddH);
+            _defBonusDD.Draw(sb, font, r, _defBonusRect);
+
+            DrawLabel(sb, font, "Noise:", _noiseLevelRect.X - (int)font.MeasureString("Noise:").X - 2, _row3Y, ddH);
+            _noiseLevelDD.Draw(sb, font, r, _noiseLevelRect);
         }
         else
         {
@@ -507,6 +530,8 @@ public class GroupEditor
             _costDD.DrawPopup(sb, font, r);
             _dmgTypeDD.DrawPopup(sb, font, r);
             _dmgTickDD.DrawPopup(sb, font, r);
+            _defBonusDD.DrawPopup(sb, font, r);
+            _noiseLevelDD.DrawPopup(sb, font, r);
         }
         else
         {
@@ -543,6 +568,13 @@ public class GroupEditor
             _dmgTypeRect = new Rectangle(px, _row2Y, 90, ddH);
             px = _dmgTypeRect.Right + 4 + (int)font.MeasureString("Hit:").X + 2;
             _dmgTickRect = new Rectangle(px, _row2Y, 60, ddH);
+
+            // Row 3: DefenseBonus + NoiseLevel
+            _row3Y = _row2Y + PropRowH;
+            px = bounds.X + 8 + (int)font.MeasureString("Def:").X + 2;
+            _defBonusRect = new Rectangle(px, _row3Y, 60, ddH);
+            px = _defBonusRect.Right + 4 + (int)font.MeasureString("Noise:").X + 2;
+            _noiseLevelRect = new Rectangle(px, _row3Y, 100, ddH);
         }
         else
         {
@@ -564,8 +596,10 @@ public class GroupEditor
             }
         }
 
-        // Header height
+        // Header height: tiles get an extra row for Def/Noise
         int baseHeaderH = HeaderBaseH + PropRowH;
+        if (!isEntity)
+            baseHeaderH += PropRowH;
         int propH = isEntity && _propFields.Count > 0 ? _propFields.Count * PropRowH + 4 : 0;
         _headerHeight = baseHeaderH + propH;
     }
@@ -680,6 +714,8 @@ public class GroupEditor
             MovementCost = CostValues[_costDD.SelectedIndex],
             DamageType = DmgTypeValues[_dmgTypeDD.SelectedIndex],
             DamagePerTick = DmgTickValues[_dmgTickDD.SelectedIndex],
+            DefenseBonus = DefBonusValues[_defBonusDD.SelectedIndex],
+            NoiseLevel = NoiseLevelValues[_noiseLevelDD.SelectedIndex],
             EntityType = (EntityType)_entityTypeDD.SelectedIndex,
             DefaultProperties = isEntity ? CollectCurrentProperties() : new(),
         };
@@ -726,7 +762,8 @@ public class GroupEditor
     private bool AnyDropdownOpen()
     {
         if (_typeDD.IsOpen || _costDD.IsOpen || _dmgTypeDD.IsOpen ||
-            _dmgTickDD.IsOpen || _entityTypeDD.IsOpen)
+            _dmgTickDD.IsOpen || _defBonusDD.IsOpen || _noiseLevelDD.IsOpen ||
+            _entityTypeDD.IsOpen)
             return true;
         return _propFields.Any(pf => pf.Kind == PFK.Dropdown && pf.DD.IsOpen);
     }

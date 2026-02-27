@@ -39,6 +39,13 @@ public class GameStateManager
         // Backward-compat: old saves may not have MaxAP
         if (State.Player != null && State.Player.MaxAP <= 0)
             State.Player.MaxAP = 2;
+
+        // Backward-compat: old saves may not have MaxPoise
+        if (State.Player != null && State.Player.MaxPoise <= 0)
+        {
+            State.Player.MaxPoise = 20;
+            State.Player.Poise = 20;
+        }
     }
 
     /// Initialize from editor map data and groups.
@@ -68,6 +75,8 @@ public class GameStateManager
                 Health = 100,
                 MaxHealth = 100,
                 MaxAP = 2,
+                Poise = 20,
+                MaxPoise = 20,
             };
         }
 
@@ -178,9 +187,27 @@ public class GameStateManager
     }
 
     // Health operations
+
+    /// <summary>
+    /// True if the most recent DamagePlayer call reduced poise from above 0 to 0.
+    /// Checked by GameplayScreen to show "POISE BROKEN!" floating message.
+    /// </summary>
+    public bool LastDamageBrokePoise { get; private set; }
+
     public void DamagePlayer(int amount)
     {
-        State.Player.Health = Math.Max(0, State.Player.Health - amount);
+        LastDamageBrokePoise = false;
+        if (State.Player.Poise > 0)
+        {
+            int absorbed = Math.Min(State.Player.Poise, amount);
+            bool hadPoise = State.Player.Poise > 0;
+            State.Player.Poise -= absorbed;
+            amount -= absorbed;
+            if (hadPoise && State.Player.Poise <= 0)
+                LastDamageBrokePoise = true;
+        }
+        if (amount > 0)
+            State.Player.Health = Math.Max(0, State.Player.Health - amount);
     }
 
     public void HealPlayer(int amount)
@@ -370,6 +397,29 @@ public class GameStateManager
         return State.Player.MaxAP + GetEquipmentBonus("equip_ap");
     }
 
+    /// <summary>
+    /// Returns effective max poise: base MaxPoise + sum of equip_poise bonuses from all equipped items.
+    /// </summary>
+    public int GetEffectiveMaxPoise()
+    {
+        return State.Player.MaxPoise + GetEquipmentBonus("equip_poise");
+    }
+
+    /// <summary>
+    /// Regenerates poise by max(1, effectiveMaxPoise / 4), capped at effective max.
+    /// Returns the amount regenerated (0 if already full).
+    /// </summary>
+    public int RegeneratePoise()
+    {
+        int maxPoise = GetEffectiveMaxPoise();
+        if (State.Player.Poise >= maxPoise)
+            return 0;
+        int amount = Math.Max(1, maxPoise / 4);
+        int before = State.Player.Poise;
+        State.Player.Poise = Math.Min(maxPoise, State.Player.Poise + amount);
+        return State.Player.Poise - before;
+    }
+
     private int GetEquipmentBonus(string propertyKey)
     {
         int total = 0;
@@ -430,6 +480,65 @@ public class GameStateManager
             return false;
 
         return group.EntityType == EntityType.NPC || group.EntityType == EntityType.Trap;
+    }
+
+    /// <summary>
+    /// Attacks an entity with terrain and positional modifiers.
+    /// </summary>
+    public AttackResult AttackEntity(EntityInstance entity, int attackerAttack, int terrainBonus, float positionMultiplier)
+    {
+        int defense = GetEntityIntProperty(entity, "defense", 0);
+
+        // Entity poise: absorb damage through poise first
+        int entityPoise = GetEntityIntProperty(entity, "poise", 0);
+        int rawDamage = CombatHelper.CalculateDamage(attackerAttack, defense, terrainBonus, positionMultiplier);
+
+        int damage = rawDamage;
+        if (entityPoise > 0)
+        {
+            int absorbed = Math.Min(entityPoise, damage);
+            entityPoise -= absorbed;
+            damage -= absorbed;
+            SetEntityIntProperty(entity, "poise", entityPoise);
+        }
+
+        int currentHealth = GetEntityIntProperty(entity, "health", 0);
+        int newHealth = Math.Max(0, currentHealth - damage);
+        SetEntityIntProperty(entity, "health", newHealth);
+
+        bool killed = newHealth <= 0;
+        if (killed)
+        {
+            DeactivateEntity(entity);
+
+            if (entity.Properties.TryGetValue("on_kill_set_flag", out var killFlag)
+                && !string.IsNullOrEmpty(killFlag))
+                SetFlag(killFlag);
+            if (entity.Properties.TryGetValue("on_kill_increment", out var killVar)
+                && !string.IsNullOrEmpty(killVar))
+                IncrementVariable(killVar);
+        }
+
+        int maxHealth = GetEntityIntProperty(entity, "max_health", currentHealth);
+        string xpStr = "";
+        if (killed)
+        {
+            int xp = GetEntityIntProperty(entity, "xp", 0);
+            xpStr = xp > 0 ? $" (+{xp} XP)" : "";
+        }
+
+        string message = killed
+            ? $"{entity.DefinitionName} defeated!{xpStr}"
+            : $"Hit {entity.DefinitionName} for {rawDamage}! ({newHealth}/{maxHealth} HP)";
+
+        return new AttackResult
+        {
+            DamageDealt = rawDamage,
+            RemainingHealth = newHealth,
+            Killed = killed,
+            TargetName = entity.DefinitionName,
+            Message = message,
+        };
     }
 
     /// <summary>

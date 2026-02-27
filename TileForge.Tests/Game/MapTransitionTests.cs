@@ -157,6 +157,7 @@ public class MapTransitionTests
         var (map, groups) = BuildBasicMap();
         var manager = new GameStateManager();
         manager.Initialize(map, groups);
+        manager.State.Player.Poise = 0;
         manager.DamagePlayer(30);
 
         var targetMap = BuildLoadedMap();

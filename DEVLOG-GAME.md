@@ -12,6 +12,8 @@
 6. **ItemPropertyCache for cross-map inventory.** Entity properties cached at collection time so item-use works after map transitions.
 7. **Property bags everywhere.** `Dictionary<string, string>` provides extensibility without class proliferation.
 8. **Status effects are step-based.** Tick per player movement, not real-time. Deterministic and save-friendly.
+9. **Combat modifiers are additive/multiplicative layers.** Terrain defense adds to defense, position multiplies final damage. CombatHelper overloads preserve backward compat.
+10. **Poise absorbs at the DamagePlayer chokepoint.** All damage sources (combat, hazard, trap, status effect) automatically go through poise. No per-caller changes needed.
 
 ---
 
@@ -37,6 +39,7 @@
 | G11 | Multimap projects (MapDocumentState, MapTabBar, V2 format) | 1266 |
 | G12 | World Map Editor (WorldLayout grid, EdgeTransitionResolver) | 1371 |
 | G13 | AP Combat + Floating Messages (2 AP/turn, entity speed, auto-end-turn) | 1443 |
+| G14 | Tactical Combat (terrain defense, backstab/flanking, poise, noise/alertness) | 1507 |
 
 All phases: 0 failures, 0 regressions.
 
@@ -110,3 +113,18 @@ All phases: 0 failures, 0 regressions.
 - **GameMenuList struct** shared cursor/scroll navigation across 6 game screens. Replaced duplicated logic.
 - **ModalResizeHandler struct** eliminated ~110 lines of copy-paste between editors.
 - **TileRegistry/EntityRegistry removed** — superseded by `groupsByName` dictionaries in GameStateManager.
+
+### G14 — Tactical Combat
+- **Terrain defense bonus.** `TileGroup.DefenseBonus` (default 0) adds to defender's defense during damage calculation. `GetDefenseBonusAt` iterates map layers (same pattern as `GetMovementCostAt`). HUD shows `COVER:+n` in blue when nonzero.
+- **Backstab/Flanking positional combat.** `AttackPosition` enum (Front/Flank/Backstab) with `GetAttackPosition` using 4-directional entity facing. Backstab = 2.0x, Flank = 1.5x, Front = 1.0x damage multiplier. Floating messages: "BACKSTAB!" (OrangeRed), "Flanked!" (Orange). Both player and entity attacks use positioning.
+- **4-directional entity facing.** Extended `ExecuteEntityTurn` Move branch from horizontal-only to Up/Down/Left/Right. Horizontal still takes priority for sprite flip (Up/Down facing is logic-only). Prerequisite for meaningful flanking.
+- **CombatHelper overload chain.** `CalculateDamage(atk, def)` unchanged. Added `(atk, def, terrain)` and `(atk, def, terrain, mult)`. Existing call sites preserved; new overloads used by GameplayScreen combat paths.
+- **Poise regenerating shield.** `PlayerState.Poise/MaxPoise` (default 20). `DamagePlayer` absorbs through poise first — all callers (hazard, trap, status effect, entity attack) automatically get poise behavior. `LastDamageBrokePoise` transient flag for "POISE BROKEN!" message.
+- **Poise regeneration.** `RegeneratePoise()` restores `max(1, maxPoise/4)` per turn when no hostiles nearby. Called in `BeginPlayerTurn`. Creates Moonring-style risk/reward: press attack or retreat to recover.
+- **Entity poise via property bag.** Entities with `poise` property get a poise buffer in `AttackEntity(entity, atk, terrain, mult)`. Poise absorbs damage before health. No save compat needed (property bag is transient per map load).
+- **Equipment poise.** `equip_poise` property on items, `GetEffectiveMaxPoise()` sums base + equipment bonuses. Same `GetEquipmentBonus` pattern as attack/defense/AP.
+- **Noise/Alertness stealth system.** `TileGroup.NoiseLevel` (0=silent, 1=normal default, 2=loud). `PropagateNoise` after each player move: noise radius = 3 * noiseLevel. Dormant entities outside aggro range but within noise radius get `alert_turns = 3`.
+- **Alert doubles aggro range.** `EntityAI.DecideChase`/`DecideChasePatrol` read `alert_turns` from entity properties. Alert-aware `AnyHostileNearby` prevents auto-end-turn. Alert decrements each entity turn.
+- **GroupEditor tile row 3.** Added "Def:" dropdown (0/1/2/3/5) and "Noise:" dropdown (Silent/Normal/Loud) for tile properties. NPC preset gains `poise`, Item preset gains `equip_poise`.
+- **Save backward compat.** `LoadState` fixes zero-MaxPoise from old saves (sets 20/20). Poise bar always visible in HUD (blue > 50%, yellow > 25%, red <= 25%).
+- **Poise bar HUD.** Blue bar below health bar (same dimensions). Color shifts blue/yellow/red by percentage. All subsequent HUD elements shifted down accordingly.

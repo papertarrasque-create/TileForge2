@@ -77,6 +77,7 @@ public class StatusEffectProcessingTests
     public void ProcessStatusEffects_AppliesDamage()
     {
         var mgr = CreateInitializedManager();
+        mgr.State.Player.Poise = 0;
         mgr.ApplyStatusEffect("fire", 3, 5, 1.0f);
         int healthBefore = mgr.State.Player.Health;
 
@@ -139,6 +140,7 @@ public class StatusEffectProcessingTests
     public void ProcessStatusEffects_MultipleEffects_AllProcessed()
     {
         var mgr = CreateInitializedManager();
+        mgr.State.Player.Poise = 0;
         mgr.ApplyStatusEffect("fire", 3, 5, 1.0f);
         mgr.ApplyStatusEffect("poison", 6, 3, 1.0f);
         int healthBefore = mgr.State.Player.Health;
@@ -153,6 +155,7 @@ public class StatusEffectProcessingTests
     public void ProcessStatusEffects_PlayerDiesFromEffect()
     {
         var mgr = CreateInitializedManager();
+        mgr.State.Player.Poise = 0;
         mgr.DamagePlayer(99); // Health = 1
         mgr.ApplyStatusEffect("fire", 3, 5, 1.0f);
 

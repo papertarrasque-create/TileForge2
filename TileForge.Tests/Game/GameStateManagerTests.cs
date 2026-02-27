@@ -116,6 +116,7 @@ public class GameStateManagerTests
     public void DamagePlayer_ReducesHealth()
     {
         var manager = new GameStateManager();
+        manager.State.Player.Poise = 0;
 
         manager.DamagePlayer(30);
 
@@ -126,6 +127,7 @@ public class GameStateManagerTests
     public void DamagePlayer_ClampsAtZero()
     {
         var manager = new GameStateManager();
+        manager.State.Player.Poise = 0;
 
         manager.DamagePlayer(999);
 
@@ -136,6 +138,7 @@ public class GameStateManagerTests
     public void HealPlayer_IncreasesHealth()
     {
         var manager = new GameStateManager();
+        manager.State.Player.Poise = 0;
         manager.DamagePlayer(50);
 
         manager.HealPlayer(20);
@@ -166,6 +169,7 @@ public class GameStateManagerTests
     public void IsPlayerAlive_FalseWhenHealthZero()
     {
         var manager = new GameStateManager();
+        manager.State.Player.Poise = 0;
         manager.DamagePlayer(100);
 
         Assert.False(manager.IsPlayerAlive());

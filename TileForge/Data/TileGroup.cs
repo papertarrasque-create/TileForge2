@@ -26,6 +26,8 @@ public class TileGroup
     public float MovementCost { get; set; } = 1.0f;
     public string DamageType { get; set; }
     public int DamagePerTick { get; set; }
+    public int DefenseBonus { get; set; }
+    public int NoiseLevel { get; set; } = 1;
 
     // G1.2 — Entity type (for Entity groups)
     public EntityType EntityType { get; set; } = EntityType.Interactable;

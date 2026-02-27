@@ -40,6 +40,11 @@ public static class EntityAI
         if (entity.Properties.TryGetValue("aggro_range", out var rangeStr) && int.TryParse(rangeStr, out var r))
             aggroRange = r;
 
+        // Alert doubles effective aggro range
+        if (entity.Properties.TryGetValue("alert_turns", out var alertStr)
+            && int.TryParse(alertStr, out var alertTurns) && alertTurns > 0)
+            aggroRange *= 2;
+
         int dx = state.Player.X - entity.X;
         int dy = state.Player.Y - entity.Y;
         int distance = Math.Abs(dx) + Math.Abs(dy);  // Manhattan distance
@@ -126,6 +131,11 @@ public static class EntityAI
         int aggroRange = 5;
         if (entity.Properties.TryGetValue("aggro_range", out var rangeStr) && int.TryParse(rangeStr, out var r))
             aggroRange = r;
+
+        // Alert doubles effective aggro range
+        if (entity.Properties.TryGetValue("alert_turns", out var alertStr)
+            && int.TryParse(alertStr, out var alertTurns) && alertTurns > 0)
+            aggroRange *= 2;
 
         int dx = state.Player.X - entity.X;
         int dy = state.Player.Y - entity.Y;

@@ -5,9 +5,9 @@ Evolve TileForge's embedded play mode into a full RPG game runtime. The editor r
 
 ---
 
-## Completed Phases (G1–G13 + Editors + UI Overhaul)
+## Completed Phases (G1–G14 + Editors + UI Overhaul)
 
-1443 tests, 0 failures. All systems implemented and tested.
+1507 tests, 0 failures. All systems implemented and tested.
 
 | Phase | What | Tests |
 |-------|------|-------|
@@ -29,6 +29,7 @@ Evolve TileForge's embedded play mode into a full RPG game runtime. The editor r
 | G11 | Multimap projects — MapDocumentState, MapTabBar, ProjectFile V2, pre-exported maps | 1266 |
 | G12 | World Map Editor — WorldLayout grid, EdgeTransitionResolver, custom spawn/exit points | 1371 |
 | G13 | AP Combat + Floating Messages — 2 AP/turn, directional attack, entity speed, auto-end-turn, floating text | 1443 |
+| G14 | Tactical Combat — terrain defense, backstab/flanking, poise shield, noise/alertness | 1507 |
 
 ---
 
@@ -43,7 +44,7 @@ Evolve TileForge's embedded play mode into a full RPG game runtime. The editor r
 
 ## Future Phases
 
-### Extension Points (Built into G7/G13)
+### Extension Points (Built into G7/G13/G14)
 
 Seams enabling future systems with zero refactoring:
 
@@ -68,7 +69,7 @@ TileForge/Game/
   ├── TileRegistry.cs            # Tile property lookups
   ├── EntityRegistry.cs          # Entity type lookups
   ├── GameState.cs               # Central serializable state
-  ├── PlayerState.cs             # Position, health, inventory, equipment, effects
+  ├── PlayerState.cs             # Position, health, poise, inventory, equipment, effects
   ├── EquipmentSlot.cs           # Weapon, Armor, Accessory enum
   ├── Direction.cs               # Up/Down/Left/Right
   ├── EntityInstance.cs          # Runtime entity with properties + active flag
@@ -83,11 +84,11 @@ TileForge/Game/
   ├── SaveManager.cs             # Slot-based save/load
   ├── StatusEffect.cs            # Burn/poison/ice/spikes
   ├── DialogueData.cs            # Dialogue nodes + choices (EditorX/EditorY)
-  ├── CombatHelper.cs            # CalculateDamage + AttackResult
+  ├── CombatHelper.cs            # CalculateDamage (terrain+flanking), AttackPosition, AttackResult
   ├── IPathfinder.cs             # Pathfinding interface
   ├── SimplePathfinder.cs        # Axis-priority + Bresenham LOS
   ├── EntityAction.cs            # EntityActionType enum + data
-  ├── EntityAI.cs                # Static AI (idle/chase/patrol/chase_patrol)
+  ├── EntityAI.cs                # Static AI (idle/chase/patrol/chase_patrol) + alert-aware aggro
   ├── FloatingMessage.cs         # Floating text: color, tile pos, timer, drift
   ├── GamePlayContext.cs         # Shared context for GameplayScreen construction
   ├── EdgeTransitionResolver.cs  # WorldLayout edge + exit point resolution

@@ -538,7 +538,7 @@ public class APCombatTests
         var map = CreateMap(10, 10);
         var state = new GameState
         {
-            Player = new PlayerState { X = 5, Y = 5, Health = 100, MaxHealth = 100, Defense = 0 },
+            Player = new PlayerState { X = 5, Y = 5, Health = 100, MaxHealth = 100, Defense = 0, Poise = 0 },
         };
         var enemy = new EntityInstance
         {
