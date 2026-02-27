@@ -37,6 +37,7 @@ public class TileForgeGame : Microsoft.Xna.Framework.Game
     private QuestEditor _questEditor;
     private DialoguePanel _dialoguePanel;
     private DialogueTreeEditor _dialogueEditor;
+    private WorldMapEditor _worldMapEditor;
     private MapTabBar _mapTabBar;
 
     // Central state
@@ -56,91 +57,136 @@ public class TileForgeGame : Microsoft.Xna.Framework.Game
 
     // Pending new group layer context
     private string _pendingNewGroupLayer;
+    private bool _firstUpdateLogged;
+    private bool _firstDrawLogged;
 
     public TileForgeGame()
     {
+        DebugLog.Log("Constructor: start");
         _graphics = new GraphicsDeviceManager(this);
         Content.RootDirectory = "Content";
         IsMouseVisible = true;
+        DebugLog.Log("Constructor: done");
     }
 
     protected override void Initialize()
     {
-        _graphics.PreferredBackBufferWidth = LayoutConstants.DefaultWindowWidth;
-        _graphics.PreferredBackBufferHeight = LayoutConstants.DefaultWindowHeight;
-        _graphics.ApplyChanges();
-        Window.Title = "TileForge";
-        Window.AllowUserResizing = true;
-        Window.TextInput += OnTextInput;
-        Window.FileDrop += OnFileDrop;
-        Window.ClientSizeChanged += OnResize;
-        base.Initialize();
+        DebugLog.Log("Initialize: start");
+        try
+        {
+            _graphics.PreferredBackBufferWidth = LayoutConstants.DefaultWindowWidth;
+            _graphics.PreferredBackBufferHeight = LayoutConstants.DefaultWindowHeight;
+            _graphics.ApplyChanges();
+            DebugLog.Log("Initialize: graphics applied");
+            Window.Title = "TileForge";
+            Window.AllowUserResizing = true;
+            Window.TextInput += OnTextInput;
+            Window.FileDrop += OnFileDrop;
+            Window.ClientSizeChanged += OnResize;
+            DebugLog.Log("Initialize: calling base.Initialize()");
+            base.Initialize();
+            DebugLog.Log("Initialize: done");
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Error("Initialize failed", ex);
+            throw;
+        }
     }
 
     protected override void LoadContent()
     {
-        _spriteBatch = new SpriteBatch(GraphicsDevice);
-        _font = Content.Load<SpriteFont>("Font");
-        _renderer = new Renderer(GraphicsDevice);
-        _scissorRasterizer = new RasterizerState { ScissorTestEnable = true };
+        DebugLog.Log("LoadContent: start");
+        try
+        {
+            _spriteBatch = new SpriteBatch(GraphicsDevice);
+            _font = Content.Load<SpriteFont>("Font");
+            _renderer = new Renderer(GraphicsDevice);
+            _scissorRasterizer = new RasterizerState { ScissorTestEnable = true };
+            DebugLog.Log("LoadContent: renderer + font loaded");
 
-        _menuBar = new MenuBar(EditorMenus.CreateMenus());
-        _toolbarRibbon = new ToolbarRibbon();
-        _mapTabBar = new MapTabBar();
-        _canvas = new MapCanvas();
-        _statusBar = new StatusBar();
-        _mapPanel = new MapPanel();
-        _tilePalettePanel = new TilePalettePanel();
-        _questPanel = new QuestPanel();
-        _dialoguePanel = new DialoguePanel();
-        _panelDock = new PanelDock();
-        _panelDock.Panels.Add(_mapPanel);
-        _panelDock.Panels.Add(_questPanel);
-        _panelDock.Panels.Add(_dialoguePanel);
-        _panelDock.Panels.Add(_tilePalettePanel);
+            _menuBar = new MenuBar(EditorMenus.CreateMenus());
+            _toolbarRibbon = new ToolbarRibbon();
+            _mapTabBar = new MapTabBar();
+            _canvas = new MapCanvas();
+            _statusBar = new StatusBar();
+            _mapPanel = new MapPanel();
+            _tilePalettePanel = new TilePalettePanel();
+            _questPanel = new QuestPanel();
+            _dialoguePanel = new DialoguePanel();
+            _panelDock = new PanelDock();
+            _panelDock.Panels.Add(_mapPanel);
+            _panelDock.Panels.Add(_questPanel);
+            _panelDock.Panels.Add(_dialoguePanel);
+            _panelDock.Panels.Add(_tilePalettePanel);
+            DebugLog.Log("LoadContent: UI panels created");
 
-        _state = new EditorState { ActiveTool = new BrushTool() };
+            _state = new EditorState { ActiveTool = new BrushTool() };
+            DebugLog.Log("LoadContent: EditorState created");
 
-        _dialogManager = new DialogManager();
-        _projectManager = new ProjectManager(_state, GraphicsDevice, Window,
-            _canvas, _panelDock, _mapPanel, GetCanvasBounds, _dialogManager.Show);
-        _playMode = new PlayModeController(_state, _canvas, GetCanvasBounds);
-        _inputRouter = new InputRouter(_state,
-            _projectManager.Save, _projectManager.Open,
-            EnterPlayMode, ExitPlayMode, Exit, ResizeMap,
-            _projectManager.OpenRecent, NewProject, ShowExportDialog,
-            () => _canvas.Minimap.Toggle());
-        _menuDispatcher = new MenuActionDispatcher(
-            NewProject, _projectManager.Open, _projectManager.OpenRecent,
-            _projectManager.Save, _projectManager.Save, ShowExportDialog, Exit,
-            _state.UndoStack.Undo, _state.UndoStack.Redo,
-            () => { /* copy: handled by InputRouter */ },
-            () => { /* paste: handled by InputRouter */ },
-            () => { /* delete: handled by InputRouter */ },
-            ResizeMap,
-            () => _canvas.Minimap.Toggle(),
-            () => _state.Grid.CycleMode(),
-            () => { var l = _state.ActiveLayer; if (l != null) l.Visible = !l.Visible; },
-            () => { /* next layer: handled by InputRouter */ },
-            () => _state.ActiveTool = new BrushTool(),
-            () => _state.ActiveTool = new EraserTool(),
-            () => _state.ActiveTool = new FillTool(),
-            () => _state.ActiveTool = new EntityTool(),
-            () => _state.ActiveTool = new PickerTool(),
-            () => _state.ActiveTool = new SelectionTool(),
-            () => { if (_state.IsPlayMode) ExitPlayMode(); else EnterPlayMode(); },
-            () => _dialogManager.Show(new ShortcutsDialog(), _ => { }),
-            () => _dialogManager.Show(new AboutDialog(), _ => { }));
-        _projectContext = new ProjectContext(
-            () => _projectManager.ProjectPath,
-            () => _state.MapDocuments.Select(d => d.Name).ToList());
-        _autoSave = new AutoSaveManager(_state,
-            () => _projectManager.ProjectPath, _projectManager.SaveToPath);
+            _dialogManager = new DialogManager();
+            _projectManager = new ProjectManager(_state, GraphicsDevice, Window,
+                _canvas, _panelDock, _mapPanel, GetCanvasBounds, _dialogManager.Show);
+            _playMode = new PlayModeController(_state, _canvas, GetCanvasBounds);
+            _inputRouter = new InputRouter(_state,
+                _projectManager.Save, _projectManager.Open,
+                EnterPlayMode, ExitPlayMode, Exit, ResizeMap,
+                _projectManager.OpenRecent, NewProject, ShowExportDialog,
+                () => _canvas.Minimap.Toggle());
+            _menuDispatcher = new MenuActionDispatcher(new Dictionary<(int, int), Action>
+            {
+                { (EditorMenus.FileMenu, EditorMenus.File_New), NewProject },
+                { (EditorMenus.FileMenu, EditorMenus.File_Open), _projectManager.Open },
+                { (EditorMenus.FileMenu, EditorMenus.File_OpenRecent), _projectManager.OpenRecent },
+                { (EditorMenus.FileMenu, EditorMenus.File_Save), _projectManager.Save },
+                { (EditorMenus.FileMenu, EditorMenus.File_SaveAs), _projectManager.Save },
+                { (EditorMenus.FileMenu, EditorMenus.File_Export), ShowExportDialog },
+                { (EditorMenus.FileMenu, EditorMenus.File_Exit), Exit },
+                { (EditorMenus.EditMenu, EditorMenus.Edit_Undo), _state.UndoStack.Undo },
+                { (EditorMenus.EditMenu, EditorMenus.Edit_Redo), _state.UndoStack.Redo },
+                { (EditorMenus.EditMenu, EditorMenus.Edit_Copy), () => { /* handled by InputRouter */ } },
+                { (EditorMenus.EditMenu, EditorMenus.Edit_Paste), () => { /* handled by InputRouter */ } },
+                { (EditorMenus.EditMenu, EditorMenus.Edit_Delete), () => { /* handled by InputRouter */ } },
+                { (EditorMenus.EditMenu, EditorMenus.Edit_ResizeMap), ResizeMap },
+                { (EditorMenus.ViewMenu, EditorMenus.View_ToggleMinimap), () => _canvas.Minimap.Toggle() },
+                { (EditorMenus.ViewMenu, EditorMenus.View_CycleGrid), () => _state.Grid.CycleMode() },
+                { (EditorMenus.ViewMenu, EditorMenus.View_ToggleLayerVisibility), () => { var l = _state.ActiveLayer; if (l != null) l.Visible = !l.Visible; } },
+                { (EditorMenus.ViewMenu, EditorMenus.View_NextLayer), () => { /* handled by InputRouter */ } },
+                { (EditorMenus.ViewMenu, EditorMenus.View_WorldMap), OpenWorldMap },
+                { (EditorMenus.ToolsMenu, EditorMenus.Tools_Brush), () => _state.ActiveTool = new BrushTool() },
+                { (EditorMenus.ToolsMenu, EditorMenus.Tools_Eraser), () => _state.ActiveTool = new EraserTool() },
+                { (EditorMenus.ToolsMenu, EditorMenus.Tools_Fill), () => _state.ActiveTool = new FillTool() },
+                { (EditorMenus.ToolsMenu, EditorMenus.Tools_Entity), () => _state.ActiveTool = new EntityTool() },
+                { (EditorMenus.ToolsMenu, EditorMenus.Tools_Picker), () => _state.ActiveTool = new PickerTool() },
+                { (EditorMenus.ToolsMenu, EditorMenus.Tools_Selection), () => _state.ActiveTool = new SelectionTool() },
+                { (EditorMenus.PlayMenu, EditorMenus.Play_PlayStop), () => { if (_state.IsPlayMode) ExitPlayMode(); else EnterPlayMode(); } },
+                { (EditorMenus.HelpMenu, EditorMenus.Help_Shortcuts), () => _dialogManager.Show(new ShortcutsDialog(), _ => { }) },
+                { (EditorMenus.HelpMenu, EditorMenus.Help_About), () => _dialogManager.Show(new AboutDialog(), _ => { }) },
+            });
+            _projectContext = new ProjectContext(
+                () => _projectManager.ProjectPath,
+                () => _state.MapDocuments.Select(d => d.Name).ToList());
+            _autoSave = new AutoSaveManager(_state,
+                () => _projectManager.ProjectPath, _projectManager.SaveToPath);
+            DebugLog.Log("LoadContent: all managers created");
 
-        string defaultProject = Path.GetFullPath(Path.Combine(
-            AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "TutorialProject", "TestCavernDungeon.tileforge"));
-        if (File.Exists(defaultProject))
-            LoadWithRecoveryCheck(defaultProject);
+            string defaultProject = Path.GetFullPath(Path.Combine(
+                AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "TutorialProject", "TestCavernDungeon.tileforge"));
+            DebugLog.Log($"LoadContent: default project path = {defaultProject}, exists = {File.Exists(defaultProject)}");
+            if (File.Exists(defaultProject))
+            {
+                DebugLog.Log("LoadContent: loading default project");
+                LoadWithRecoveryCheck(defaultProject);
+                DebugLog.Log("LoadContent: default project loaded");
+            }
+
+            DebugLog.Log("LoadContent: done");
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Error("LoadContent failed", ex);
+            throw;
+        }
     }
 
     private void OnResize(object sender, EventArgs e)
@@ -155,6 +201,7 @@ public class TileForgeGame : Microsoft.Xna.Framework.Game
         if (_dialogManager.IsActive) { _dialogManager.OnTextInput(e.Character); return; }
         if (_questEditor != null) { _questEditor.OnTextInput(e.Character); return; }
         if (_dialogueEditor != null) { _dialogueEditor.OnTextInput(e.Character); return; }
+        if (_worldMapEditor != null) { _worldMapEditor.OnTextInput(e.Character); return; }
         _groupEditor?.OnTextInput(e.Character);
     }
 
@@ -267,6 +314,22 @@ public class TileForgeGame : Microsoft.Xna.Framework.Game
         });
     }
 
+    private void OpenWorldMap()
+    {
+        if (_state.MapDocuments.Count == 0) return;
+        _worldMapEditor = WorldMapEditor.Open(_state.WorldLayout, _state.MapDocuments);
+    }
+
+    private void HandleWorldMapEditorResult()
+    {
+        if (_worldMapEditor == null) return;
+        if (!_worldMapEditor.WasCancelled && _worldMapEditor.Result != null)
+        {
+            _state.WorldLayout = _worldMapEditor.Result;
+            _state.MarkDirty();
+        }
+    }
+
     private Rectangle GetCanvasBounds()
     {
         int screenW = _graphics.PreferredBackBufferWidth;
@@ -284,6 +347,9 @@ public class TileForgeGame : Microsoft.Xna.Framework.Game
 
     protected override void Update(GameTime gameTime)
     {
+        if (!_firstUpdateLogged) { DebugLog.Log("Update: first frame"); _firstUpdateLogged = true; }
+        try
+        {
         var keyboard = Keyboard.GetState();
         var mouse = Mouse.GetState();
         int screenH = _graphics.PreferredBackBufferHeight;
@@ -309,6 +375,16 @@ public class TileForgeGame : Microsoft.Xna.Framework.Game
             _dialogueEditor.Update(mouse, _prevMouse, keyboard, _prevKeyboard,
                 GetCanvasBounds(), _state.Dialogues, _font, dScreenW, screenH);
             if (_dialogueEditor.IsComplete) { HandleDialogueEditorResult(); _dialogueEditor = null; }
+            FinishUpdate(keyboard, mouse, gameTime); return;
+        }
+
+        // WorldMapEditor priority (modal overlay)
+        if (_worldMapEditor != null)
+        {
+            int wScreenW = _graphics.PreferredBackBufferWidth;
+            _worldMapEditor.Update(mouse, _prevMouse, keyboard, _prevKeyboard,
+                GetCanvasBounds(), _state.MapDocuments, _font, wScreenW, screenH);
+            if (_worldMapEditor.IsComplete) { HandleWorldMapEditorResult(); _worldMapEditor = null; }
             FinishUpdate(keyboard, mouse, gameTime); return;
         }
 
@@ -343,7 +419,7 @@ public class TileForgeGame : Microsoft.Xna.Framework.Game
         // Menu bar (highest priority after modals)
         int screenW = _graphics.PreferredBackBufferWidth;
         UpdateMenuState();
-        var menuResult = _menuBar.Update(mouse, _prevMouse, screenW);
+        var menuResult = _menuBar.Update(mouse, _prevMouse, screenW, _font);
         if (menuResult.Menu >= 0)
             _menuDispatcher.Dispatch(menuResult.Menu, menuResult.Item);
         if (_menuBar.IsMenuOpen)
@@ -373,6 +449,12 @@ public class TileForgeGame : Microsoft.Xna.Framework.Game
         HandleRibbonActions();
 
         FinishUpdate(keyboard, mouse, gameTime);
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Error("Update failed", ex);
+            throw;
+        }
     }
 
     private void FinishUpdate(KeyboardState keyboard, MouseState mouse, GameTime gameTime)
@@ -810,46 +892,57 @@ public class TileForgeGame : Microsoft.Xna.Framework.Game
 
     protected override void Draw(GameTime gameTime)
     {
-        GraphicsDevice.Clear(LayoutConstants.WindowClearColor);
-        int screenW = _graphics.PreferredBackBufferWidth;
-        int screenH = _graphics.PreferredBackBufferHeight;
-        var canvasBounds = GetCanvasBounds();
-
-        // Pass 1: Scissor-clipped content
-        GraphicsDevice.ScissorRectangle = canvasBounds;
-        _spriteBatch.Begin(samplerState: SamplerState.PointClamp, rasterizerState: _scissorRasterizer);
-        if (_state.IsPlayMode)
+        if (!_firstDrawLogged) { DebugLog.Log("Draw: first frame"); _firstDrawLogged = true; }
+        try
         {
-            _playMode.Draw(_spriteBatch, _font, _renderer, canvasBounds);
-        }
-        else
-        {
-            _canvas.Draw(_spriteBatch, _state, _renderer, canvasBounds);
-            if (_groupEditor != null)
-                _groupEditor.Draw(_spriteBatch, _font, _state, _renderer, canvasBounds, gameTime);
-            if (_questEditor != null)
-                _questEditor.Draw(_spriteBatch, _font, _renderer, canvasBounds, gameTime);
-            if (_dialogueEditor != null)
-                _dialogueEditor.Draw(_spriteBatch, _font, _renderer, canvasBounds, gameTime);
-        }
-        _spriteBatch.End();
+            GraphicsDevice.Clear(LayoutConstants.WindowClearColor);
+            int screenW = _graphics.PreferredBackBufferWidth;
+            int screenH = _graphics.PreferredBackBufferHeight;
+            var canvasBounds = GetCanvasBounds();
 
-        // Pass 2: UI chrome -- no clipping
-        _spriteBatch.Begin(samplerState: SamplerState.PointClamp);
-        if (!_state.IsPlayMode)
-        {
-            _panelDock.Draw(_spriteBatch, _font, _state, _renderer);
-            _menuBar.Draw(_spriteBatch, _font, _renderer, screenW);
-            _mapTabBar.Draw(_spriteBatch, _font, _renderer, _state, screenW);
-        }
-        _toolbarRibbon.Draw(_spriteBatch, _font, _state, _renderer, screenW);
-        _statusBar.Draw(_spriteBatch, _font, _state, _renderer, _canvas, screenW, screenH);
-        // Menu submenus drawn last (on top of everything)
-        if (!_state.IsPlayMode)
-            _menuBar.DrawSubmenu(_spriteBatch, _font, _renderer);
-        _dialogManager.Draw(_spriteBatch, _font, _renderer, screenW, screenH, gameTime);
-        _spriteBatch.End();
+            // Pass 1: Scissor-clipped content
+            GraphicsDevice.ScissorRectangle = canvasBounds;
+            _spriteBatch.Begin(samplerState: SamplerState.PointClamp, rasterizerState: _scissorRasterizer);
+            if (_state.IsPlayMode)
+            {
+                _playMode.Draw(_spriteBatch, _font, _renderer, canvasBounds);
+            }
+            else
+            {
+                _canvas.Draw(_spriteBatch, _state, _renderer, canvasBounds);
+                if (_groupEditor != null)
+                    _groupEditor.Draw(_spriteBatch, _font, _state, _renderer, canvasBounds, gameTime);
+                if (_questEditor != null)
+                    _questEditor.Draw(_spriteBatch, _font, _renderer, canvasBounds, gameTime);
+                if (_dialogueEditor != null)
+                    _dialogueEditor.Draw(_spriteBatch, _font, _renderer, canvasBounds, gameTime);
+                if (_worldMapEditor != null)
+                    _worldMapEditor.Draw(_spriteBatch, _font, _renderer, canvasBounds, gameTime);
+            }
+            _spriteBatch.End();
 
-        base.Draw(gameTime);
+            // Pass 2: UI chrome -- no clipping
+            _spriteBatch.Begin(samplerState: SamplerState.PointClamp);
+            if (!_state.IsPlayMode)
+            {
+                _panelDock.Draw(_spriteBatch, _font, _state, _renderer);
+                _menuBar.Draw(_spriteBatch, _font, _renderer, screenW);
+                _mapTabBar.Draw(_spriteBatch, _font, _renderer, _state, screenW);
+            }
+            _toolbarRibbon.Draw(_spriteBatch, _font, _state, _renderer, screenW);
+            _statusBar.Draw(_spriteBatch, _font, _state, _renderer, _canvas, screenW, screenH);
+            // Menu submenus drawn last (on top of everything)
+            if (!_state.IsPlayMode)
+                _menuBar.DrawSubmenu(_spriteBatch, _font, _renderer);
+            _dialogManager.Draw(_spriteBatch, _font, _renderer, screenW, screenH, gameTime);
+            _spriteBatch.End();
+
+            base.Draw(gameTime);
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Error("Draw failed", ex);
+            throw;
+        }
     }
 }

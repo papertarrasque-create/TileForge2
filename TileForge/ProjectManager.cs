@@ -8,6 +8,7 @@ using DojoUI;
 using TileForge.Data;
 using TileForge.Editor;
 using TileForge.Game;
+using TileForge.Infrastructure;
 using TileForge.UI;
 
 namespace TileForge;
@@ -22,6 +23,7 @@ public class ProjectManager
     private readonly MapPanel _mapPanel;
     private readonly Func<Rectangle> _getCanvasBounds;
     private readonly Action<IDialog, Action<IDialog>> _showDialog;
+    private readonly IProjectFileService _projectFileService;
 
     private string _projectPath;
     private readonly RecentFilesManager _recentFiles;
@@ -32,7 +34,8 @@ public class ProjectManager
     public ProjectManager(EditorState state, GraphicsDevice graphicsDevice, GameWindow window,
                           MapCanvas canvas, PanelDock panelDock, MapPanel mapPanel,
                           Func<Rectangle> getCanvasBounds,
-                          Action<IDialog, Action<IDialog>> showDialog)
+                          Action<IDialog, Action<IDialog>> showDialog,
+                          IProjectFileService projectFileService = null)
     {
         _state = state;
         _graphicsDevice = graphicsDevice;
@@ -42,6 +45,7 @@ public class ProjectManager
         _mapPanel = mapPanel;
         _getCanvasBounds = getCanvasBounds;
         _showDialog = showDialog;
+        _projectFileService = projectFileService ?? new DefaultProjectFileService();
 
         _recentFiles = new RecentFilesManager();
 
@@ -137,6 +141,7 @@ public class ProjectManager
                 _state.SelectedGroupName = playerGroup.Name;
                 _state.Quests = new List<QuestDefinition>();
                 _state.Dialogues = new List<DialogueData>();
+                _state.WorldLayout = null;
                 _state.ClearDirty();
                 _projectPath = null;
 
@@ -204,7 +209,7 @@ public class ProjectManager
     {
         try
         {
-            var data = ProjectFile.Load(path);
+            var data = _projectFileService.Load(path);
 
             // Load spritesheet
             _state.Sheet = new SpriteSheet(_graphicsDevice, data.Spritesheet.Path,
@@ -301,6 +306,9 @@ public class ProjectManager
             // Load dialogue definitions from dialogues/*.json
             _state.Dialogues = DialogueFileManager.LoadAll(projectDir);
 
+            // Restore world layout (null if not configured)
+            _state.WorldLayout = data.WorldLayout;
+
             // Select first group if available
             if (_state.Groups.Count > 0 && _state.SelectedGroupName == null)
                 _state.SelectedGroupName = _state.Groups[0].Name;
@@ -324,10 +332,22 @@ public class ProjectManager
     public void CreateNewMap(string name, int width, int height)
     {
         string uniqueName = EnsureUniqueName(name);
+        var map = new MapData(width, height);
+
+        // Copy layer structure from the active map so custom layers carry over
+        var sourceMap = _state.Map;
+        if (sourceMap != null && sourceMap.Layers.Count > 0)
+        {
+            map.Layers.Clear();
+            foreach (var srcLayer in sourceMap.Layers)
+                map.Layers.Add(new Data.MapLayer(srcLayer.Name, width, height));
+            map.EntityRenderOrder = System.Math.Min(sourceMap.EntityRenderOrder, map.Layers.Count - 1);
+        }
+
         var doc = new MapDocumentState
         {
             Name = uniqueName,
-            Map = new MapData(width, height),
+            Map = map,
         };
         _state.MapDocuments.Add(doc);
         _state.ActiveMapIndex = _state.MapDocuments.Count - 1;
@@ -344,7 +364,11 @@ public class ProjectManager
         if (_state.MapDocuments.Count <= 1) return;
         if (index < 0 || index >= _state.MapDocuments.Count) return;
 
+        string deletedName = _state.MapDocuments[index].Name;
         _state.MapDocuments.RemoveAt(index);
+
+        // Remove from WorldLayout
+        _state.WorldLayout?.Maps?.Remove(deletedName);
         if (_state.ActiveMapIndex >= _state.MapDocuments.Count)
             _state.ActiveMapIndex = _state.MapDocuments.Count - 1;
         else if (_state.ActiveMapIndex == index)
@@ -387,6 +411,13 @@ public class ProjectManager
                     entity.Properties["target_map"] = uniqueName;
                 }
             }
+        }
+
+        // Update WorldLayout key
+        if (_state.WorldLayout?.Maps != null
+            && _state.WorldLayout.Maps.Remove(oldName, out var placement))
+        {
+            _state.WorldLayout.Maps[uniqueName] = placement;
         }
 
         _state.MarkDirty();
@@ -645,8 +676,8 @@ public class ProjectManager
             CollapsedLayers = _mapPanel.GetCollapsedLayers(),
         };
 
-        ProjectFile.Save(path, _state.SheetPath, _state.Sheet,
-                         _state.Groups, _state.MapDocuments, editorState);
+        _projectFileService.Save(path, _state.SheetPath, _state.Sheet,
+                         _state.Groups, _state.MapDocuments, editorState, _state.WorldLayout);
     }
 
     private List<ProjectFile.MapEditorStateData> BuildMapEditorStates()

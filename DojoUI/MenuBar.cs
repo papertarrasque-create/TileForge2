@@ -79,7 +79,7 @@ public class MenuBar
     /// Returns (menuIndex, itemIndex) of a clicked enabled submenu item,
     /// or (-1, -1) if no action this frame.
     /// </summary>
-    public (int Menu, int Item) Update(MouseState mouse, MouseState prevMouse, int screenWidth)
+    public (int Menu, int Item) Update(MouseState mouse, MouseState prevMouse, int screenWidth, SpriteFont font)
     {
         bool clicked = mouse.LeftButton == ButtonState.Pressed &&
                        prevMouse.LeftButton == ButtonState.Released;
@@ -138,7 +138,7 @@ public class MenuBar
             {
                 // Compute hovered item
                 var items   = _menus[_openMenuIndex].Items;
-                int itemH   = GetItemHeight(null);    // approximate without font
+                int itemH   = font.LineSpacing + 6;
                 int relY    = my - _submenuRect.Y;
                 int cumY    = 0;
                 int hovIdx  = -1;
@@ -183,16 +183,7 @@ public class MenuBar
         return (-1, -1);
     }
 
-    // Fallback item height (no font available in Update). Draw recalculates with real font.
-    private static int GetItemHeight(SpriteFont font)
-    {
-        // MonoGame default LineSpacing for a typical small font is ~16
-        // We use this only in Update where font is not available.
-        // Draw recomputes correctly using the real font.
-        return 16 + 6;
-    }
-
-    public void Draw(SpriteBatch spriteBatch, SpriteFont font, Renderer renderer, int screenWidth)
+public void Draw(SpriteBatch spriteBatch, SpriteFont font, Renderer renderer, int screenWidth)
     {
         // Bar background
         renderer.DrawRect(spriteBatch, new Rectangle(0, 0, screenWidth, Height), BarBackground);

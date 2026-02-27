@@ -11,9 +11,9 @@ TileForge is a tile-based level editor with an embedded RPG game runtime. The ed
 Expert game designer and C# developer. Vanilla C# + MonoGame. No engine magic.
 
 ### Status
-G1–G11 complete + Quest Editor UI + Dialogue Editor UI + UI Overhaul + Visual Dialogue Tree Editor. 1266 tests, 0 failures. The game runtime has: health, damage, inventory, equipment (weapon/armor/accessory slots with stat modifiers), status effects, map transitions, save/load, dialogue, input rebinding, pause/inventory/settings/quest log screens, game over/restart, entity AI (chase/patrol/chase_patrol), bump combat, pathfinding (axis-priority + Bresenham LOS), damage flash, combat message coloring, data-driven quest system with flag/variable objectives and auto-completion. Quest Editor UI: in-editor quest authoring via QuestPanel (sidebar) + QuestEditor (modal overlay). Dialogue Editor UI: visual node-graph editor (DialogueTreeEditor) with split-pane layout — pannable/zoomable canvas with draggable nodes and Bezier connection lines + FormLayout properties panel. Auto-layout via BFS. UI Overhaul: RPG Maker-inspired menu bar + icon toolbar ribbon, smart property editors with dropdowns/checkboxes/numerics, IProjectContext browse-dropdowns with "Create New..." linkage. Multimap Projects: single-project multi-map with MapTabBar (tab switching, CRUD), shared groups/spritesheet, in-project play mode transitions, project file V2 format.
+G1–G13 complete + Quest Editor UI + Dialogue Editor UI + UI Overhaul + Visual Dialogue Tree Editor + World Map Editor + AP Combat. 1443 tests, 0 failures. The game runtime has: health, damage, inventory, equipment (weapon/armor/accessory slots with stat modifiers), status effects, map transitions (trigger-based + edge-based), save/load, dialogue, input rebinding, pause/inventory/settings/quest log screens, game over/restart, entity AI (chase/patrol/chase_patrol), AP combat (2 AP/turn, bump attack, directional attack, entity speed 1-3), floating combat messages, pathfinding (axis-priority + Bresenham LOS), damage flash, data-driven quest system with flag/variable objectives and auto-completion. Quest Editor UI: in-editor quest authoring via QuestPanel (sidebar) + QuestEditor (modal overlay). Dialogue Editor UI: visual node-graph editor (DialogueTreeEditor) with split-pane layout — pannable/zoomable canvas with draggable nodes and Bezier connection lines + FormLayout properties panel. Auto-layout via BFS. UI Overhaul: RPG Maker-inspired menu bar + icon toolbar ribbon, smart property editors with dropdowns/checkboxes/numerics, IProjectContext browse-dropdowns with "Create New..." linkage. Multimap Projects: single-project multi-map with MapTabBar (tab switching, CRUD), shared groups/spritesheet, in-project play mode transitions, project file V2 format. World Map Editor: visual grid editor (WorldMapEditor) for spatial map adjacency — auto-bidirectional edge transitions from grid position, custom spawn points per edge (editable NumericField), custom exit point coordinates (portal-style interior transitions), EdgeTransitionResolver runtime.
 
-**Next up: G12+** — ranged combat, A* pathfinding, map relationships, floating combat messages. See PRD-GAME.md §Future Phases.
+**Next up: G14+** — ranged combat, A* pathfinding, animated enemy movement. See PRD-GAME.md §Future Phases.
 
 ---
 
@@ -25,7 +25,7 @@ Editor (TileGroups, Entities, Map) → F5 → PlayModeController
   ├─ GameStateManager (owns GameState: player, flags, variables, entities)
   ├─ GameInputManager (action→key mapping, edge detection, rebinding)
   └─ ScreenManager (play-mode-only screen stack)
-       ├─ GameplayScreen (movement, collision, hazard, bump combat, entity turn, HUD)
+       ├─ GameplayScreen (movement, collision, hazard, AP combat, entity turn, HUD)
        ├─ PauseScreen (overlay → save/load/settings/quit)
        ├─ DialogueScreen (typewriter text, branching choices, flag conditions)
        ├─ InventoryScreen (equip/unequip, item use, grouped display)
@@ -38,15 +38,17 @@ Editor (TileGroups, Entities, Map) → F5 → PlayModeController
 **Data flow:** Editor → MapExporter → JSON → MapLoader → LoadedMap → GameStateManager
 **Entity state:** Persists via flags (`entity_inactive:{id}`), not stored on entities
 **Multimap:** `MapDocumentState` per map, `EditorState` facade delegates to active doc, `MapTabBar` tab strip, `ProjectFile` V2 format
-**Map transitions:** Trigger entities with `target_map`/`target_x`/`target_y` properties (in-project maps resolved by name)
+**Map transitions:** Trigger entities with `target_map`/`target_x`/`target_y` properties (in-project maps resolved by name). Edge-based transitions via `WorldLayout` grid — walking off map edge auto-transitions to adjacent map. `EdgeTransitionResolver` resolves direction + neighbor + spawn position. Custom `EdgeSpawn` overrides per direction, defaults to opposite edge with clamped coordinate. Custom exit points (`NorthExit`/`SouthExit`/`EastExit`/`WestExit`) define portal-style transition tiles at arbitrary map positions (not just edges). Exit points coexist with edge-of-map transitions.
 **Save files:** `~/.tileforge/saves/{slot}.json` — serialized GameState
 **Key bindings:** `~/.tileforge/keybindings.json`
-**Combat:** Bump-to-attack (Brogue-style). `damage = max(1, atk - def)`. Uses effective stats (base + equipment bonuses). Entities act after player.
+**Combat:** Action Point system (2 AP/turn). Move costs 1 AP, bump attack costs 1 AP. Directional attack via Interact key (Z) costs 1 AP. End turn with Space. `damage = max(1, atk - def)`. Uses effective stats (base + equipment bonuses). Auto-end-turn when no hostiles within aggro range (exploration feels seamless). Entity speed property (1-3 actions per turn). `PlayerState.MaxAP` persisted; `PlayState.PlayerAP`/`IsPlayerTurn` ephemeral. Equipment can modify MaxAP via `equip_ap`. HUD shows AP pips and "SPACE: End Turn" hint during combat.
+**Floating Messages:** Per-entity floating text replaces single `StatusMessage`. `FloatingMessage` with text, color, tile position, timer, vertical drift. World-space rendering with alpha fade.
 **Equipment:** EquipmentSlot enum (Weapon, Armor, Accessory). `PlayerState.Equipment` dict. `GameStateManager.GetEffectiveAttack()/GetEffectiveDefense()` sum base + `equip_attack`/`equip_defense` from ItemPropertyCache. InventoryScreen handles equip/unequip. HUD shows ATK/DEF readout.
 **Entity AI:** Property-driven behaviors: idle, chase, patrol, chase_patrol. IPathfinder interface.
 **Quests:** JSON definitions in `quests.json`. QuestManager evaluates flag/variable objectives. Entity hooks: `on_kill_set_flag`, `on_kill_increment`, `on_collect_set_flag`, `on_collect_increment`. Auto-complete with rewards.
 **Quest Editor:** QuestPanel (sidebar) + QuestEditor (modal overlay) for in-editor quest authoring. QuestFileManager reads/writes quests.json.
 **Dialogue Editor:** DialoguePanel (sidebar) + DialogueTreeEditor (visual node-graph modal) for in-editor dialogue authoring. Split-pane: canvas (pan/zoom, draggable nodes, Bezier connections, right-click context menu) + properties panel (FormLayout fields for selected node). DialogueAutoLayout for BFS-based node positioning. NodeGraphCamera for float-precision zoom. DialogueFileManager reads/writes per-file `dialogues/{id}.json`. DialogueNode has EditorX/EditorY for layout persistence.
+**World Map Editor:** WorldMapEditor modal overlay (View > World Map, Ctrl+W). Split-pane: pannable/zoomable grid canvas (left 65%) + properties panel (right 35%). Maps placed on 2D grid — position determines N/S/E/W neighbors (auto-bidirectional). Features: drag to reposition, right-click context menu, placement mode for unplaced maps, per-edge custom spawn points. `WorldLayout` stored in `ProjectFile.ProjectData`, null when unconfigured (backward compatible).
 **Editor UI:** MenuBar (22px, 6 menus with hotkey hints) + ToolbarRibbon (32px, icon groups with tooltips) replaces old Toolbar + ToolPanel. GroupEditor uses type-aware controls: Dropdown (behavior, damage_type, entity_type), NumericField (health, attack, defense), BrowseDropdown (target_map, dialogue_id with "Create New..."), Checkbox (Solid, Passable, Hazard, Player). IProjectContext scans filesystem for available maps/dialogues and project data for flags/variables. Play mode shows minimal 32px ribbon with Stop button only.
 
 ---
@@ -64,7 +66,8 @@ Editor (TileGroups, Entities, Map) → F5 → PlayModeController
 - All new classes testable without MonoGame (follow ISpriteSheet pattern)
 - System.Text.Json for all serialization
 - ScreenManager is play-mode-only — the editor is NOT a GameScreen
-- xUnit tests for everything; 1266 baseline, 0 failures allowed
+- xUnit tests for everything; 1443 baseline, 0 failures allowed
+- **ASCII-only in rendered strings.** Any string passed to `SpriteFont.MeasureString()` or `SpriteBatch.DrawString()` must use only characters present in the bundled SpriteFont (printable ASCII 32–126). No Unicode ellipsis (`…`), em-dashes, curly quotes, or other non-ASCII glyphs — use ASCII equivalents (`...`, `--`, `"`, `'`).
 
 ## Model Assignment (for Claude Code)
 - **Sonnet** — Mechanical work: data classes, enums, serialization, tests following established patterns

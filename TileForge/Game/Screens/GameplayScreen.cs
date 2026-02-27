@@ -1,12 +1,11 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Text.Json;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using DojoUI;
 using TileForge.Data;
 using TileForge.Editor;
+using TileForge.Infrastructure;
 using TileForge.Play;
 using TileForge.UI;
 
@@ -25,29 +24,24 @@ public class GameplayScreen : GameScreen
     private readonly SaveManager _saveManager;
     private readonly GameInputManager _inputManager;
     private readonly string _bindingsPath;
-    private readonly string _dialogueBasePath;
     private readonly QuestManager _questManager;
     private readonly Func<Rectangle> _getCanvasBounds;
+    private readonly EdgeTransitionResolver _edgeResolver;
+    private readonly IDialogueLoader _dialogueLoader;
     private IPathfinder _pathfinder;
 
-    private static readonly JsonSerializerOptions _dialogueJsonOptions =
-        new() { PropertyNameCaseInsensitive = true };
-
-    public GameplayScreen(EditorState state, MapCanvas canvas,
-        GameStateManager gameStateManager, SaveManager saveManager,
-        GameInputManager inputManager, string bindingsPath,
-        string dialogueBasePath, QuestManager questManager,
-        Func<Rectangle> getCanvasBounds)
+    public GameplayScreen(EditorState state, MapCanvas canvas, GamePlayContext context)
     {
         _state = state;
         _canvas = canvas;
-        _gameStateManager = gameStateManager;
-        _saveManager = saveManager;
-        _inputManager = inputManager;
-        _bindingsPath = bindingsPath;
-        _dialogueBasePath = dialogueBasePath;
-        _questManager = questManager;
-        _getCanvasBounds = getCanvasBounds;
+        _gameStateManager = context.StateManager;
+        _saveManager = context.SaveManager;
+        _inputManager = context.InputManager;
+        _bindingsPath = context.BindingsPath;
+        _questManager = context.QuestManager;
+        _getCanvasBounds = context.GetCanvasBounds;
+        _edgeResolver = context.EdgeResolver;
+        _dialogueLoader = context.DialogueLoader;
     }
 
     public override void OnEnter()
@@ -80,12 +74,14 @@ public class GameplayScreen : GameScreen
 
         float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
 
-        // Tick status message timer
-        if (play.StatusMessageTimer > 0)
+        // Tick floating messages
+        for (int i = play.FloatingMessages.Count - 1; i >= 0; i--)
         {
-            play.StatusMessageTimer -= dt;
-            if (play.StatusMessageTimer <= 0)
-                play.StatusMessage = null;
+            var fm = play.FloatingMessages[i];
+            fm.Timer -= dt;
+            fm.VerticalOffset += FloatingMessage.DriftPixels * dt / FloatingMessage.Duration;
+            if (fm.Timer <= 0)
+                play.FloatingMessages.RemoveAt(i);
         }
 
         if (play.PlayerFlashTimer > 0)
@@ -121,27 +117,23 @@ public class GameplayScreen : GameScreen
                 if (_gameStateManager.IsPlayerAlive())
                 {
                     var effectMessages = _gameStateManager.ProcessStatusEffects();
-                    if (effectMessages.Count > 0 && play.StatusMessage == null)
-                    {
-                        play.StatusMessage = effectMessages[0];
-                        play.StatusMessageTimer = PlayState.StatusMessageDuration;
-                    }
+                    foreach (var effectMsg in effectMessages)
+                        play.AddFloatingMessage(effectMsg, Color.Red, play.PlayerEntity.X, play.PlayerEntity.Y);
                     if (effectMessages.Exists(m => m.Contains("damage")))
                         TriggerDamageFlash();
 
                     if (!_gameStateManager.IsPlayerAlive())
                     {
-                        play.StatusMessage = null;
                         ScreenManager.Push(new GameOverScreen(_gameStateManager));
                     }
                 }
 
-                // Entity turn: all entities with AI act after the player's move
+                // Deduct 1 AP for completed move and process turn if needed
                 if (_gameStateManager.IsPlayerAlive())
-                    ExecuteEntityTurn(play);
-
-                // Check quest progress after move + interactions + entity turn
-                ProcessQuestUpdates(play);
+                {
+                    play.PlayerAP--;
+                    AfterPlayerAction(play);
+                }
             }
             else
             {
@@ -151,24 +143,48 @@ public class GameplayScreen : GameScreen
 
         if (!play.IsMoving && _gameStateManager.IsPlayerAlive())
         {
-            // Check for pause
+            // Overlay screens (0 AP cost — always available)
             if (input.IsActionJustPressed(GameAction.Pause))
             {
                 ScreenManager.Push(new PauseScreen(_saveManager, _gameStateManager, _inputManager, _bindingsPath));
                 return;
             }
-
-            // Check for inventory
             if (input.IsActionJustPressed(GameAction.OpenInventory))
             {
                 ScreenManager.Push(new InventoryScreen(_gameStateManager));
                 return;
             }
-
-            // Check for quest log
             if (input.IsActionJustPressed(GameAction.OpenQuestLog) && _questManager != null)
             {
                 ScreenManager.Push(new QuestLogScreen(_questManager, _gameStateManager));
+                return;
+            }
+
+            // AP-gated actions require AP > 0 and player turn
+            if (!play.IsPlayerTurn || play.PlayerAP <= 0)
+                return;
+
+            // End Turn — forfeit remaining AP, entities act
+            if (input.IsActionJustPressed(GameAction.EndTurn))
+            {
+                EndPlayerTurn(play);
+                return;
+            }
+
+            // Directional attack / interact (Interact key when not moving)
+            if (input.IsActionJustPressed(GameAction.Interact))
+            {
+                var (fx, fy) = play.GetFacingTile();
+                if (_state.Map.InBounds(fx, fy) && TryBumpAttack(play, fx, fy))
+                {
+                    play.PlayerAP--;
+                    AfterPlayerAction(play);
+                }
+                else if (_state.Map.InBounds(fx, fy))
+                {
+                    // Friendly interaction — 0 AP cost
+                    CheckEntityInteractionAt(play, fx, fy);
+                }
                 return;
             }
 
@@ -182,10 +198,29 @@ public class GameplayScreen : GameScreen
 
             if (dx != 0 || dy != 0)
             {
+                // Update facing direction for sprite flip and directional attacks
+                if (dx < 0) { play.PlayerFacing = Direction.Left; _gameStateManager.State.Player.Facing = Direction.Left; }
+                else if (dx > 0) { play.PlayerFacing = Direction.Right; _gameStateManager.State.Player.Facing = Direction.Right; }
+                else if (dy < 0) { play.PlayerFacing = Direction.Up; _gameStateManager.State.Player.Facing = Direction.Up; }
+                else if (dy > 0) { play.PlayerFacing = Direction.Down; _gameStateManager.State.Player.Facing = Direction.Down; }
+
                 int targetX = play.PlayerEntity.X + dx;
                 int targetY = play.PlayerEntity.Y + dy;
 
-                if (CanMoveTo(targetX, targetY))
+                // Check custom exit point transitions first (portal-style)
+                if (_edgeResolver != null)
+                {
+                    var exitReq = _edgeResolver.ResolveExitPoint(
+                        _gameStateManager.State.CurrentMapId, targetX, targetY);
+                    if (exitReq != null)
+                    {
+                        _gameStateManager.PendingTransition = exitReq;
+                        play.AddFloatingMessage($"Transitioning to {exitReq.TargetMap}...", Color.White, play.PlayerEntity.X, play.PlayerEntity.Y);
+                        dx = 0; dy = 0; // Skip normal movement
+                    }
+                }
+
+                if ((dx != 0 || dy != 0) && CanMoveTo(targetX, targetY))
                 {
                     play.MoveFrom = new Vector2(play.PlayerEntity.X, play.PlayerEntity.Y);
                     play.MoveTo = new Vector2(targetX, targetY);
@@ -198,14 +233,27 @@ public class GameplayScreen : GameScreen
                     // Blocked -- try bump attack first, then normal interaction
                     if (TryBumpAttack(play, targetX, targetY))
                     {
-                        // Attack counts as player action — entities get their turn
+                        play.PlayerAP--;
                         if (_gameStateManager.IsPlayerAlive())
-                            ExecuteEntityTurn(play);
-                        ProcessQuestUpdates(play);
+                            AfterPlayerAction(play);
                     }
                     else
                     {
                         CheckEntityInteractionAt(play, targetX, targetY);
+                    }
+                }
+                else if (_edgeResolver != null)
+                {
+                    // Out of bounds — check for edge-based map transition via WorldLayout
+                    var edgeRequest = _edgeResolver.Resolve(
+                        _gameStateManager.State.CurrentMapId,
+                        targetX, targetY,
+                        play.PlayerEntity.X, play.PlayerEntity.Y,
+                        _state.Map.Width, _state.Map.Height);
+                    if (edgeRequest != null)
+                    {
+                        _gameStateManager.PendingTransition = edgeRequest;
+                        play.AddFloatingMessage($"Transitioning to {edgeRequest.TargetMap}...", Color.White, play.PlayerEntity.X, play.PlayerEntity.Y);
                     }
                 }
             }
@@ -278,29 +326,51 @@ public class GameplayScreen : GameScreen
             string statsText = $"ATK:{_gameStateManager.GetEffectiveAttack()} DEF:{_gameStateManager.GetEffectiveDefense()}";
             var statsPos = new Vector2(barX, barY + barHeight + 2);
             spriteBatch.DrawString(font, statsText, statsPos, Color.White);
+
+            // AP pips
+            var playForHud = _state.PlayState;
+            int maxAP = _gameStateManager.GetEffectiveMaxAP();
+            int currentAP = playForHud?.PlayerAP ?? 0;
+            string apText = "AP:";
+            for (int i = 0; i < maxAP; i++)
+                apText += i < currentAP ? "*" : ".";
+            float apY = statsPos.Y + font.MeasureString(statsText).Y + 2;
+            Color apColor = currentAP == maxAP ? Color.Gold : Color.Gray;
+            spriteBatch.DrawString(font, apText, new Vector2(barX, apY), apColor);
+
+            // Combat hint when hostiles nearby
+            if (playForHud != null && playForHud.IsPlayerTurn && currentAP > 0 && AnyHostileNearby())
+            {
+                string hint = "SPACE: End Turn";
+                float hintY = apY + font.MeasureString(apText).Y + 2;
+                spriteBatch.DrawString(font, hint, new Vector2(barX, hintY), Color.Yellow * 0.8f);
+            }
         }
 
-        // Status message text below health bar
-        if (!string.IsNullOrEmpty(_state.PlayState?.StatusMessage) && _state.PlayState.StatusMessageTimer > 0)
+        // Floating messages (world-space, drift upward + fade)
+        var play = _state.PlayState;
+        if (play?.FloatingMessages?.Count > 0)
         {
-            var msg = _state.PlayState.StatusMessage;
-            Color msgColor;
-            if (msg.Contains("damage") || msg.Contains("died") || msg.Contains("dealt") || msg.Contains("hit you for"))
-                msgColor = Color.Red;
-            else if (msg.Contains("Hit ") || msg.Contains("defeated"))
-                msgColor = Color.Gold;
-            else if (msg.Contains("Collected") || msg.Contains("healed") || msg.Contains("Healed"))
-                msgColor = Color.LimeGreen;
-            else if (msg.Contains("Quest") || msg.Contains("Objective"))
-                msgColor = Color.Cyan;
-            else
-                msgColor = Color.White;
+            var sheet = _state.Sheet;
+            int tileW = sheet?.TileWidth ?? 16;
+            int tileH = sheet?.TileHeight ?? 16;
 
-            var msgSize = font.MeasureString(msg);
-            var msgPos = new Vector2(
-                canvasBounds.X + (canvasBounds.Width - msgSize.X) / 2f,
-                canvasBounds.Y + canvasBounds.Height - msgSize.Y - 16f);
-            spriteBatch.DrawString(font, msg, msgPos, msgColor);
+            foreach (var fm in play.FloatingMessages)
+            {
+                float alpha = Math.Clamp(fm.Timer / FloatingMessage.Duration, 0f, 1f);
+                if (alpha <= 0) continue;
+
+                float worldX = (fm.TileX + 0.5f) * tileW;
+                float worldY = fm.TileY * tileH - fm.VerticalOffset;
+                var screenPos = _canvas.Camera.WorldToScreen(new Vector2(worldX, worldY));
+
+                var textSize = font.MeasureString(fm.Text);
+                var drawPos = new Vector2(
+                    screenPos.X - textSize.X / 2f,
+                    screenPos.Y - textSize.Y);
+
+                spriteBatch.DrawString(font, fm.Text, drawPos, fm.Color * alpha);
+            }
         }
 
         // Active status effect indicators
@@ -381,12 +451,12 @@ public class GameplayScreen : GameScreen
             {
                 case EntityType.NPC:
                     if (TryShowDialogue(instance, play)) return;
-                    play.StatusMessage = $"Talked to {instance.DefinitionName}";
+                    play.AddFloatingMessage($"Talked to {instance.DefinitionName}", Color.White, instance.X, instance.Y);
                     break;
 
                 case EntityType.Item:
                     _gameStateManager.CollectItem(instance);
-                    play.StatusMessage = $"Collected {instance.DefinitionName}";
+                    play.AddFloatingMessage($"Collected {instance.DefinitionName}", Color.LimeGreen, instance.X, instance.Y);
                     break;
 
                 case EntityType.Trap:
@@ -397,10 +467,12 @@ public class GameplayScreen : GameScreen
                     {
                         _gameStateManager.DamagePlayer(damage);
                         TriggerDamageFlash();
+                        play.AddFloatingMessage($"{instance.DefinitionName} dealt {damage} damage!", Color.Red, play.PlayerEntity.X, play.PlayerEntity.Y);
                     }
-                    play.StatusMessage = damage > 0
-                        ? $"{instance.DefinitionName} dealt {damage} damage!"
-                        : $"Triggered {instance.DefinitionName}";
+                    else
+                    {
+                        play.AddFloatingMessage($"Triggered {instance.DefinitionName}", Color.White, instance.X, instance.Y);
+                    }
                     if (!_gameStateManager.IsPlayerAlive())
                     {
                         ScreenManager.Push(new GameOverScreen(_gameStateManager));
@@ -422,24 +494,23 @@ public class GameplayScreen : GameScreen
                             TargetX = tx,
                             TargetY = ty,
                         };
-                        play.StatusMessage = $"Transitioning to {targetMap}...";
+                        play.AddFloatingMessage($"Transitioning to {targetMap}...", Color.White, instance.X, instance.Y);
                     }
                     else
                     {
-                        play.StatusMessage = $"Triggered {instance.DefinitionName}";
+                        play.AddFloatingMessage($"Triggered {instance.DefinitionName}", Color.White, instance.X, instance.Y);
                     }
                     break;
 
                 case EntityType.Interactable:
                     if (TryShowDialogue(instance, play)) return;
-                    play.StatusMessage = $"Interacted with {instance.DefinitionName}";
+                    play.AddFloatingMessage($"Interacted with {instance.DefinitionName}", Color.White, instance.X, instance.Y);
                     break;
                 default:
-                    play.StatusMessage = $"Interacted with {instance.DefinitionName}";
+                    play.AddFloatingMessage($"Interacted with {instance.DefinitionName}", Color.White, instance.X, instance.Y);
                     break;
             }
 
-            play.StatusMessageTimer = PlayState.StatusMessageDuration;
             return;
         }
     }
@@ -459,8 +530,7 @@ public class GameplayScreen : GameScreen
                     _gameStateManager.DamagePlayer(group.DamagePerTick);
                     TriggerDamageFlash();
                     string dmgType = group.DamageType ?? "damage";
-                    play.StatusMessage = $"Took {group.DamagePerTick} {dmgType} damage!";
-                    play.StatusMessageTimer = PlayState.StatusMessageDuration;
+                    play.AddFloatingMessage($"Took {group.DamagePerTick} {dmgType} damage!", Color.Red, play.PlayerEntity.X, play.PlayerEntity.Y);
                 }
 
                 // Apply lingering status effect based on DamageType
@@ -540,8 +610,7 @@ public class GameplayScreen : GameScreen
 
             if (msg != null)
             {
-                play.StatusMessage = msg;
-                play.StatusMessageTimer = PlayState.StatusMessageDuration;
+                play.AddFloatingMessage(msg, Color.Cyan, play.PlayerEntity.X, play.PlayerEntity.Y);
             }
         }
     }
@@ -556,13 +625,81 @@ public class GameplayScreen : GameScreen
             if (_gameStateManager.IsAttackable(instance, _state.GroupsByName))
             {
                 var result = _gameStateManager.AttackEntity(instance, _gameStateManager.GetEffectiveAttack());
-                play.StatusMessage = result.Message;
-                play.StatusMessageTimer = PlayState.StatusMessageDuration;
+                play.AddFloatingMessage(result.Message, Color.Gold, instance.X, instance.Y);
                 TriggerEntityFlash(instance.Id);
                 return true;
             }
         }
         return false;
+    }
+
+    /// <summary>
+    /// Returns true if any hostile entity with a behavior is within aggro range of the player.
+    /// Used for auto-end-turn: exploration mode ends turn immediately when no threats are near.
+    /// </summary>
+    internal bool AnyHostileNearby()
+    {
+        var player = _gameStateManager.State.Player;
+        foreach (var entity in _gameStateManager.State.ActiveEntities)
+        {
+            if (!entity.IsActive) continue;
+            if (!entity.Properties.ContainsKey("behavior")) continue;
+            if (!_gameStateManager.IsEntityHostile(entity)) continue;
+
+            int aggroRange = _gameStateManager.GetEntityIntProperty(entity, "aggro_range", 5);
+            int distance = Math.Abs(entity.X - player.X) + Math.Abs(entity.Y - player.Y);
+            if (distance <= aggroRange)
+                return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Begins a new player turn: refill AP, set turn flag.
+    /// </summary>
+    private void BeginPlayerTurn(PlayState play)
+    {
+        play.PlayerAP = _gameStateManager.GetEffectiveMaxAP();
+        play.IsPlayerTurn = true;
+    }
+
+    /// <summary>
+    /// Ends the player turn: execute entity turn, then begin next player turn.
+    /// </summary>
+    private void EndPlayerTurn(PlayState play)
+    {
+        play.PlayerAP = 0;
+        play.IsPlayerTurn = false;
+
+        if (_gameStateManager.IsPlayerAlive())
+            ExecuteEntityTurn(play);
+
+        if (!_gameStateManager.IsPlayerAlive())
+            return;
+
+        ProcessQuestUpdates(play);
+        BeginPlayerTurn(play);
+    }
+
+    /// <summary>
+    /// Called after each AP-spending action. If no hostiles nearby, auto-ends the turn.
+    /// </summary>
+    private void AfterPlayerAction(PlayState play)
+    {
+        if (!_gameStateManager.IsPlayerAlive())
+            return;
+
+        if (play.PlayerAP <= 0)
+        {
+            EndPlayerTurn(play);
+            return;
+        }
+
+        // Auto-end exploration mode: if no hostiles nearby, end turn immediately
+        if (!AnyHostileNearby())
+        {
+            EndPlayerTurn(play);
+        }
     }
 
     private void ExecuteEntityTurn(PlayState play)
@@ -572,34 +709,51 @@ public class GameplayScreen : GameScreen
             if (!entity.IsActive) continue;
             if (!entity.Properties.ContainsKey("behavior")) continue;
 
-            var action = EntityAI.DecideAction(entity, _gameStateManager.State, _pathfinder);
+            int entityAP = Math.Clamp(_gameStateManager.GetEntityIntProperty(entity, "speed", 1), 1, 3);
+            bool hostile = _gameStateManager.IsEntityHostile(entity);
 
-            switch (action.Type)
+            while (entityAP > 0)
             {
-                case EntityActionType.Move:
-                    entity.X = action.TargetX;
-                    entity.Y = action.TargetY;
+                var action = EntityAI.DecideAction(entity, _gameStateManager.State, _pathfinder, hostile);
+
+                if (action.Type == EntityActionType.Idle)
                     break;
 
-                case EntityActionType.Attack:
-                    if (action.AttackTargetX == null)
-                    {
-                        // Melee: entity is adjacent to player
-                        var atk = _gameStateManager.GetEntityIntProperty(entity, "attack", 3);
-                        var damage = CombatHelper.CalculateDamage(atk, _gameStateManager.GetEffectiveDefense());
-                        _gameStateManager.DamagePlayer(damage);
-                        TriggerDamageFlash();
-                        play.StatusMessage = $"{entity.DefinitionName} hit you for {damage} damage!";
-                        play.StatusMessageTimer = PlayState.StatusMessageDuration;
-                    }
-                    break;
+                switch (action.Type)
+                {
+                    case EntityActionType.Move:
+                        int moveDx = action.TargetX - entity.X;
+                        if (moveDx < 0) play.EntityFacings[entity.Id] = Direction.Left;
+                        else if (moveDx > 0) play.EntityFacings[entity.Id] = Direction.Right;
+                        entity.X = action.TargetX;
+                        entity.Y = action.TargetY;
+                        break;
+
+                    case EntityActionType.Attack:
+                        if (action.AttackTargetX == null)
+                        {
+                            var atk = _gameStateManager.GetEntityIntProperty(entity, "attack", 3);
+                            var damage = CombatHelper.CalculateDamage(atk, _gameStateManager.GetEffectiveDefense());
+                            _gameStateManager.DamagePlayer(damage);
+                            TriggerDamageFlash();
+                            play.AddFloatingMessage($"{entity.DefinitionName} hit you for {damage} damage!", Color.Red, play.PlayerEntity.X, play.PlayerEntity.Y);
+                        }
+                        break;
+                }
+
+                entityAP--;
+
+                if (!_gameStateManager.IsPlayerAlive())
+                {
+                    ScreenManager.Push(new GameOverScreen(_gameStateManager));
+                    return;
+                }
             }
         }
 
         // Check player death after all entities have acted
         if (!_gameStateManager.IsPlayerAlive())
         {
-            play.StatusMessage = null;
             ScreenManager.Push(new GameOverScreen(_gameStateManager));
         }
     }
@@ -641,7 +795,7 @@ public class GameplayScreen : GameScreen
         dialogue ??= CreateInlineDialogue(instance.DefinitionName, dialogueValue);
 
         ScreenManager.Push(new DialogueScreen(dialogue, _gameStateManager));
-        play.StatusMessageTimer = 0;
+        play.FloatingMessages.Clear();
         return true;
     }
 
@@ -664,24 +818,6 @@ public class GameplayScreen : GameScreen
 
     private DialogueData LoadDialogue(string dialogueRef)
     {
-        if (string.IsNullOrEmpty(_dialogueBasePath))
-            return null;
-
-        string path = Path.Combine(_dialogueBasePath, dialogueRef + ".json");
-        if (!File.Exists(path))
-            path = Path.Combine(_dialogueBasePath, "dialogues", dialogueRef + ".json");
-
-        if (!File.Exists(path))
-            return null;
-
-        try
-        {
-            string json = File.ReadAllText(path);
-            return JsonSerializer.Deserialize<DialogueData>(json, _dialogueJsonOptions);
-        }
-        catch
-        {
-            return null;
-        }
+        return _dialogueLoader?.LoadDialogue(dialogueRef);
     }
 }

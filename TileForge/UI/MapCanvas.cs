@@ -6,6 +6,7 @@ using DojoUI;
 using TileForge.Data;
 using TileForge.Editor;
 using TileForge.Editor.Tools;
+using TileForge.Game;
 using TileForge.Play;
 
 namespace TileForge.UI;
@@ -354,7 +355,26 @@ public class MapCanvas
             var screenPos = Camera.WorldToScreen(new Vector2(drawX * tileW, drawY * tileH));
             var destRect = new Rectangle((int)screenPos.X, (int)screenPos.Y, cellW, cellH);
 
-            spriteBatch.Draw(state.Sheet.Texture, destRect, srcRect, Color.White);
+            // Determine horizontal flip based on facing vs default_facing (play mode only)
+            var effects = SpriteEffects.None;
+            if (state.IsPlayMode && state.PlayState != null
+                && group.DefaultProperties != null
+                && group.DefaultProperties.TryGetValue("default_facing", out var defaultFacing))
+            {
+                bool defaultIsLeft = defaultFacing == "left";
+                Direction facing;
+                if (entity == state.PlayState.PlayerEntity)
+                    facing = state.PlayState.PlayerFacing;
+                else
+                    state.PlayState.EntityFacings.TryGetValue(entity.Id, out facing);
+
+                bool currentlyLeft = facing == Direction.Left;
+                if (currentlyLeft != defaultIsLeft)
+                    effects = SpriteEffects.FlipHorizontally;
+            }
+
+            spriteBatch.Draw(state.Sheet.Texture, destRect, srcRect, Color.White,
+                             0f, Vector2.Zero, effects, 0f);
 
             // Per-sprite damage flash overlays (play mode only)
             if (state.IsPlayMode && state.PlayState != null)

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using TileForge.Infrastructure;
 
 namespace TileForge.Game;
 
@@ -25,12 +26,21 @@ public static class QuestLoader
     /// </summary>
     public static List<QuestDefinition> Load(string path)
     {
-        if (string.IsNullOrEmpty(path) || !File.Exists(path))
+        return Load(path, new DefaultFileSystem());
+    }
+
+    /// <summary>
+    /// Loads all quest definitions from a JSON file using the provided filesystem.
+    /// Returns an empty list if the file doesn't exist or is invalid.
+    /// </summary>
+    public static List<QuestDefinition> Load(string path, IFileSystem fileSystem)
+    {
+        if (string.IsNullOrEmpty(path) || !fileSystem.Exists(path))
             return new List<QuestDefinition>();
 
         try
         {
-            string json = File.ReadAllText(path);
+            string json = fileSystem.ReadAllText(path);
             return LoadFromJson(json);
         }
         catch

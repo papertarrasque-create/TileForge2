@@ -88,11 +88,13 @@ public class GroupEditor
     private static readonly string[] EntTypeItems = { "NPC", "Item", "Trap", "Trigger", "Interactable" };
     private static readonly string[] BehaviorItems = { "idle", "chase", "patrol", "chase_patrol" };
     private static readonly string[] EquipSlotItems = { "", "weapon", "armor", "accessory" };
+    private static readonly string[] FacingItems = { "right", "left" };
+    private static readonly string[] HostileItems = { "true", "false" };
 
     private static readonly Dictionary<EntityType, string[]> Presets = new()
     {
-        { EntityType.NPC, new[] { "dialogue", "health", "attack", "defense", "behavior", "aggro_range", "on_kill_set_flag", "on_kill_increment" } },
-        { EntityType.Item, new[] { "heal", "equip_slot", "equip_attack", "equip_defense", "on_collect_set_flag", "on_collect_increment" } },
+        { EntityType.NPC, new[] { "dialogue", "health", "attack", "defense", "behavior", "speed", "default_facing", "hostile", "hostile_flag", "friendly_flag", "aggro_range", "on_kill_set_flag", "on_kill_increment" } },
+        { EntityType.Item, new[] { "heal", "equip_slot", "equip_attack", "equip_defense", "equip_ap", "on_collect_set_flag", "on_collect_increment" } },
         { EntityType.Trap, new[] { "damage", "health", "on_kill_set_flag", "on_kill_increment" } },
         { EntityType.Trigger, new[] { "target_map", "target_x", "target_y" } },
         { EntityType.Interactable, new[] { "dialogue" } },
@@ -103,7 +105,8 @@ public class GroupEditor
         { "health", (1, 9999) }, { "attack", (0, 999) }, { "defense", (0, 999) },
         { "aggro_range", (1, 50) }, { "damage", (1, 9999) }, { "heal", (1, 9999) },
         { "target_x", (0, 999) }, { "target_y", (0, 999) },
-        { "equip_attack", (0, 999) }, { "equip_defense", (0, 999) },
+        { "equip_attack", (0, 999) }, { "equip_defense", (0, 999) }, { "equip_ap", (0, 5) },
+        { "speed", (1, 3) },
     };
 
     // Completion
@@ -605,6 +608,16 @@ public class GroupEditor
         {
             int idx = Array.IndexOf(EquipSlotItems, value?.ToLower() ?? "");
             return new PropField { Key = key, Kind = PFK.Dropdown, DD = new Dropdown(EquipSlotItems, Math.Max(0, idx)) };
+        }
+        if (key == "default_facing")
+        {
+            int idx = Array.IndexOf(FacingItems, value?.ToLower() ?? "right");
+            return new PropField { Key = key, Kind = PFK.Dropdown, DD = new Dropdown(FacingItems, Math.Max(0, idx)) };
+        }
+        if (key == "hostile")
+        {
+            int idx = string.Equals(value, "false", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
+            return new PropField { Key = key, Kind = PFK.Dropdown, DD = new Dropdown(HostileItems, idx) };
         }
         if (key == "target_map")
         {

@@ -8,13 +8,14 @@ namespace TileForge.Tests.Game.Screens;
 public class HudDataTests
 {
     [Fact]
-    public void StatusMessage_CanBeSetAndCleared()
+    public void FloatingMessage_CanBeAddedAndRead()
     {
-        // Verify PlayState.StatusMessage round-trips
         var play = new TileForge.Play.PlayState();
-        play.StatusMessage = "Took 5 fire damage!";
-        play.StatusMessageTimer = 2.0f;
-        Assert.Equal("Took 5 fire damage!", play.StatusMessage);
+        play.AddFloatingMessage("Took 5 fire damage!", Microsoft.Xna.Framework.Color.Red, 3, 4);
+        Assert.Single(play.FloatingMessages);
+        Assert.Equal("Took 5 fire damage!", play.FloatingMessages[0].Text);
+        Assert.Equal(3, play.FloatingMessages[0].TileX);
+        Assert.Equal(4, play.FloatingMessages[0].TileY);
     }
 
     [Fact]
@@ -39,18 +40,19 @@ public class HudDataTests
     }
 
     [Fact]
-    public void StatusMessage_ContainsDamage_WouldRenderRed()
+    public void FloatingMessage_DamageUsesRedColor()
     {
-        // Verify messages containing "damage" would match the red color path
-        string msg = "Took 5 fire damage!";
-        Assert.Contains("damage", msg);
+        var play = new TileForge.Play.PlayState();
+        play.AddFloatingMessage("Took 5 fire damage!", Microsoft.Xna.Framework.Color.Red, 0, 0);
+        Assert.Equal(Microsoft.Xna.Framework.Color.Red, play.FloatingMessages[0].Color);
     }
 
     [Fact]
-    public void StatusMessage_ContainsCollected_WouldRenderGreen()
+    public void FloatingMessage_CollectedUsesGreenColor()
     {
-        string msg = "Collected Potion";
-        Assert.Contains("Collected", msg);
+        var play = new TileForge.Play.PlayState();
+        play.AddFloatingMessage("Collected Potion", Microsoft.Xna.Framework.Color.LimeGreen, 0, 0);
+        Assert.Equal(Microsoft.Xna.Framework.Color.LimeGreen, play.FloatingMessages[0].Color);
     }
 
     [Fact]

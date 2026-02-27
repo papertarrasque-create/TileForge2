@@ -188,9 +188,9 @@ public class SettingsScreenTests : IDisposable
     {
         var (screen, manager) = CreateSettingsScreen();
 
-        // 9 actions + Reset = 10 navigations down bring us to Back (index 10)
+        // 10 actions + Reset = 11 navigations down bring us to Back (index 11)
         var down = SimulateKeyPress(Keys.Down);
-        for (int i = 0; i < 10; i++)
+        for (int i = 0; i < 11; i++)
             screen.Update(DefaultGameTime, down);
 
         var interact = SimulateKeyPress(Keys.Z);
@@ -211,9 +211,9 @@ public class SettingsScreenTests : IDisposable
         // Rebind something so the file won't just contain defaults
         input.RebindAction(GameAction.MoveUp, Keys.W);
 
-        // 9 actions navigations down bring us to Reset (index 9)
+        // 10 actions navigations down bring us to Reset (index 10)
         var down = SimulateKeyPress(Keys.Down);
-        for (int i = 0; i < 9; i++)
+        for (int i = 0; i < 10; i++)
             screen.Update(DefaultGameTime, down);
 
         var interact = SimulateKeyPress(Keys.Z);

@@ -37,6 +37,7 @@ public class EntityTurnTests
 
     /// <summary>
     /// Simulates one entity turn, exactly as GameplayScreen.ExecuteEntityTurn does.
+    /// Entities get speed-based AP (default 1). Each AP iteration calls DecideAction.
     /// </summary>
     private List<string> SimulateEntityTurn(
         GameStateManager gsm, IPathfinder pathfinder)
@@ -47,24 +48,35 @@ public class EntityTurnTests
             if (!entity.IsActive) continue;
             if (!entity.Properties.ContainsKey("behavior")) continue;
 
-            var action = EntityAI.DecideAction(entity, gsm.State, pathfinder);
+            int entityAP = Math.Clamp(gsm.GetEntityIntProperty(entity, "speed", 1), 1, 3);
 
-            switch (action.Type)
+            while (entityAP > 0)
             {
-                case EntityActionType.Move:
-                    entity.X = action.TargetX;
-                    entity.Y = action.TargetY;
+                var action = EntityAI.DecideAction(entity, gsm.State, pathfinder);
+
+                if (action.Type == EntityActionType.Idle)
                     break;
 
-                case EntityActionType.Attack:
-                    if (action.AttackTargetX == null)
-                    {
-                        var atk = gsm.GetEntityIntProperty(entity, "attack", 3);
-                        var damage = CombatHelper.CalculateDamage(atk, gsm.State.Player.Defense);
-                        gsm.DamagePlayer(damage);
-                        messages.Add($"{entity.DefinitionName} hit you for {damage} damage!");
-                    }
-                    break;
+                switch (action.Type)
+                {
+                    case EntityActionType.Move:
+                        entity.X = action.TargetX;
+                        entity.Y = action.TargetY;
+                        break;
+
+                    case EntityActionType.Attack:
+                        if (action.AttackTargetX == null)
+                        {
+                            var atk = gsm.GetEntityIntProperty(entity, "attack", 3);
+                            var damage = CombatHelper.CalculateDamage(atk, gsm.State.Player.Defense);
+                            gsm.DamagePlayer(damage);
+                            messages.Add($"{entity.DefinitionName} hit you for {damage} damage!");
+                        }
+                        break;
+                }
+
+                entityAP--;
+                if (!gsm.IsPlayerAlive()) return messages;
             }
         }
         return messages;

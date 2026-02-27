@@ -13,5 +13,6 @@ public class PlayerState
     public List<StatusEffect> ActiveEffects { get; set; } = new();
     public int Attack { get; set; } = 5;
     public int Defense { get; set; } = 2;
+    public int MaxAP { get; set; } = 2;
     public Dictionary<string, string> Equipment { get; set; } = new();
 }

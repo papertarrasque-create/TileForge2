@@ -7,10 +7,22 @@ public static class EntityAI
     public static EntityAction DecideAction(
         EntityInstance entity,
         GameState state,
-        IPathfinder pathfinder)
+        IPathfinder pathfinder,
+        bool isHostile = true)
     {
         if (!entity.Properties.TryGetValue("behavior", out var behavior))
             return EntityAction.Idle();
+
+        if (!isHostile)
+        {
+            // Non-hostile: chase becomes idle, chase_patrol becomes patrol-only
+            return behavior switch
+            {
+                "patrol" => DecidePatrol(entity, state, pathfinder),
+                "chase_patrol" => DecidePatrol(entity, state, pathfinder),
+                _ => EntityAction.Idle(),
+            };
+        }
 
         return behavior switch
         {

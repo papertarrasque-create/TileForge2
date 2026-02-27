@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using TileForge.Infrastructure;
 
 namespace TileForge.Game;
 
@@ -13,48 +14,52 @@ namespace TileForge.Game;
 public class SaveManager
 {
     private readonly string _savesDirectory;
+    private readonly IFileSystem _fileSystem;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = true,
     };
 
-    public SaveManager(string savesDirectory = null)
+    public SaveManager(string savesDirectory = null, IFileSystem fileSystem = null,
+        IPathResolver pathResolver = null)
     {
         _savesDirectory = savesDirectory
+            ?? pathResolver?.SavesDirectory
             ?? Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
                 ".tileforge", "saves");
+        _fileSystem = fileSystem ?? new DefaultFileSystem();
     }
 
     public void Save(GameState state, string slotName)
     {
-        Directory.CreateDirectory(_savesDirectory);
+        _fileSystem.CreateDirectory(_savesDirectory);
         var path = GetSlotPath(slotName);
         var json = JsonSerializer.Serialize(state, JsonOptions);
-        File.WriteAllText(path, json);
+        _fileSystem.WriteAllText(path, json);
     }
 
     public GameState Load(string slotName)
     {
         var path = GetSlotPath(slotName);
-        if (!File.Exists(path))
+        if (!_fileSystem.Exists(path))
             throw new FileNotFoundException($"Save slot '{slotName}' not found.", path);
-        var json = File.ReadAllText(path);
+        var json = _fileSystem.ReadAllText(path);
         return JsonSerializer.Deserialize<GameState>(json);
     }
 
     public bool SlotExists(string slotName)
     {
-        return File.Exists(GetSlotPath(slotName));
+        return _fileSystem.Exists(GetSlotPath(slotName));
     }
 
     public List<string> GetSlots()
     {
-        if (!Directory.Exists(_savesDirectory))
+        if (!_fileSystem.DirectoryExists(_savesDirectory))
             return new List<string>();
 
-        return Directory.GetFiles(_savesDirectory, "*.json")
+        return _fileSystem.GetFiles(_savesDirectory, "*.json")
             .Select(Path.GetFileNameWithoutExtension)
             .OrderBy(n => n)
             .ToList();
@@ -63,8 +68,8 @@ public class SaveManager
     public void Delete(string slotName)
     {
         var path = GetSlotPath(slotName);
-        if (File.Exists(path))
-            File.Delete(path);
+        if (_fileSystem.Exists(path))
+            _fileSystem.Delete(path);
     }
 
     private string GetSlotPath(string slotName)

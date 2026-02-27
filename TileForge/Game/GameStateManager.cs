@@ -35,6 +35,10 @@ public class GameStateManager
     public void LoadState(GameState state)
     {
         State = state;
+
+        // Backward-compat: old saves may not have MaxAP
+        if (State.Player != null && State.Player.MaxAP <= 0)
+            State.Player.MaxAP = 2;
     }
 
     /// Initialize from editor map data and groups.
@@ -63,6 +67,7 @@ public class GameStateManager
                 Facing = Direction.Down,
                 Health = 100,
                 MaxHealth = 100,
+                MaxAP = 2,
             };
         }
 
@@ -357,6 +362,14 @@ public class GameStateManager
         return State.Player.Defense + GetEquipmentBonus("equip_defense");
     }
 
+    /// <summary>
+    /// Returns effective max AP: base MaxAP + sum of equip_ap bonuses from all equipped items.
+    /// </summary>
+    public int GetEffectiveMaxAP()
+    {
+        return State.Player.MaxAP + GetEquipmentBonus("equip_ap");
+    }
+
     private int GetEquipmentBonus(string propertyKey)
     {
         int total = 0;
@@ -384,12 +397,31 @@ public class GameStateManager
     }
 
     /// <summary>
-    /// Returns true if the entity can be attacked: is active, has health > 0,
+    /// Returns true if the entity is currently hostile. Checks flag overrides first
+    /// (friendly_flag makes non-hostile, hostile_flag makes hostile), then falls back
+    /// to the entity's "hostile" property. Default is hostile (backward compatible).
+    /// </summary>
+    public bool IsEntityHostile(EntityInstance entity)
+    {
+        if (entity.Properties.TryGetValue("friendly_flag", out var ff)
+            && !string.IsNullOrEmpty(ff) && State.Flags.Contains(ff))
+            return false;
+        if (entity.Properties.TryGetValue("hostile_flag", out var hf)
+            && !string.IsNullOrEmpty(hf) && State.Flags.Contains(hf))
+            return true;
+        if (entity.Properties.TryGetValue("hostile", out var h))
+            return !string.Equals(h, "false", StringComparison.OrdinalIgnoreCase);
+        return true;
+    }
+
+    /// <summary>
+    /// Returns true if the entity can be attacked: is active, hostile, has health > 0,
     /// and its EntityType is NPC or Trap (Items and Triggers are never attackable).
     /// </summary>
     public bool IsAttackable(EntityInstance entity, IReadOnlyDictionary<string, TileGroup> groupsByName)
     {
         if (!entity.IsActive) return false;
+        if (!IsEntityHostile(entity)) return false;
 
         int health = GetEntityIntProperty(entity, "health", 0);
         if (health <= 0) return false;

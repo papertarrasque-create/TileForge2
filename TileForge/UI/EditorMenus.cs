@@ -44,6 +44,8 @@ public static class EditorMenus
     public const int View_ToggleLayerVisibility = 2;
     // 3 = separator
     public const int View_NextLayer = 4;
+    // 5 = separator
+    public const int View_WorldMap = 6;
 
     // Tools menu item indices
     public const int Tools_Brush = 0;
@@ -93,6 +95,8 @@ public static class EditorMenus
             new MenuItemDef("Toggle Layer Visibility", "V"),
             MenuItemDef.Separator,
             new MenuItemDef("Next Layer", "Tab"),
+            MenuItemDef.Separator,
+            new MenuItemDef("World Map...", "Ctrl+W"),
         }),
         new MenuDef("Tools", new[]
         {

@@ -28,8 +28,6 @@ public class StatusBar
         {
             var play = state.PlayState;
             string playLeft = $"({play.PlayerEntity.X}, {play.PlayerEntity.Y})";
-            if (play.StatusMessage != null)
-                playLeft += $"  {play.StatusMessage}";
 
             spriteBatch.DrawString(font, playLeft, new Vector2(10, textY), TextColor);
 

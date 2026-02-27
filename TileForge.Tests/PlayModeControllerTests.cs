@@ -761,7 +761,7 @@ public class PlayModeControllerTests
     // =========================================================================
 
     [Fact]
-    public void Update_WalkIntoNonSolidEntity_SetsStatusMessage()
+    public void Update_WalkIntoNonSolidEntity_SetsFloatingMessage()
     {
         var (state, canvas, controller) = CreatePlaySetup(playerX: 5, playerY: 5, customize: s =>
         {
@@ -785,12 +785,11 @@ public class PlayModeControllerTests
         // Walk onto the chest cell — player moves through and triggers interaction
         SimulateFullMove(controller, Keys.Right);
 
-        Assert.Equal("Interacted with chest", state.PlayState.StatusMessage);
-        Assert.True(state.PlayState.StatusMessageTimer > 0);
+        Assert.Contains(state.PlayState.FloatingMessages, m => m.Text == "Interacted with chest");
     }
 
     [Fact]
-    public void Update_BumpIntoSolidEntity_SetsStatusMessage()
+    public void Update_BumpIntoSolidEntity_SetsFloatingMessage()
     {
         var (state, canvas, controller) = CreatePlaySetup(playerX: 5, playerY: 5, customize: s =>
         {
@@ -814,12 +813,11 @@ public class PlayModeControllerTests
         // Bump into the door — player is blocked but interaction still fires
         SimulateKeyPress(controller, Keys.Right);
 
-        Assert.Equal("Interacted with door", state.PlayState.StatusMessage);
-        Assert.True(state.PlayState.StatusMessageTimer > 0);
+        Assert.Contains(state.PlayState.FloatingMessages, m => m.Text == "Interacted with door");
     }
 
     [Fact]
-    public void Update_StatusMessageTimerCountsDown()
+    public void Update_FloatingMessageTimerCountsDown()
     {
         var (state, canvas, controller) = CreatePlaySetup(playerX: 5, playerY: 5, customize: s =>
         {
@@ -841,17 +839,18 @@ public class PlayModeControllerTests
         controller.Enter();
         SimulateFullMove(controller, Keys.Right);
 
-        float initialTimer = state.PlayState.StatusMessageTimer;
+        Assert.NotEmpty(state.PlayState.FloatingMessages);
+        float initialTimer = state.PlayState.FloatingMessages[0].Timer;
 
         // Run an Update with some elapsed time (no key press)
         var gameTime = new GameTime(TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(0.5));
         controller.Update(gameTime, new KeyboardState());
 
-        Assert.True(state.PlayState.StatusMessageTimer < initialTimer);
+        Assert.True(state.PlayState.FloatingMessages[0].Timer < initialTimer);
     }
 
     [Fact]
-    public void Update_StatusMessageClearsAfterDuration()
+    public void Update_FloatingMessageClearsAfterDuration()
     {
         var (state, canvas, controller) = CreatePlaySetup(playerX: 5, playerY: 5, customize: s =>
         {
@@ -873,18 +872,18 @@ public class PlayModeControllerTests
         controller.Enter();
         SimulateFullMove(controller, Keys.Right);
 
-        Assert.NotNull(state.PlayState.StatusMessage);
+        Assert.NotEmpty(state.PlayState.FloatingMessages);
 
-        // Tick past the full status message duration
+        // Tick past the full floating message duration
         var gameTime = new GameTime(TimeSpan.FromSeconds(10),
-            TimeSpan.FromSeconds(PlayState.StatusMessageDuration + 0.1));
+            TimeSpan.FromSeconds(TileForge.Game.FloatingMessage.Duration + 0.1f));
         controller.Update(gameTime, new KeyboardState());
 
-        Assert.Null(state.PlayState.StatusMessage);
+        Assert.Empty(state.PlayState.FloatingMessages);
     }
 
     [Fact]
-    public void Update_BumpIntoEmptyInBoundsCell_NoStatusMessage()
+    public void Update_BumpIntoEmptyInBoundsCell_NoFloatingMessage()
     {
         // Bumping into a boundary sets no message — CanMoveTo returns false but the
         // "bump interaction" code only runs when target is in bounds.
@@ -904,8 +903,8 @@ public class PlayModeControllerTests
 
         SimulateKeyPress(controller, Keys.Right);
 
-        // Blocked by wall, target is in bounds but no entity there — no status message
-        Assert.Null(state.PlayState.StatusMessage);
+        // Blocked by wall, target is in bounds but no entity there — no floating message
+        Assert.Empty(state.PlayState.FloatingMessages);
     }
 
     // =========================================================================
@@ -1144,7 +1143,7 @@ public class PlayModeControllerTests
 
         SimulateFullMove(controller, Keys.Right);
 
-        Assert.Equal("Took 10 fire damage!", state.PlayState.StatusMessage);
+        Assert.Contains(state.PlayState.FloatingMessages, m => m.Text == "Took 10 fire damage!");
     }
 
     [Fact]
@@ -1316,7 +1315,7 @@ public class PlayModeControllerTests
         // Bump into the NPC (solid)
         SimulateKeyPress(controller, Keys.Right);
 
-        Assert.Equal("Talked to elder", state.PlayState.StatusMessage);
+        Assert.Contains(state.PlayState.FloatingMessages, m => m.Text == "Talked to elder");
     }
 
     [Fact]
@@ -1338,7 +1337,7 @@ public class PlayModeControllerTests
 
         SimulateFullMove(controller, Keys.Right);
 
-        Assert.Equal("Collected health_potion", state.PlayState.StatusMessage);
+        Assert.Contains(state.PlayState.FloatingMessages, m => m.Text == "Collected health_potion");
         Assert.True(controller.GameStateManager.HasItem("health_potion"));
 
         // Entity should be deactivated
@@ -1365,7 +1364,7 @@ public class PlayModeControllerTests
 
         // Bump into the key (solid + item = collect on bump)
         SimulateKeyPress(controller, Keys.Right);
-        Assert.Equal("Collected key", state.PlayState.StatusMessage);
+        Assert.Contains(state.PlayState.FloatingMessages, m => m.Text == "Collected key");
 
         // Now the deactivated entity should no longer block
         SimulateFullMove(controller, Keys.Right);
@@ -1399,7 +1398,7 @@ public class PlayModeControllerTests
         SimulateFullMove(controller, Keys.Right);
 
         Assert.Equal(85, controller.GameStateManager.State.Player.Health);
-        Assert.Equal("spike_trap dealt 15 damage!", state.PlayState.StatusMessage);
+        Assert.Contains(state.PlayState.FloatingMessages, m => m.Text == "spike_trap dealt 15 damage!");
     }
 
     [Fact]
@@ -1428,7 +1427,7 @@ public class PlayModeControllerTests
 
         SimulateFullMove(controller, Keys.Right);
 
-        Assert.Equal("Triggered door", state.PlayState.StatusMessage);
+        Assert.Contains(state.PlayState.FloatingMessages, m => m.Text == "Triggered door");
     }
 
     [Fact]
@@ -1451,7 +1450,7 @@ public class PlayModeControllerTests
         // Bump into the sign (solid interactable)
         SimulateKeyPress(controller, Keys.Right);
 
-        Assert.Equal("Interacted with sign", state.PlayState.StatusMessage);
+        Assert.Contains(state.PlayState.FloatingMessages, m => m.Text == "Interacted with sign");
     }
 
     [Fact]
@@ -1473,18 +1472,17 @@ public class PlayModeControllerTests
 
         // Collect the coin
         SimulateFullMove(controller, Keys.Right);
-        Assert.Equal("Collected coin", state.PlayState.StatusMessage);
+        Assert.Contains(state.PlayState.FloatingMessages, m => m.Text == "Collected coin");
 
         // Move away
         SimulateFullMove(controller, Keys.Right);
 
-        // Clear the status message manually so we can detect if a new one is set
-        state.PlayState.StatusMessage = null;
-        state.PlayState.StatusMessageTimer = 0;
+        // Clear floating messages so we can detect if a new one is added
+        state.PlayState.FloatingMessages.Clear();
 
         // Move back to coin position — coin is inactive, should not trigger
         SimulateFullMove(controller, Keys.Left);
 
-        Assert.Null(state.PlayState.StatusMessage);
+        Assert.Empty(state.PlayState.FloatingMessages);
     }
 }

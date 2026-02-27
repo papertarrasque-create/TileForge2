@@ -207,6 +207,10 @@ public class EditorState
         MarkDirty();
     }
 
+    // --- World layout (grid-based map relationships) ---
+
+    public WorldLayout WorldLayout { get; set; }
+
     // --- Dialogue data (loaded from dialogues/*.json) ---
 
     public List<DialogueData> Dialogues { get; set; } = new();

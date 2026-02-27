@@ -217,9 +217,9 @@ public class MapTabBar
             if (textSize.X > maxTextWidth)
             {
                 // Truncate with ellipsis
-                while (name.Length > 1 && font.MeasureString(name + "…").X > maxTextWidth)
+                while (name.Length > 1 && font.MeasureString(name + "...").X > maxTextWidth)
                     name = name[..^1];
-                name += "…";
+                name += "...";
             }
             spriteBatch.DrawString(font, name,
                 new Vector2(tr.Tab.X + 6, tr.Tab.Y + (Height - textSize.Y) / 2f),

@@ -363,4 +363,36 @@ public static class LayoutConstants
     public static readonly Color MinimapViewportColor = new(255, 255, 255, 200);
     public static readonly Color MinimapEntityColor = new(255, 200, 100, 220);
     public static readonly Color MinimapPlayerColor = new(100, 255, 100, 255);
+
+    // ---------------------------------------------------------------
+    //  World map editor (visual grid)
+    // ---------------------------------------------------------------
+    public const int WorldMapMaxWidth = 1100;
+    public const int WorldMapMaxHeight = 700;
+    public const int WorldMapHeaderHeight = 32;
+    public const float WorldMapCanvasSplit = 0.65f;
+    public const int WorldMapCellWidth = 120;
+    public const int WorldMapCellHeight = 90;
+    public const int WorldMapGridLineWidth = 1;
+
+    public static readonly Color WorldMapOverlay = new(0, 0, 0, 180);
+    public static readonly Color WorldMapPanelBg = new(35, 35, 35);
+    public static readonly Color WorldMapHeaderBg = new(45, 45, 45);
+    public static readonly Color WorldMapCanvasBg = new(28, 28, 32);
+    public static readonly Color WorldMapGridLineColor = new(50, 50, 55);
+    public static readonly Color WorldMapCellEmptyBg = new(40, 40, 45, 80);
+    public static readonly Color WorldMapCellFilledBg = new(50, 65, 85);
+    public static readonly Color WorldMapCellSelectedBg = new(60, 80, 120);
+    public static readonly Color WorldMapCellHoverBg = new(55, 60, 70);
+    public static readonly Color WorldMapCellBorder = new(80, 80, 80);
+    public static readonly Color WorldMapCellSelectedBorder = new(100, 180, 255);
+    public static readonly Color WorldMapCellTextColor = new(200, 200, 200);
+    public static readonly Color WorldMapCellDimTextColor = new(140, 140, 140);
+    public static readonly Color WorldMapPropsBg = new(38, 38, 38);
+    public static readonly Color WorldMapPropsSectionColor = new(140, 180, 220);
+    public static readonly Color WorldMapUnplacedItemBg = new(42, 42, 42);
+    public static readonly Color WorldMapUnplacedItemHoverBg = new(50, 55, 65);
+    public static readonly Color WorldMapConnectionColor = new(100, 180, 255, 120);
+    public static readonly Color WorldMapDividerColor = new(60, 60, 60);
+    public static readonly Color WorldMapHintColor = new(120, 120, 120);
 }

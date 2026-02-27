@@ -11,6 +11,7 @@ using TileForge.Editor;
 using TileForge.Export;
 using TileForge.Game;
 using TileForge.Game.Screens;
+using TileForge.Infrastructure;
 using TileForge.Play;
 using TileForge.UI;
 
@@ -21,6 +22,7 @@ public class PlayModeController
     private readonly EditorState _state;
     private readonly MapCanvas _canvas;
     private readonly Func<Rectangle> _getCanvasBounds;
+    private readonly IPathResolver _pathResolver;
 
     private Vector2 _savedCameraOffset;
     private int _savedZoomIndex;
@@ -33,9 +35,11 @@ public class PlayModeController
     private SaveManager _saveManager;
     private QuestManager _questManager;
     private string _bindingsPath;
+    private GamePlayContext _context;
 
     // Pre-exported project maps for in-project transitions
     private Dictionary<string, LoadedMap> _projectMaps;
+    private EdgeTransitionResolver _edgeResolver;
 
     public GameStateManager GameStateManager => _gameStateManager;
     public ScreenManager ScreenManager => _screenManager;
@@ -46,11 +50,13 @@ public class PlayModeController
     /// </summary>
     public string MapBaseDirectory { get; set; }
 
-    public PlayModeController(EditorState state, MapCanvas canvas, Func<Rectangle> getCanvasBounds)
+    public PlayModeController(EditorState state, MapCanvas canvas, Func<Rectangle> getCanvasBounds,
+        IPathResolver pathResolver = null)
     {
         _state = state;
         _canvas = canvas;
         _getCanvasBounds = getCanvasBounds;
+        _pathResolver = pathResolver ?? new DefaultPathResolver();
     }
 
     /// <summary>
@@ -99,30 +105,48 @@ public class PlayModeController
             }
         }
 
+        // Build edge transition resolver from WorldLayout (if configured)
+        if (_state.WorldLayout != null)
+            _edgeResolver = new EdgeTransitionResolver(_state.WorldLayout, _projectMaps);
+        else
+            _edgeResolver = null;
+
         // Initialize game state
         _gameStateManager = new GameStateManager();
         _gameStateManager.Initialize(_state.Map, _state.GroupsByName);
 
+        // Set initial map identity for edge transitions and save/load
+        _gameStateManager.State.CurrentMapId = _state.ActiveMapDocument?.Name;
+
         // Initialize input, screen management, and save manager
         _inputManager = new GameInputManager();
-        _bindingsPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-            ".tileforge", "keybindings.json");
+        _bindingsPath = _pathResolver.KeybindingsPath;
         _inputManager.LoadBindings(_bindingsPath);
         _screenManager = new ScreenManager();
         _saveManager = new SaveManager();
         _questManager = LoadQuests();
 
-        // Create play state (rendering/lerp)
+        // Build dialogue loader and shared context for gameplay screens
+        IDialogueLoader dialogueLoader = !string.IsNullOrEmpty(MapBaseDirectory)
+            ? new FileDialogueLoader(MapBaseDirectory)
+            : null;
+        _context = new GamePlayContext(
+            _gameStateManager, _saveManager, _inputManager,
+            _bindingsPath, _questManager,
+            _getCanvasBounds, _edgeResolver, dialogueLoader);
+
+        // Create play state (rendering/lerp + AP)
         _state.PlayState = new PlayState
         {
             PlayerEntity = playerEntity,
             RenderPos = new Vector2(playerEntity.X, playerEntity.Y),
+            PlayerAP = _gameStateManager.GetEffectiveMaxAP(),
+            IsPlayerTurn = true,
         };
         _state.IsPlayMode = true;
 
         // Push the gameplay screen
-        _screenManager.Push(new GameplayScreen(_state, _canvas, _gameStateManager, _saveManager, _inputManager, _bindingsPath, MapBaseDirectory, _questManager, _getCanvasBounds));
+        _screenManager.Push(new GameplayScreen(_state, _canvas, _context));
 
         return true;
     }
@@ -154,7 +178,9 @@ public class PlayModeController
         _saveManager = null;
         _questManager = null;
         _bindingsPath = null;
+        _context = null;
         _projectMaps = null;
+        _edgeResolver = null;
     }
 
     public void Update(GameTime gameTime, KeyboardState keyboard)
@@ -206,8 +232,7 @@ public class PlayModeController
 
         if (!File.Exists(mapPath))
         {
-            _state.PlayState.StatusMessage = $"Map not found: {request.TargetMap}";
-            _state.PlayState.StatusMessageTimer = PlayState.StatusMessageDuration;
+            _state.PlayState.AddFloatingMessage($"Map not found: {request.TargetMap}", Microsoft.Xna.Framework.Color.Red, _state.PlayState.PlayerEntity.X, _state.PlayState.PlayerEntity.Y);
             return;
         }
 
@@ -249,16 +274,18 @@ public class PlayModeController
         };
         _state.Map.Entities.Add(playerEntity);
 
-        // Reset play state for new position
+        // Reset play state for new position (AP refills on map transition)
         _state.PlayState = new PlayState
         {
             PlayerEntity = playerEntity,
             RenderPos = new Vector2(request.TargetX, request.TargetY),
+            PlayerAP = _gameStateManager.GetEffectiveMaxAP(),
+            IsPlayerTurn = true,
         };
 
         // Pop the old gameplay screen and push a new one (re-centers camera)
         _screenManager.Clear();
-        _screenManager.Push(new GameplayScreen(_state, _canvas, _gameStateManager, _saveManager, _inputManager, _bindingsPath, MapBaseDirectory, _questManager, _getCanvasBounds));
+        _screenManager.Push(new GameplayScreen(_state, _canvas, _context));
     }
 
     private QuestManager LoadQuests()

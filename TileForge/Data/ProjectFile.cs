@@ -29,6 +29,8 @@ public static class ProjectFile
         // V2 multimap
         public List<MapDocumentData> Maps { get; set; }
         public EditorStateData EditorState { get; set; }
+        // World grid layout (null = no grid configured, omitted from JSON by WhenWritingNull)
+        public WorldLayout WorldLayout { get; set; }
     }
 
     public class MapDocumentData
@@ -266,7 +268,8 @@ public static class ProjectFile
 
     public static void Save(string projectPath, string sheetPath,
                             DojoUI.ISpriteSheet sheet, List<TileGroup> groups,
-                            List<MapDocumentState> mapDocuments, EditorStateData editorState)
+                            List<MapDocumentState> mapDocuments, EditorStateData editorState,
+                            WorldLayout worldLayout = null)
     {
         string projectDir = System.IO.Path.GetDirectoryName(System.IO.Path.GetFullPath(projectPath));
 
@@ -281,6 +284,7 @@ public static class ProjectFile
                 Padding = sheet.Padding,
             },
             EditorState = editorState,
+            WorldLayout = worldLayout,
             // V1 fields null (omitted by WhenWritingNull)
             Map = null,
             Entities = null,

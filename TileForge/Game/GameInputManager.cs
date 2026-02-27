@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 using Microsoft.Xna.Framework.Input;
+using TileForge.Infrastructure;
 
 namespace TileForge.Game;
 
@@ -19,10 +20,12 @@ public class GameInputManager
     private KeyboardState _current;
     private KeyboardState _previous;
     private bool _hasBeenUpdated;
+    private readonly IFileSystem _fileSystem;
 
-    public GameInputManager()
+    public GameInputManager(IFileSystem fileSystem = null)
     {
         _bindings = GetDefaultBindings();
+        _fileSystem = fileSystem ?? new DefaultFileSystem();
     }
 
     /// <summary>
@@ -114,10 +117,10 @@ public class GameInputManager
 
         var dir = Path.GetDirectoryName(path);
         if (!string.IsNullOrEmpty(dir))
-            Directory.CreateDirectory(dir);
+            _fileSystem.CreateDirectory(dir);
 
         var json = JsonSerializer.Serialize(serializable, new JsonSerializerOptions { WriteIndented = true });
-        File.WriteAllText(path, json);
+        _fileSystem.WriteAllText(path, json);
     }
 
     /// <summary>
@@ -127,12 +130,12 @@ public class GameInputManager
     /// </summary>
     public void LoadBindings(string path)
     {
-        if (!File.Exists(path))
+        if (!_fileSystem.Exists(path))
             return;
 
         try
         {
-            var json = File.ReadAllText(path);
+            var json = _fileSystem.ReadAllText(path);
             var serializable = JsonSerializer.Deserialize<Dictionary<string, string[]>>(json);
             if (serializable == null) return;
 
@@ -170,6 +173,7 @@ public class GameInputManager
             { GameAction.Pause,         new[] { Keys.Escape } },
             { GameAction.OpenInventory, new[] { Keys.I } },
             { GameAction.OpenQuestLog, new[] { Keys.Q } },
+            { GameAction.EndTurn,      new[] { Keys.Space } },
         };
     }
 }
