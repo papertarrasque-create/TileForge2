@@ -10,10 +10,18 @@ namespace TileForge.UI;
 
 public class PanelDock
 {
-    public const int Width = LayoutConstants.PanelDockWidth;
+    private int _width = LayoutConstants.PanelDockWidth;
+
+    public int Width
+    {
+        get => _width;
+        set => _width = Math.Clamp(value,
+            LayoutConstants.PanelDockMinWidth, LayoutConstants.PanelDockMaxWidth);
+    }
 
     private static readonly Color BackgroundColor = LayoutConstants.PanelDockBackground;
     private static readonly Color DragIndicatorColor = LayoutConstants.PanelDockDragIndicator;
+    private static readonly Color ResizeIndicatorColor = LayoutConstants.PanelDockResizeIndicator;
 
     private readonly List<Panel> _panels = new();
     private Rectangle _bounds;
@@ -25,6 +33,11 @@ public class PanelDock
     private bool _isDragging;
     private int _mouseDownHeaderIndex = -1;
     private int _mouseDownY;
+
+    // Edge resize state
+    private bool _isResizeDragging;
+    private int _resizeDragStartX;
+    private int _resizeDragStartWidth;
 
     public List<Panel> Panels => _panels;
 
@@ -44,13 +57,47 @@ public class PanelDock
                        InputEvent input, SpriteFont font, Rectangle bounds, GameTime gameTime,
                        int screenW, int screenH)
     {
-        _bounds = bounds;
-        DistributeHeight(bounds);
-
-        // Track mouse down on headers
         bool leftPressed = mouse.LeftButton == ButtonState.Pressed && prevMouse.LeftButton == ButtonState.Released;
         bool leftHeld = mouse.LeftButton == ButtonState.Pressed;
         bool leftReleased = mouse.LeftButton == ButtonState.Released && prevMouse.LeftButton == ButtonState.Pressed;
+
+        // --- Edge resize drag ---
+        if (_isResizeDragging)
+        {
+            if (leftHeld)
+            {
+                int delta = mouse.X - _resizeDragStartX;
+                Width = _resizeDragStartWidth + delta;
+                bounds = new Rectangle(bounds.X, bounds.Y, Width, bounds.Height);
+            }
+            if (leftReleased)
+                _isResizeDragging = false;
+
+            _bounds = bounds;
+            DistributeHeight(bounds);
+            return;
+        }
+
+        // Detect resize grab on right edge
+        int grabZone = LayoutConstants.PanelDockResizeGrabSize;
+        bool nearRightEdge = mouse.X >= bounds.Right - grabZone
+            && mouse.X <= bounds.Right + grabZone
+            && mouse.Y >= bounds.Y && mouse.Y <= bounds.Bottom;
+
+        if (nearRightEdge && leftPressed)
+        {
+            _isResizeDragging = true;
+            _resizeDragStartX = mouse.X;
+            _resizeDragStartWidth = _width;
+            input.ConsumeClick();
+            _bounds = bounds;
+            DistributeHeight(bounds);
+            return;
+        }
+
+        // --- Normal panel dock logic ---
+        _bounds = bounds;
+        DistributeHeight(bounds);
 
         // Header hover
         for (int i = 0; i < _panels.Count; i++)
@@ -152,6 +199,19 @@ public class PanelDock
             dragPanel.HeaderBounds = new Rectangle(savedBounds.X, ghostY, savedBounds.Width, Panel.HeaderHeight);
             dragPanel.DrawHeader(spriteBatch, font, renderer);
             dragPanel.HeaderBounds = savedBounds;
+        }
+
+        // Resize indicator at right edge
+        var ms = Mouse.GetState();
+        int grabZone = LayoutConstants.PanelDockResizeGrabSize;
+        bool nearEdge = ms.X >= _bounds.Right - grabZone
+            && ms.X <= _bounds.Right + grabZone
+            && ms.Y >= _bounds.Y && ms.Y <= _bounds.Bottom;
+        if (nearEdge || _isResizeDragging)
+        {
+            renderer.DrawRect(spriteBatch,
+                new Rectangle(_bounds.Right - 2, _bounds.Y, 2, _bounds.Height),
+                ResizeIndicatorColor);
         }
     }
 

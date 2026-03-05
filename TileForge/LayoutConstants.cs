@@ -76,9 +76,13 @@ public static class LayoutConstants
     //  Panel dock (left sidebar)
     // ---------------------------------------------------------------
     public const int PanelDockWidth = 200;
+    public const int PanelDockMinWidth = 150;
+    public const int PanelDockMaxWidth = 400;
+    public const int PanelDockResizeGrabSize = 6;
 
     public static readonly Color PanelDockBackground = new(35, 35, 35);
     public static readonly Color PanelDockDragIndicator = new(100, 160, 255);
+    public static readonly Color PanelDockResizeIndicator = new(100, 160, 255, 120);
 
     // ---------------------------------------------------------------
     //  Panel header (shared across all panels)
@@ -217,6 +221,19 @@ public static class LayoutConstants
     public static readonly Color TilePaletteHoverOutline = new(200, 200, 200, 150);
     public static readonly Color TilePaletteUngroupedHint = new(80, 80, 80, 120);
     public static readonly Color TilePaletteBackground = new(30, 30, 30);
+    public static readonly Color TilePaletteUngroupedSelectedHighlight = new(255, 200, 100, 180);
+
+    // Tile Palette Panel — Zoom
+    public const float TilePaletteDefaultZoom = 1.0f;
+    public const float TilePaletteMinZoom = 1.0f;
+    public const float TilePaletteMaxZoom = 4.0f;
+    public const float TilePaletteZoomStep = 0.25f;
+    public const int TilePaletteZoomBarHeight = 18;
+    public const int TilePaletteZoomButtonWidth = 18;
+    public static readonly Color TilePaletteZoomBarBg = new(40, 40, 40);
+    public static readonly Color TilePaletteZoomButtonBg = new(55, 55, 55);
+    public static readonly Color TilePaletteZoomButtonHoverBg = new(70, 70, 70);
+    public static readonly Color TilePaletteZoomButtonText = new(200, 200, 200);
 
     // ---------------------------------------------------------------
     //  Quest panel (sidebar)

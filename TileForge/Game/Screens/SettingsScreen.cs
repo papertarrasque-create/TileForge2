@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -22,6 +23,9 @@ public class SettingsScreen : GameScreen
     private GameMenuList _menu;
     private bool _waitingForKey;
     private KeyboardState _previousKeyState;
+    private bool _bindingsDirty = true;
+    private Dictionary<GameAction, Keys[]> _cachedBindings;
+    private Dictionary<GameAction, string> _cachedKeyDisplayStrings;
 
     public override bool IsOverlay => true;
 
@@ -37,8 +41,30 @@ public class SettingsScreen : GameScreen
     private bool IsResetItem(int index) => index == _actions.Length;
     private bool IsBackItem(int index) => index == _actions.Length + 1;
 
+    public override void OnEnter()
+    {
+        _bindingsDirty = true;
+    }
+
+    private void RebuildBindingsCache()
+    {
+        _cachedBindings = _inputManager.GetBindings();
+        _cachedKeyDisplayStrings ??= new Dictionary<GameAction, string>();
+        _cachedKeyDisplayStrings.Clear();
+        foreach (var action in _actions)
+        {
+            _cachedKeyDisplayStrings[action] = _cachedBindings.TryGetValue(action, out var keys)
+                ? string.Join(", ", keys.Select(k => k.ToString()))
+                : "???";
+        }
+        _bindingsDirty = false;
+    }
+
     public override void Update(GameTime gameTime, GameInputManager input)
     {
+        if (_bindingsDirty)
+            RebuildBindingsCache();
+
         var currentKeyState = Keyboard.GetState();
 
         if (_waitingForKey)
@@ -59,6 +85,7 @@ public class SettingsScreen : GameScreen
                     // Apply the new binding and persist it immediately
                     _inputManager.RebindAction(_actions[_menu.SelectedIndex], key);
                     _inputManager.SaveBindings(_bindingsPath);
+                    _bindingsDirty = true;
                     _waitingForKey = false;
                     _previousKeyState = currentKeyState;
                     return;
@@ -87,6 +114,7 @@ public class SettingsScreen : GameScreen
             {
                 _inputManager.ResetDefaults();
                 _inputManager.SaveBindings(_bindingsPath);
+                _bindingsDirty = true;
                 return;
             }
             // Enter key-capture mode for the selected action
@@ -116,8 +144,10 @@ public class SettingsScreen : GameScreen
             canvasBounds.Y + 40f);
         spriteBatch.DrawString(font, titleText, titlePos, Color.White);
 
-        // Binding rows
-        var bindings = _inputManager.GetBindings();
+        // Binding rows (use cached display strings built in Update)
+        if (_bindingsDirty || _cachedKeyDisplayStrings == null)
+            RebuildBindingsCache();
+
         float startY = titlePos.Y + titleSize.Y + 20f;
 
         for (int i = 0; i < MenuItemCount; i++)
@@ -126,8 +156,8 @@ public class SettingsScreen : GameScreen
             if (i < _actions.Length)
             {
                 var action = _actions[i];
-                string keysText = bindings.TryGetValue(action, out var keys)
-                    ? string.Join(", ", keys.Select(k => k.ToString()))
+                string keysText = _cachedKeyDisplayStrings.TryGetValue(action, out var cached)
+                    ? cached
                     : "???";
 
                 text = (_waitingForKey && i == _menu.SelectedIndex)

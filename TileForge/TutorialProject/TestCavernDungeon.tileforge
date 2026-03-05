@@ -191,7 +191,21 @@
           "row": 32
         }
       ],
-      "layer": "Entities"
+      "isSolid": true,
+      "layer": "Entities",
+      "entityType": "NPC",
+      "defaultProperties": {
+        "dialogue": "0",
+        "health": "200",
+        "attack": "0",
+        "defense": "0",
+        "poise": "0",
+        "behavior": "chase",
+        "speed": "1",
+        "default_facing": "left",
+        "hostile": "true",
+        "aggro_range": "5"
+      }
     },
     {
       "name": "SkullStick",
@@ -492,6 +506,56 @@
         "defense": "0",
         "behavior": "idle",
         "default_facing": "right",
+        "hostile": "false",
+        "aggro_range": "1"
+      }
+    },
+    {
+      "name": "Lavaman",
+      "type": "Entity",
+      "sprites": [
+        {
+          "col": 13,
+          "row": 33
+        }
+      ],
+      "isSolid": true,
+      "layer": "Entities",
+      "entityType": "NPC",
+      "defaultProperties": {
+        "dialogue": "0",
+        "health": "100",
+        "attack": "10",
+        "defense": "5",
+        "poise": "0",
+        "behavior": "chase_patrol",
+        "speed": "1",
+        "default_facing": "left",
+        "hostile": "true",
+        "aggro_range": "5"
+      }
+    },
+    {
+      "name": "duck",
+      "type": "Entity",
+      "sprites": [
+        {
+          "col": 4,
+          "row": 28
+        }
+      ],
+      "isSolid": true,
+      "layer": "Walls",
+      "entityType": "NPC",
+      "defaultProperties": {
+        "dialogue": "duck_dialog",
+        "health": "1",
+        "attack": "0",
+        "defense": "0",
+        "poise": "0",
+        "behavior": "patrol",
+        "speed": "3",
+        "default_facing": "left",
         "hostile": "false",
         "aggro_range": "1"
       }
@@ -9130,8 +9194,8 @@
               null,
               null,
               null,
-              null,
-              null,
+              "gravel",
+              "gravel",
               null,
               null,
               null,
@@ -9627,8 +9691,8 @@
               null,
               null,
               null,
-              null,
-              null,
+              "gravel",
+              "gravel",
               null,
               "CavernWallVert",
               null,
@@ -9667,12 +9731,12 @@
               null,
               null,
               null,
+              "gravel",
+              "gravel",
               null,
-              null,
-              null,
-              "CavernWallCorner3",
-              "CavernWallCorner1",
-              null,
+              "gravel",
+              "gravel",
+              "gravel",
               null,
               null,
               null,
@@ -9707,25 +9771,25 @@
               null,
               null,
               null,
+              "gravel",
+              "gravel",
+              "gravel",
+              "gravel",
+              "gravel",
+              "gravel",
+              "gravel",
               null,
               null,
               null,
               null,
+              "CavernWallCorner3",
               "CavernWallCorner1",
-              null,
-              null,
               null,
               null,
               null,
               null,
               "CavernWallCorner3",
               "CavernWallCorner1",
-              null,
-              null,
-              null,
-              null,
-              "CavernWallCorner3",
-              "CaveWallHorz",
               null,
               null,
               null,
@@ -9751,21 +9815,21 @@
               null,
               null,
               null,
+              "gravel",
+              "gravel",
+              "CaveWallHorz",
+              "CaveWallHorz",
+              "CaveWallHorz",
+              "CavernWallCorner1",
+              null,
+              null,
               "CavernWallCorner3",
-              "CaveWallHorz",
-              "CaveWallHorz",
-              "CaveWallHorz",
-              "CaveWallHorz",
-              "CavernWallCorner1",
-              null,
-              null,
-              "CaveWallHorz",
               "CavernWallCorner1",
               null,
               null,
               null,
-              "CaveWallHorz",
-              "CaveWallHorz",
+              null,
+              "CavernWallVert",
               null,
               null,
               null,
@@ -9847,7 +9911,7 @@
               null,
               null,
               "CavernWallCorner3",
-              null,
+              "CavernWallCorner1",
               null,
               null,
               "CavernWallCorner3",
@@ -9884,11 +9948,11 @@
               "CavernWallCorner3",
               "CavernWallCorner1",
               null,
-              "CaveWallHorz",
               null,
               null,
+              null,
+              "CavernWallCorner3",
               "CavernWallCorner1",
-              null,
               null,
               null,
               "CavernWallVert",
@@ -9928,7 +9992,7 @@
               null,
               null,
               null,
-              "CavernWallCorner1",
+              "CavernWallVert",
               null,
               null,
               "CavernWallVert",
@@ -10195,8 +10259,8 @@
         {
           "id": "2ac3b569",
           "groupName": "Hero",
-          "x": 25,
-          "y": 7,
+          "x": 20,
+          "y": 13,
           "properties": {
             "dialogue": "0",
             "health": "1",
@@ -10206,48 +10270,6 @@
             "default_facing": "left",
             "hostile": "true",
             "aggro_range": "1"
-          }
-        },
-        {
-          "id": "49c60848",
-          "groupName": "sword",
-          "x": 25,
-          "y": 16,
-          "properties": {
-            "heal": "1",
-            "equip_slot": "weapon",
-            "equip_attack": "10",
-            "equip_defense": "0",
-            "equip_ap": "0",
-            "dialogue": "0"
-          }
-        },
-        {
-          "id": "2ce21d6e",
-          "groupName": "sword",
-          "x": 10,
-          "y": 16,
-          "properties": {
-            "heal": "1",
-            "equip_slot": "weapon",
-            "equip_attack": "10",
-            "equip_defense": "0",
-            "equip_ap": "0",
-            "dialogue": "0"
-          }
-        },
-        {
-          "id": "10f3090e",
-          "groupName": "sword",
-          "x": 8,
-          "y": 3,
-          "properties": {
-            "heal": "1",
-            "equip_slot": "weapon",
-            "equip_attack": "10",
-            "equip_defense": "0",
-            "equip_ap": "0",
-            "dialogue": "0"
           }
         },
         {
@@ -10276,6 +10298,96 @@
             "equip_defense": "0",
             "equip_ap": "0",
             "dialogue": "0"
+          }
+        },
+        {
+          "id": "1853196a",
+          "groupName": "Lavaman",
+          "x": 1,
+          "y": 10,
+          "properties": {
+            "dialogue": "0",
+            "health": "100",
+            "attack": "10",
+            "defense": "5",
+            "poise": "0",
+            "behavior": "chase_patrol",
+            "speed": "1",
+            "default_facing": "left",
+            "hostile": "true",
+            "aggro_range": "5"
+          }
+        },
+        {
+          "id": "20ed8af7",
+          "groupName": "Lavaman",
+          "x": 4,
+          "y": 4,
+          "properties": {
+            "dialogue": "0",
+            "health": "100",
+            "attack": "10",
+            "defense": "5",
+            "poise": "0",
+            "behavior": "chase_patrol",
+            "speed": "1",
+            "default_facing": "left",
+            "hostile": "true",
+            "aggro_range": "5"
+          }
+        },
+        {
+          "id": "6021f86c",
+          "groupName": "duck",
+          "x": 19,
+          "y": 13,
+          "properties": {
+            "dialogue": "0",
+            "health": "1",
+            "attack": "0",
+            "defense": "0",
+            "poise": "0",
+            "behavior": "patrol",
+            "speed": "1",
+            "default_facing": "right",
+            "hostile": "false",
+            "aggro_range": "1"
+          }
+        },
+        {
+          "id": "d18d6a2c",
+          "groupName": "duck",
+          "x": 1,
+          "y": 9,
+          "properties": {
+            "dialogue": "0",
+            "health": "1",
+            "attack": "0",
+            "defense": "0",
+            "poise": "0",
+            "behavior": "patrol",
+            "speed": "3",
+            "default_facing": "left",
+            "hostile": "false",
+            "aggro_range": "1"
+          }
+        },
+        {
+          "id": "7c372ef6",
+          "groupName": "duck",
+          "x": 21,
+          "y": 19,
+          "properties": {
+            "dialogue": "duck_dialog",
+            "health": "1",
+            "attack": "0",
+            "defense": "0",
+            "poise": "0",
+            "behavior": "patrol",
+            "speed": "3",
+            "default_facing": "left",
+            "hostile": "false",
+            "aggro_range": "1"
           }
         }
       ]
@@ -15150,9 +15262,9 @@
     }
   ],
   "editorState": {
-    "activeLayer": "Objects",
-    "cameraX": 456,
-    "cameraY": 91,
+    "activeLayer": "Walls",
+    "cameraX": 413.5,
+    "cameraY": 23.75,
     "zoomIndex": 0,
     "panelOrder": [
       "Map",
@@ -15161,12 +15273,10 @@
       "Tileset"
     ],
     "collapsedPanels": [
-      "Quests",
-      "Dialogues",
-      "Tileset"
+      "Quests"
     ],
     "collapsedLayers": [
-      "Walls"
+      "Ground"
     ],
     "activeMapName": "CavernLevel2",
     "mapStates": [
@@ -15184,12 +15294,12 @@
       },
       {
         "mapName": "CavernLevel2",
-        "cameraX": 456,
-        "cameraY": 91,
-        "zoomIndex": 1,
-        "activeLayer": "Objects",
+        "cameraX": 413.5,
+        "cameraY": 23.75,
+        "zoomIndex": 2,
+        "activeLayer": "Walls",
         "collapsedLayers": [
-          "Walls"
+          "Ground"
         ]
       },
       {

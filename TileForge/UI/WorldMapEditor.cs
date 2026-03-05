@@ -74,6 +74,11 @@ public class WorldMapEditor
     // === Place mode: when user clicks an unplaced map, next click on empty cell places it ===
     private string _placingMap;
 
+    // === Cached placement hover state (computed in Update, used in Draw) ===
+    private bool _showPlacementPreview;
+    private int _placementHoverGridX;
+    private int _placementHoverGridY;
+
     // === Constants ===
     private const int HeaderH = LayoutConstants.WorldMapHeaderHeight;
     private const int Padding = LayoutConstants.FormPadding;
@@ -156,10 +161,18 @@ public class WorldMapEditor
     public void Update(MouseState mouse, MouseState prevMouse,
                        KeyboardState keyboard, KeyboardState prevKeyboard,
                        Rectangle bounds, List<MapDocumentState> mapDocuments,
-                       SpriteFont font = null, int screenW = 0, int screenH = 0)
+                       SpriteFont font = null, int screenW = 0, int screenH = 0,
+                       GameTime gameTime = null)
     {
         if (font != null) _cachedFont = font;
         _lastBounds = bounds;
+
+        // Update cursor blink for all numeric fields
+        if (gameTime != null)
+        {
+            foreach (var field in _numericFields.Values)
+                field.Update(gameTime);
+        }
 
         // Compute panel layout
         _panelRect = _resize.ComputePanelRect(DefaultMaxWidth, DefaultMaxHeight, bounds);
@@ -435,6 +448,15 @@ public class WorldMapEditor
             }
         }
 
+        // Cache placement hover state for Draw
+        _showPlacementPreview = false;
+        if (_placingMap != null && _canvasRect.Contains(mouse.X, mouse.Y))
+        {
+            var hoverWorldPos = _camera.ScreenToWorld(new Vector2(mouse.X - _canvasRect.X, mouse.Y - _canvasRect.Y));
+            _placementHoverGridX = (int)MathF.Floor(hoverWorldPos.X / CellW);
+            _placementHoverGridY = (int)MathF.Floor(hoverWorldPos.Y / CellH);
+            _showPlacementPreview = !WorldLayoutHelper.IsCellOccupied(_layout, _placementHoverGridX, _placementHoverGridY);
+        }
     }
 
     // === Draw ===
@@ -594,24 +616,16 @@ public class WorldMapEditor
         // Connection indicators between adjacent maps
         DrawConnections(sb, renderer);
 
-        // Placement mode indicator
-        if (_placingMap != null && _canvasRect.Contains(Mouse.GetState().X, Mouse.GetState().Y))
+        // Placement mode indicator (hover state computed in Update)
+        if (_showPlacementPreview)
         {
-            var mouseState = Mouse.GetState();
-            var worldPos = _camera.ScreenToWorld(new Vector2(mouseState.X - _canvasRect.X, mouseState.Y - _canvasRect.Y));
-            int hoverGridX = (int)MathF.Floor(worldPos.X / CellW);
-            int hoverGridY = (int)MathF.Floor(worldPos.Y / CellH);
-
-            if (!WorldLayoutHelper.IsCellOccupied(_layout, hoverGridX, hoverGridY))
-            {
-                var hoverScreenPos = _camera.WorldToScreen(new Vector2(hoverGridX * CellW, hoverGridY * CellH));
-                int hx = _canvasRect.X + (int)hoverScreenPos.X;
-                int hy = _canvasRect.Y + (int)hoverScreenPos.Y;
-                int hw = (int)(CellW * _camera.Zoom);
-                int hh = (int)(CellH * _camera.Zoom);
-                renderer.DrawRect(sb, new Rectangle(hx, hy, hw, hh), CellEmptyBg);
-                DrawBorderRect(sb, renderer, new Rectangle(hx, hy, hw, hh), new Color(100, 180, 255, 100), 2);
-            }
+            var hoverScreenPos = _camera.WorldToScreen(new Vector2(_placementHoverGridX * CellW, _placementHoverGridY * CellH));
+            int hx = _canvasRect.X + (int)hoverScreenPos.X;
+            int hy = _canvasRect.Y + (int)hoverScreenPos.Y;
+            int hw = (int)(CellW * _camera.Zoom);
+            int hh = (int)(CellH * _camera.Zoom);
+            renderer.DrawRect(sb, new Rectangle(hx, hy, hw, hh), CellEmptyBg);
+            DrawBorderRect(sb, renderer, new Rectangle(hx, hy, hw, hh), new Color(100, 180, 255, 100), 2);
         }
     }
 

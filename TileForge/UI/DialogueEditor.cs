@@ -30,6 +30,7 @@ public class DialogueEditor
     // Scroll + tooltip
     private readonly ScrollPanel _scrollPanel = new();
     private readonly TooltipManager _tooltipManager = new(delaySeconds: 0.4);
+    private SpriteFont _cachedFont;
 
     // Layout constants
     private const int Padding = LayoutConstants.FormPadding;
@@ -133,8 +134,34 @@ public class DialogueEditor
     public void Update(MouseState mouse, MouseState prevMouse,
                        KeyboardState keyboard, KeyboardState prevKeyboard,
                        Rectangle bounds, List<DialogueData> existingDialogues,
-                       SpriteFont font = null, int screenW = 0, int screenH = 0)
+                       SpriteFont font = null, int screenW = 0, int screenH = 0,
+                       GameTime gameTime = null)
     {
+        if (font != null) _cachedFont = font;
+
+        // Update cursor blink for all text fields
+        if (gameTime != null)
+        {
+            _idField.Update(gameTime);
+            foreach (var node in _nodes)
+            {
+                node.IdField.Update(gameTime);
+                node.SpeakerField.Update(gameTime);
+                node.TextField.Update(gameTime);
+                node.NextNodeIdField.Update(gameTime);
+                node.RequiresFlagField.Update(gameTime);
+                node.SetsFlagField.Update(gameTime);
+                node.SetsVariableField.Update(gameTime);
+                foreach (var choice in node.Choices)
+                {
+                    choice.TextField.Update(gameTime);
+                    choice.NextNodeIdField.Update(gameTime);
+                    choice.RequiresFlagField.Update(gameTime);
+                    choice.SetsFlagField.Update(gameTime);
+                }
+            }
+        }
+
         if (KeyPressed(keyboard, prevKeyboard, Keys.Escape))
         {
             IsComplete = true;
@@ -254,6 +281,10 @@ public class DialogueEditor
                     FocusField(null);
             }
         }
+
+        // Tooltip hover (uses rects from previous frame's Draw — one frame latency, imperceptible)
+        if (_cachedFont != null)
+            UpdateTooltipHover(_cachedFont, mouse);
     }
 
     public void Draw(SpriteBatch spriteBatch, SpriteFont font, Renderer renderer,
@@ -457,14 +488,12 @@ public class DialogueEditor
         // Panel border
         renderer.DrawRectOutline(spriteBatch, _panelRect, new Color(80, 80, 80), 1);
 
-        // Overflow tooltip (drawn last, on top of everything)
-        UpdateTooltipHover(font);
+        // Overflow tooltip (hover logic runs in Update; just draw here)
         _tooltipManager.Draw(spriteBatch, font, renderer, bounds.Width);
     }
 
-    private void UpdateTooltipHover(SpriteFont font)
+    private void UpdateTooltipHover(SpriteFont font, MouseState ms)
     {
-        var ms = Mouse.GetState();
         bool foundOverflow = false;
         foreach (var (rect, field) in _tooltipFields)
         {

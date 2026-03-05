@@ -30,6 +30,35 @@ public class GameplayScreen : GameScreen
     private readonly IDialogueLoader _dialogueLoader;
     private IPathfinder _pathfinder;
 
+    // --- Cached fields to avoid per-frame allocations and redundant computation ---
+
+    // Fix #1: Reusable dictionary for SyncEntityRenderState (avoids allocation every frame)
+    private readonly Dictionary<string, EntityInstance> _activeById = new();
+
+    // Fix #2: Cached AP text (only rebuilt when currentAP or maxAP changes)
+    private string _cachedAPText = "";
+    private int _cachedCurrentAP = -1;
+    private int _cachedMaxAP = -1;
+
+    // Fix #3: Cached stats text and its measured size (only rebuilt when ATK/DEF changes)
+    private string _cachedStatsText = "";
+    private Vector2 _cachedStatsSize;
+    private int _cachedATK = -1;
+    private int _cachedDEF = -1;
+
+    // Fix #5: Cached hostile-nearby flag (computed in Update, read in Draw)
+    private bool _hostileNearby;
+
+    // Fix #6: Cached cover bonus (recomputed when player position changes)
+    private int _cachedCover;
+    private int _cachedCoverX = int.MinValue;
+    private int _cachedCoverY = int.MinValue;
+
+    // Fix #7: Cached player position and canvas bounds for camera centering
+    private float _lastCameraRenderX = float.NaN;
+    private float _lastCameraRenderY = float.NaN;
+    private Rectangle _lastCanvasBounds;
+
     public GameplayScreen(EditorState state, MapCanvas canvas, GamePlayContext context)
     {
         _state = state;
@@ -263,7 +292,59 @@ public class GameplayScreen : GameScreen
         }
 
         SyncEntityRenderState();
-        CenterCameraOnPlayer();
+
+        // Fix #7: Only center camera when player position or canvas bounds actually change
+        float renderX = play.RenderPos.X;
+        float renderY = play.RenderPos.Y;
+        var currentBounds = _getCanvasBounds();
+        if (renderX != _lastCameraRenderX || renderY != _lastCameraRenderY
+            || currentBounds != _lastCanvasBounds)
+        {
+            _lastCameraRenderX = renderX;
+            _lastCameraRenderY = renderY;
+            _lastCanvasBounds = currentBounds;
+            CenterCameraOnPlayer();
+        }
+
+        // Fix #5: Cache hostile-nearby result for Draw
+        _hostileNearby = AnyHostileNearby();
+
+        // Fix #6: Cache cover bonus — recompute only when player position changes
+        if (play.PlayerEntity != null)
+        {
+            int px = play.PlayerEntity.X;
+            int py = play.PlayerEntity.Y;
+            if (px != _cachedCoverX || py != _cachedCoverY)
+            {
+                _cachedCoverX = px;
+                _cachedCoverY = py;
+                _cachedCover = GetDefenseBonusAt(px, py);
+            }
+        }
+
+        // Fix #3: Cache stats text — recompute only when ATK/DEF changes
+        int currentATK = _gameStateManager.GetEffectiveAttack();
+        int currentDEF = _gameStateManager.GetEffectiveDefense();
+        if (currentATK != _cachedATK || currentDEF != _cachedDEF)
+        {
+            _cachedATK = currentATK;
+            _cachedDEF = currentDEF;
+            _cachedStatsText = $"ATK:{currentATK} DEF:{currentDEF}";
+            _cachedStatsSize = default; // Reset; will be measured once in Draw when font is available
+        }
+
+        // Fix #2: Cache AP text — recompute only when currentAP or maxAP changes
+        int maxAP = _gameStateManager.GetEffectiveMaxAP();
+        int currentAP = play.PlayerAP;
+        if (currentAP != _cachedCurrentAP || maxAP != _cachedMaxAP)
+        {
+            _cachedCurrentAP = currentAP;
+            _cachedMaxAP = maxAP;
+            var sb = new System.Text.StringBuilder("AP:", 3 + maxAP);
+            for (int i = 0; i < maxAP; i++)
+                sb.Append(i < currentAP ? '*' : '.');
+            _cachedAPText = sb.ToString();
+        }
     }
 
     /// <summary>
@@ -275,16 +356,16 @@ public class GameplayScreen : GameScreen
     private void SyncEntityRenderState()
     {
         var play = _state.PlayState;
-        var activeById = new Dictionary<string, EntityInstance>();
+        _activeById.Clear();
         foreach (var instance in _gameStateManager.State.ActiveEntities)
-            activeById[instance.Id] = instance;
+            _activeById[instance.Id] = instance;
 
         for (int i = _state.Map.Entities.Count - 1; i >= 0; i--)
         {
             var editorEntity = _state.Map.Entities[i];
             if (editorEntity == play?.PlayerEntity) continue;
 
-            if (activeById.TryGetValue(editorEntity.Id, out var instance))
+            if (_activeById.TryGetValue(editorEntity.Id, out var instance))
             {
                 if (instance.IsActive)
                 {
@@ -337,40 +418,34 @@ public class GameplayScreen : GameScreen
                 renderer.DrawRect(spriteBatch, new Rectangle(barX, poiseBarY, poiseFill, barHeight), poiseColor);
             }
 
-            // ATK/DEF stats readout
-            string statsText = $"ATK:{_gameStateManager.GetEffectiveAttack()} DEF:{_gameStateManager.GetEffectiveDefense()}";
+            // ATK/DEF stats readout (Fix #3: use cached text)
             var statsPos = new Vector2(barX, poiseBarY + barHeight + 2);
-            spriteBatch.DrawString(font, statsText, statsPos, Color.White);
+            spriteBatch.DrawString(font, _cachedStatsText, statsPos, Color.White);
 
-            // Terrain cover readout
-            var playForCover = _state.PlayState;
-            if (playForCover?.PlayerEntity != null)
+            // Fix #4: Measure stats text once and reuse
+            if (_cachedStatsSize == default && _cachedStatsText.Length > 0)
+                _cachedStatsSize = font.MeasureString(_cachedStatsText);
+
+            // Terrain cover readout (Fix #6: use cached cover value)
+            if (_cachedCover > 0)
             {
-                int cover = GetDefenseBonusAt(playForCover.PlayerEntity.X, playForCover.PlayerEntity.Y);
-                if (cover > 0)
-                {
-                    string coverText = $"COVER:+{cover}";
-                    var coverPos = new Vector2(statsPos.X + font.MeasureString(statsText).X + 8, statsPos.Y);
-                    spriteBatch.DrawString(font, coverText, coverPos, Color.CornflowerBlue);
-                }
+                string coverText = $"COVER:+{_cachedCover}";
+                var coverPos = new Vector2(statsPos.X + _cachedStatsSize.X + 8, statsPos.Y);
+                spriteBatch.DrawString(font, coverText, coverPos, Color.CornflowerBlue);
             }
 
-            // AP pips
+            // AP pips (Fix #2: use cached AP text)
+            float apY = statsPos.Y + _cachedStatsSize.Y + 2;
             var playForHud = _state.PlayState;
-            int maxAP = _gameStateManager.GetEffectiveMaxAP();
             int currentAP = playForHud?.PlayerAP ?? 0;
-            string apText = "AP:";
-            for (int i = 0; i < maxAP; i++)
-                apText += i < currentAP ? "*" : ".";
-            float apY = statsPos.Y + font.MeasureString(statsText).Y + 2;
-            Color apColor = currentAP == maxAP ? Color.Gold : Color.Gray;
-            spriteBatch.DrawString(font, apText, new Vector2(barX, apY), apColor);
+            Color apColor = currentAP == _cachedMaxAP ? Color.Gold : Color.Gray;
+            spriteBatch.DrawString(font, _cachedAPText, new Vector2(barX, apY), apColor);
 
-            // Combat hint when hostiles nearby
-            if (playForHud != null && playForHud.IsPlayerTurn && currentAP > 0 && AnyHostileNearby())
+            // Combat hint when hostiles nearby (Fix #5: use cached _hostileNearby)
+            if (playForHud != null && playForHud.IsPlayerTurn && currentAP > 0 && _hostileNearby)
             {
                 string hint = "SPACE: End Turn";
-                float hintY = apY + font.MeasureString(apText).Y + 2;
+                float hintY = apY + font.MeasureString(_cachedAPText).Y + 2;
                 spriteBatch.DrawString(font, hint, new Vector2(barX, hintY), Color.Yellow * 0.8f);
             }
         }

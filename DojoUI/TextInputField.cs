@@ -84,7 +84,7 @@ public class TextInputField
         ResetBlink();
     }
 
-    public void Draw(SpriteBatch spriteBatch, SpriteFont font, Renderer renderer, Rectangle bounds, GameTime gameTime)
+    public void Update(GameTime gameTime)
     {
         _cursorBlinkTimer += gameTime.ElapsedGameTime.TotalSeconds;
         if (_cursorBlinkTimer >= 0.5)
@@ -92,6 +92,13 @@ public class TextInputField
             _cursorBlinkTimer = 0;
             _cursorVisible = !_cursorVisible;
         }
+    }
+
+    public void Draw(SpriteBatch spriteBatch, SpriteFont font, Renderer renderer, Rectangle bounds, GameTime gameTime)
+    {
+        // Update cursor blink in Draw as well for callers that haven't adopted Update() yet.
+        // Once all callers call Update(), this can be removed.
+        Update(gameTime);
 
         renderer.DrawRect(spriteBatch, bounds, BackgroundColor);
 
@@ -108,11 +115,13 @@ public class TextInputField
         if (IsFocused && cursorX > visibleWidth)
             scrollOffset = cursorX - visibleWidth;
 
-        var prevScissor = spriteBatch.GraphicsDevice.ScissorRectangle;
+        var gd = spriteBatch.GraphicsDevice;
+        var prevScissor = gd.ScissorRectangle;
+        var prevRasterizer = gd.RasterizerState;
         spriteBatch.End();
         spriteBatch.Begin(samplerState: SamplerState.PointClamp, rasterizerState: _scissorRasterizer);
         var fieldClip = new Rectangle(bounds.X + pad, bounds.Y, (int)visibleWidth, bounds.Height);
-        spriteBatch.GraphicsDevice.ScissorRectangle = Rectangle.Intersect(prevScissor, fieldClip);
+        gd.ScissorRectangle = Rectangle.Intersect(prevScissor, fieldClip);
 
         var textPos = new Vector2(bounds.X + pad - scrollOffset, textY);
         spriteBatch.DrawString(font, _text, textPos, TextColor);
@@ -126,8 +135,8 @@ public class TextInputField
         }
 
         spriteBatch.End();
-        spriteBatch.Begin(samplerState: SamplerState.PointClamp, rasterizerState: _scissorRasterizer);
-        spriteBatch.GraphicsDevice.ScissorRectangle = prevScissor;
+        spriteBatch.Begin(samplerState: SamplerState.PointClamp, rasterizerState: prevRasterizer);
+        gd.ScissorRectangle = prevScissor;
     }
 
     /// <summary>

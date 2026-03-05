@@ -122,6 +122,8 @@ public class TileForgeGame : Microsoft.Xna.Framework.Game
             DebugLog.Log("LoadContent: UI panels created");
 
             _state = new EditorState { ActiveTool = new BrushTool() };
+            _state.MapDirtied += () => _canvas.Minimap.MarkDirty();
+            _state.ActiveMapChanged += _ => _canvas.Minimap.MarkDirty();
             DebugLog.Log("LoadContent: EditorState created");
 
             _dialogManager = new DialogManager();
@@ -334,7 +336,7 @@ public class TileForgeGame : Microsoft.Xna.Framework.Game
     {
         int screenW = _graphics.PreferredBackBufferWidth;
         int screenH = _graphics.PreferredBackBufferHeight;
-        int leftOffset = _state.IsPlayMode ? 0 : PanelDock.Width;
+        int leftOffset = _state.IsPlayMode ? 0 : _panelDock.Width;
         int topOffset = _state.IsPlayMode
             ? LayoutConstants.PlayTopChromeHeight
             : LayoutConstants.TopChromeHeight;
@@ -363,7 +365,7 @@ public class TileForgeGame : Microsoft.Xna.Framework.Game
         {
             int qScreenW = _graphics.PreferredBackBufferWidth;
             _questEditor.Update(mouse, _prevMouse, keyboard, _prevKeyboard,
-                GetCanvasBounds(), _state.Quests, _font, qScreenW, screenH);
+                GetCanvasBounds(), _state.Quests, _font, qScreenW, screenH, gameTime);
             if (_questEditor.IsComplete) { HandleQuestEditorResult(); _questEditor = null; }
             FinishUpdate(keyboard, mouse, gameTime); return;
         }
@@ -373,7 +375,7 @@ public class TileForgeGame : Microsoft.Xna.Framework.Game
         {
             int dScreenW = _graphics.PreferredBackBufferWidth;
             _dialogueEditor.Update(mouse, _prevMouse, keyboard, _prevKeyboard,
-                GetCanvasBounds(), _state.Dialogues, _font, dScreenW, screenH);
+                GetCanvasBounds(), _state.Dialogues, _font, dScreenW, screenH, gameTime);
             if (_dialogueEditor.IsComplete) { HandleDialogueEditorResult(); _dialogueEditor = null; }
             FinishUpdate(keyboard, mouse, gameTime); return;
         }
@@ -383,7 +385,7 @@ public class TileForgeGame : Microsoft.Xna.Framework.Game
         {
             int wScreenW = _graphics.PreferredBackBufferWidth;
             _worldMapEditor.Update(mouse, _prevMouse, keyboard, _prevKeyboard,
-                GetCanvasBounds(), _state.MapDocuments, _font, wScreenW, screenH);
+                GetCanvasBounds(), _state.MapDocuments, _font, wScreenW, screenH, gameTime);
             if (_worldMapEditor.IsComplete) { HandleWorldMapEditorResult(); _worldMapEditor = null; }
             FinishUpdate(keyboard, mouse, gameTime); return;
         }
@@ -393,7 +395,7 @@ public class TileForgeGame : Microsoft.Xna.Framework.Game
         {
             int gScreenW = _graphics.PreferredBackBufferWidth;
             _groupEditor.Update(_state, mouse, _prevMouse, keyboard, _prevKeyboard,
-                GetCanvasBounds(), _font, gScreenW, screenH);
+                GetCanvasBounds(), _font, gScreenW, screenH, gameTime);
             if (_groupEditor.IsComplete) { HandleGroupEditorResult(); _groupEditor = null; }
             else { HandleGroupEditorCreateSignals(); }
             FinishUpdate(keyboard, mouse, gameTime); return;
@@ -437,7 +439,7 @@ public class TileForgeGame : Microsoft.Xna.Framework.Game
 
         // Editor panels (consumes before canvas)
         int topOffset = LayoutConstants.TopChromeHeight;
-        var dockBounds = new Rectangle(0, topOffset, PanelDock.Width,
+        var dockBounds = new Rectangle(0, topOffset, _panelDock.Width,
                                         screenH - topOffset - StatusBar.Height);
         _panelDock.Update(_state, mouse, _prevMouse, input, _font, dockBounds, gameTime, screenW, screenH);
         _canvas.Update(_state, input, keyboard, _prevKeyboard, GetCanvasBounds());
@@ -519,6 +521,19 @@ public class TileForgeGame : Microsoft.Xna.Framework.Game
                 _groupEditor = GroupEditor.ForExistingGroup(group, _projectContext);
                 _groupEditor.CenterOnSheet(_state.Sheet, GetCanvasBounds());
             }
+        }
+        else if (_tilePalettePanel.WantsDeleteGroup != null)
+        {
+            string name = _tilePalettePanel.WantsDeleteGroup;
+            _dialogManager.Show(new ConfirmDialog($"Delete group \"{name}\"?"), dialog =>
+            { if (!dialog.WasCancelled) _state.RemoveGroup(name); });
+        }
+        else if (_tilePalettePanel.WantsNewGroupWithSprites != null && _state.Sheet != null)
+        {
+            _pendingNewGroupLayer = _state.ActiveLayerName;
+            _groupEditor = GroupEditor.ForNewGroup(_projectContext,
+                _tilePalettePanel.WantsNewGroupWithSprites);
+            _groupEditor.CenterOnSheet(_state.Sheet, GetCanvasBounds());
         }
     }
 

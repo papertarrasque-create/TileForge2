@@ -49,7 +49,7 @@ public class EntityTool : ITool
                 GroupName = group.Name,
                 X = gridX,
                 Y = gridY,
-                Properties = new System.Collections.Generic.Dictionary<string, string>(group.DefaultProperties),
+                Properties = new System.Collections.Generic.Dictionary<string, string>(),
             };
 
             state.Map.Entities.Add(entity);

@@ -159,7 +159,8 @@ public class GroupEditor
         _entityTypeDD = new Dropdown(EntTypeItems, 4);
     }
 
-    public static GroupEditor ForNewGroup(IProjectContext context = null)
+    public static GroupEditor ForNewGroup(IProjectContext context = null,
+        IReadOnlyCollection<(int col, int row)> preSelectedSprites = null)
     {
         var ed = new GroupEditor
         {
@@ -169,6 +170,13 @@ public class GroupEditor
         };
         ed.SetFocus(ed._nameField, null);
         ed.RebuildPropertyFields(new Dictionary<string, string>());
+
+        if (preSelectedSprites != null)
+        {
+            foreach (var (col, row) in preSelectedSprites)
+                ed._selection.AddCell(col, row);
+        }
+
         return ed;
     }
 
@@ -230,11 +238,23 @@ public class GroupEditor
 
     public void Update(EditorState state, MouseState mouse, MouseState prevMouse,
                        KeyboardState kb, KeyboardState prevKb,
-                       Rectangle bounds, SpriteFont font, int screenW, int screenH)
+                       Rectangle bounds, SpriteFont font, int screenW, int screenH,
+                       GameTime gameTime = null)
     {
         if (state.Sheet == null) return;
         WantsCreateMap = false;
         WantsCreateDialogue = false;
+
+        // Update cursor blink for all text/numeric fields
+        if (gameTime != null)
+        {
+            _nameField.Update(gameTime);
+            foreach (var pf in _propFields)
+            {
+                if (pf.Kind == PFK.Text) pf.TF?.Update(gameTime);
+                else if (pf.Kind == PFK.Numeric) pf.NF?.Update(gameTime);
+            }
+        }
 
         if (KP(kb, prevKb, Keys.Escape)) { IsComplete = true; WasCancelled = true; return; }
         if (KP(kb, prevKb, Keys.Enter) && !AnyDropdownOpen()) { TryConfirm(state); return; }

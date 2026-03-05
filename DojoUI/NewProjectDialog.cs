@@ -66,6 +66,9 @@ public class NewProjectDialog : IDialog
 
     public void Update(KeyboardState keyboard, KeyboardState prevKeyboard, GameTime gameTime)
     {
+        _tileSizeInput.Update(gameTime);
+        _mapSizeInput.Update(gameTime);
+
         // Mouse click handling for Browse button (edge-detected)
         var mouse = Mouse.GetState();
         bool mouseDown = mouse.LeftButton == ButtonState.Pressed;

@@ -145,12 +145,14 @@ public class MapCanvas
                     _lastPaintX = -1;
                     _lastPaintY = -1;
                     state.ActiveTool.OnPress(HoverX, HoverY, state);
+                    Minimap.MarkDirty();
                     _lastPaintX = HoverX;
                     _lastPaintY = HoverY;
                 }
                 else if (HoverX != _lastPaintX || HoverY != _lastPaintY)
                 {
                     state.ActiveTool.OnDrag(HoverX, HoverY, state);
+                    Minimap.MarkDirty();
                     _lastPaintX = HoverX;
                     _lastPaintY = HoverY;
                 }
@@ -160,6 +162,7 @@ public class MapCanvas
         {
             _isPainting = false;
             state.ActiveTool?.OnRelease(state);
+            Minimap.MarkDirty();
         }
 
         // Grid toggle (cycles Normal → Fine → Off)

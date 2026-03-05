@@ -133,6 +133,8 @@ public class FileBrowserDialog : IDialog
 
     public void Update(KeyboardState keyboard, KeyboardState prevKeyboard, GameTime gameTime)
     {
+        _filenameInput?.Update(gameTime);
+
         // Mouse handling
         var mouse = Mouse.GetState();
         if (!_mouseInitialized)

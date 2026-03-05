@@ -30,6 +30,8 @@ public class InputDialog : IDialog
 
     public void Update(KeyboardState keyboard, KeyboardState prevKeyboard, GameTime gameTime)
     {
+        _input.Update(gameTime);
+
         if (KeyPressed(keyboard, prevKeyboard, Keys.Escape))
         {
             IsComplete = true;

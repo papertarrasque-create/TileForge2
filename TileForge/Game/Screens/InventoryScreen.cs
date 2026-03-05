@@ -18,6 +18,7 @@ public class InventoryScreen : GameScreen
     private readonly GameStateManager _gameStateManager;
     private GameMenuList _menu;
     private List<MenuItem> _cachedMenuItems;
+    private bool _menuDirty = true;
     private string _statusMessage;
     private float _statusTimer;
 
@@ -73,6 +74,11 @@ public class InventoryScreen : GameScreen
         return items;
     }
 
+    public override void OnEnter()
+    {
+        _menuDirty = true;
+    }
+
     public override void Update(GameTime gameTime, GameInputManager input)
     {
         float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
@@ -85,7 +91,11 @@ public class InventoryScreen : GameScreen
                 _statusMessage = null;
         }
 
-        _cachedMenuItems = BuildMenuItems();
+        if (_menuDirty)
+        {
+            _cachedMenuItems = BuildMenuItems();
+            _menuDirty = false;
+        }
         var menuItems = _cachedMenuItems;
         int count = menuItems.Count;
 
@@ -112,6 +122,7 @@ public class InventoryScreen : GameScreen
                         if (item.ItemName != null && item.Slot.HasValue)
                         {
                             _gameStateManager.UnequipItem(item.Slot.Value);
+                            _menuDirty = true;
                             _statusMessage = $"Unequipped {item.ItemName}";
                             _statusTimer = 2.0f;
                         }
@@ -145,6 +156,7 @@ public class InventoryScreen : GameScreen
         if (equipSlot.HasValue)
         {
             _gameStateManager.EquipItem(itemName, equipSlot.Value);
+            _menuDirty = true;
             _statusMessage = $"Equipped {itemName} ({equipSlot.Value})";
             _statusTimer = 2.0f;
             return;
@@ -162,6 +174,7 @@ public class InventoryScreen : GameScreen
         {
             _gameStateManager.HealPlayer(healAmount);
             _gameStateManager.RemoveFromInventory(itemName);
+            _menuDirty = true;
             _statusMessage = $"Used {itemName}: healed {healAmount} HP";
             _statusTimer = 2.0f;
         }

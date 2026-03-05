@@ -140,4 +140,142 @@ public class TilePalettePanelTests
         var panel = new TilePalettePanel();
         Assert.Equal(PanelSizeMode.Flexible, panel.SizeMode);
     }
+
+    // ===== Zoom state =====
+
+    [Fact]
+    public void DefaultZoom_IsOne()
+    {
+        var panel = new TilePalettePanel();
+        Assert.Equal(1.0f, panel.Zoom);
+    }
+
+    [Fact]
+    public void SetZoom_AcceptsValidValue()
+    {
+        var panel = new TilePalettePanel();
+        panel.SetZoom(2.5f);
+        Assert.Equal(2.5f, panel.Zoom);
+    }
+
+    [Fact]
+    public void SetZoom_ClampsAtMin()
+    {
+        var panel = new TilePalettePanel();
+        panel.SetZoom(0.5f);
+        Assert.Equal(LayoutConstants.TilePaletteMinZoom, panel.Zoom);
+    }
+
+    [Fact]
+    public void SetZoom_ClampsAtMax()
+    {
+        var panel = new TilePalettePanel();
+        panel.SetZoom(10.0f);
+        Assert.Equal(LayoutConstants.TilePaletteMaxZoom, panel.Zoom);
+    }
+
+    [Fact]
+    public void ScrollOffsets_DefaultToZero()
+    {
+        var panel = new TilePalettePanel();
+        Assert.Equal(0, panel.ScrollOffsetX);
+        Assert.Equal(0, panel.ScrollOffsetY);
+    }
+
+    // ===== Zoomed tile size =====
+
+    [Fact]
+    public void GetZoomedTileSize_AtDefaultZoom_SameAsBase()
+    {
+        var panel = CreatePanel(contentWidth: 200);
+
+        // Base: 200/8 = 25, zoom 1.0: 25
+        Assert.Equal(25, panel.GetZoomedTileSize(8));
+    }
+
+    [Fact]
+    public void GetZoomedTileSize_At2x_DoublesBase()
+    {
+        var panel = CreatePanel(contentWidth: 200);
+        panel.SetZoom(2.0f);
+
+        // Base: 200/8 = 25, zoom 2.0: 50
+        Assert.Equal(50, panel.GetZoomedTileSize(8));
+    }
+
+    [Fact]
+    public void GetZoomedTileSize_At4x_QuadruplesBase()
+    {
+        var panel = CreatePanel(contentWidth: 200);
+        panel.SetZoom(4.0f);
+
+        // Base: 200/8 = 25, zoom 4.0: 100
+        Assert.Equal(100, panel.GetZoomedTileSize(8));
+    }
+
+    [Fact]
+    public void GetZoomedTileSize_ClampsToMinimum()
+    {
+        var panel = CreatePanel(contentWidth: 40);
+        panel.SetZoom(1.0f);
+
+        // Base: 40/8 = 5, clamped to min 8. Zoom 1.0: 8
+        Assert.Equal(8, panel.GetZoomedTileSize(8));
+    }
+
+    // ===== Group management signals =====
+
+    [Fact]
+    public void WantsDeleteGroup_NullByDefault()
+    {
+        var panel = new TilePalettePanel();
+        Assert.Null(panel.WantsDeleteGroup);
+    }
+
+    [Fact]
+    public void WantsNewGroupWithSprites_NullByDefault()
+    {
+        var panel = new TilePalettePanel();
+        Assert.Null(panel.WantsNewGroupWithSprites);
+    }
+
+    [Fact]
+    public void UngroupedSelection_EmptyByDefault()
+    {
+        var panel = new TilePalettePanel();
+        Assert.Empty(panel.UngroupedSelection.GetSelectedCells());
+    }
+
+    // ===== PanelDock resize =====
+
+    [Fact]
+    public void PanelDock_DefaultWidth()
+    {
+        var dock = new PanelDock();
+        Assert.Equal(LayoutConstants.PanelDockWidth, dock.Width);
+    }
+
+    [Fact]
+    public void PanelDock_Width_ClampsAtMin()
+    {
+        var dock = new PanelDock();
+        dock.Width = 50;
+        Assert.Equal(LayoutConstants.PanelDockMinWidth, dock.Width);
+    }
+
+    [Fact]
+    public void PanelDock_Width_ClampsAtMax()
+    {
+        var dock = new PanelDock();
+        dock.Width = 1000;
+        Assert.Equal(LayoutConstants.PanelDockMaxWidth, dock.Width);
+    }
+
+    [Fact]
+    public void PanelDock_Width_AcceptsValidValue()
+    {
+        var dock = new PanelDock();
+        dock.Width = 300;
+        Assert.Equal(300, dock.Width);
+    }
 }

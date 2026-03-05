@@ -83,6 +83,9 @@ public class DialogueTreeEditor
     private int _hoverPortIndex = -1;
     private bool _hoverInputPort;
 
+    // === Cached mouse position (set in Update, used in Draw for drag preview) ===
+    private Point _cachedMousePos;
+
     // === Constants ===
     private const int HeaderH = LayoutConstants.DialogueTreeHeaderHeight;
     private const int HintH = LayoutConstants.DialogueTreeHintHeight;
@@ -123,6 +126,7 @@ public class DialogueTreeEditor
     private static readonly Color AddBtnHoverBg = LayoutConstants.DialogueEditorAddButtonHoverBg;
     private static readonly Color RemoveColor = LayoutConstants.DialogueEditorRemoveColor;
     private static readonly Color RemoveHoverColor = LayoutConstants.DialogueEditorRemoveHoverColor;
+    private static readonly RasterizerState ScissorRasterizer = new() { ScissorTestEnable = true };
 
     private DialogueTreeEditor(DialogueData data)
     {
@@ -171,9 +175,31 @@ public class DialogueTreeEditor
     public void Update(MouseState mouse, MouseState prevMouse,
                        KeyboardState keyboard, KeyboardState prevKeyboard,
                        Rectangle bounds, List<DialogueData> existingDialogues,
-                       SpriteFont font = null, int screenW = 0, int screenH = 0)
+                       SpriteFont font = null, int screenW = 0, int screenH = 0,
+                       GameTime gameTime = null)
     {
         if (font != null) _cachedFont = font;
+        _cachedMousePos = new Point(mouse.X, mouse.Y);
+
+        // Update cursor blink for all text fields
+        if (gameTime != null)
+        {
+            _idField.Update(gameTime);
+            _nodeIdField.Update(gameTime);
+            _nodeSpeakerField.Update(gameTime);
+            _nodeTextField.Update(gameTime);
+            _nodeNextField.Update(gameTime);
+            _nodeReqFlagField.Update(gameTime);
+            _nodeSetFlagField.Update(gameTime);
+            _nodeSetVarField.Update(gameTime);
+            foreach (var cf in _choiceFields)
+            {
+                cf.TextField.Update(gameTime);
+                cf.NextField.Update(gameTime);
+                cf.RequiresField.Update(gameTime);
+                cf.SetsField.Update(gameTime);
+            }
+        }
 
         // Flush properties panel → data every frame for live canvas updates
         FlushSelectedNode();
@@ -290,6 +316,10 @@ public class DialogueTreeEditor
 
         // Update port hover state
         UpdatePortHover(mouse);
+
+        // Tooltip hover (uses rects from previous frame's Draw — one frame latency, imperceptible)
+        if (_cachedFont != null)
+            UpdateTooltipHover(_cachedFont, mouse);
     }
 
     private void UpdateCanvasInteraction(MouseState mouse, MouseState prevMouse,
@@ -501,8 +531,7 @@ public class DialogueTreeEditor
         _canvasMenu.Draw(spriteBatch, font, renderer);
         _nodeMenu.Draw(spriteBatch, font, renderer);
 
-        // Tooltips
-        UpdateTooltipHover(font);
+        // Tooltips (hover logic runs in Update; just draw here)
         _tooltipManager.Draw(spriteBatch, font, renderer, bounds.Width);
 
         // Panel border + resize grip
@@ -548,9 +577,8 @@ public class DialogueTreeEditor
         var oldScissor = gd.ScissorRectangle;
         var oldRasterizer = sb.GraphicsDevice.RasterizerState;
         sb.End();
-        var rs = new RasterizerState { ScissorTestEnable = true };
         gd.ScissorRectangle = _canvasRect;
-        sb.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp, null, rs);
+        sb.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp, null, ScissorRasterizer);
 
         // Grid dots
         DrawGridDots(sb, renderer);
@@ -583,9 +611,7 @@ public class DialogueTreeEditor
             if (fromWidget != null && _connectFromPort >= 0 && _connectFromPort < fromWidget.OutputPorts.Count)
             {
                 var startWorld = fromWidget.GetOutputPortCenter(_connectFromPort);
-                var startScreen = CanvasWorldToScreen(startWorld);
-                var ms = Mouse.GetState();
-                DrawConnectionBezierScreenEnd(sb, renderer, startWorld, new Vector2(ms.X, ms.Y), ConnectionDragColor);
+                DrawConnectionBezierScreenEnd(sb, renderer, startWorld, new Vector2(_cachedMousePos.X, _cachedMousePos.Y), ConnectionDragColor);
             }
         }
 
@@ -629,8 +655,7 @@ public class DialogueTreeEditor
     private void DrawNode(SpriteBatch sb, SpriteFont font, Renderer renderer, DialogueNodeWidget w)
     {
         float z = _camera.Zoom;
-        bool isSelected = w.NodeIndex == _selectedNodeIndex;
-        w.IsSelected = isSelected;
+        bool isSelected = w.IsSelected;
 
         // Shadow
         var shadowRect = WorldRectToScreen(new Rectangle(w.Bounds.X + 3, w.Bounds.Y + 3, w.Bounds.Width, w.Bounds.Height));
@@ -874,7 +899,11 @@ public class DialogueTreeEditor
     {
         _widgets.Clear();
         for (int i = 0; i < _data.Nodes.Count; i++)
-            _widgets.Add(DialogueNodeWidget.FromNode(_data.Nodes[i], i));
+        {
+            var w = DialogueNodeWidget.FromNode(_data.Nodes[i], i);
+            w.IsSelected = (i == _selectedNodeIndex);
+            _widgets.Add(w);
+        }
     }
 
     private void SelectNode(int index)
@@ -1205,9 +1234,8 @@ public class DialogueTreeEditor
 
     // === Tooltip ===
 
-    private void UpdateTooltipHover(SpriteFont font)
+    private void UpdateTooltipHover(SpriteFont font, MouseState ms)
     {
-        var ms = Mouse.GetState();
         bool foundOverflow = false;
         foreach (var (rect, field) in _tooltipFields)
         {

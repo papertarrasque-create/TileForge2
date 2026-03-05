@@ -61,6 +61,11 @@ public class NumericField
         _field.SetText(val.ToString());
     }
 
+    public void Update(GameTime gameTime)
+    {
+        _field.Update(gameTime);
+    }
+
     public void Draw(SpriteBatch spriteBatch, SpriteFont font, Renderer renderer,
                      Rectangle bounds, GameTime gameTime)
     {

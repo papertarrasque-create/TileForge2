@@ -61,6 +61,7 @@ Editor (TileGroups, Entities, Map) → F5 → PlayModeController
 - **Editor is the authoring tool.** Gameplay properties are set in the GroupEditor UI and exported.
 - **Evolve, don't rebuild.** Enhance existing systems. Don't create parallel ones.
 - **One source of truth.** TileGroup defines both tiles and entities. Maps reference by name.
+-- **Don't ignore bugs.** When you discover a bug, stop what you are doing and fix it.
 
 ## Architecture Rules
 - Game runtime code: `TileForge/Game/` namespace

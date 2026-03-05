@@ -38,6 +38,7 @@ public class QuestEditor
     // Scroll + tooltip
     private readonly ScrollPanel _scrollPanel = new();
     private readonly TooltipManager _tooltipManager = new(delaySeconds: 0.4);
+    private SpriteFont _cachedFont;
 
     // Layout constants
     private const int Padding = LayoutConstants.FormPadding;
@@ -140,8 +141,29 @@ public class QuestEditor
     public void Update(MouseState mouse, MouseState prevMouse,
                        KeyboardState keyboard, KeyboardState prevKeyboard,
                        Rectangle bounds, List<QuestDefinition> existingQuests,
-                       SpriteFont font = null, int screenW = 0, int screenH = 0)
+                       SpriteFont font = null, int screenW = 0, int screenH = 0,
+                       GameTime gameTime = null)
     {
+        if (font != null) _cachedFont = font;
+
+        // Update cursor blink for all text fields
+        if (gameTime != null)
+        {
+            _idField.Update(gameTime);
+            _nameField.Update(gameTime);
+            _descriptionField.Update(gameTime);
+            _startFlagField.Update(gameTime);
+            _completionFlagField.Update(gameTime);
+            _rewardFlagsField.Update(gameTime);
+            _rewardVariablesField.Update(gameTime);
+            foreach (var obj in _objectives)
+            {
+                obj.DescriptionField.Update(gameTime);
+                obj.FlagOrVariableField.Update(gameTime);
+                obj.ValueField.Update(gameTime);
+            }
+        }
+
         if (KeyPressed(keyboard, prevKeyboard, Keys.Escape))
         {
             IsComplete = true;
@@ -260,6 +282,10 @@ public class QuestEditor
                     FocusField(null);
             }
         }
+
+        // Tooltip hover (uses rects from previous frame's Draw — one frame latency, imperceptible)
+        if (_cachedFont != null)
+            UpdateTooltipHover(_cachedFont, mouse);
     }
 
     private List<TextInputField> GetAllFields()
@@ -452,14 +478,12 @@ public class QuestEditor
         foreach (var obj in _objectives)
             obj.TypeDD.DrawPopup(spriteBatch, font, renderer);
 
-        // Overflow tooltip (drawn last, on top of everything)
-        UpdateTooltipHover(font);
+        // Overflow tooltip (hover logic runs in Update; just draw here)
         _tooltipManager.Draw(spriteBatch, font, renderer, bounds.Width);
     }
 
-    private void UpdateTooltipHover(SpriteFont font)
+    private void UpdateTooltipHover(SpriteFont font, MouseState ms)
     {
-        var ms = Mouse.GetState();
         bool foundOverflow = false;
         foreach (var (rect, field) in _tooltipFields)
         {

@@ -1,0 +1,29 @@
+{
+  "id": "duck_dialog",
+  "nodes": [
+    {
+      "id": "node_0",
+      "speaker": "duck",
+      "text": "Quack!!!",
+      "choices": [
+        {
+          "text": "Goodbte"
+        },
+        {
+          "text": "What????",
+          "nextNodeId": "node_1"
+        }
+      ],
+      "nextNodeId": "node_1",
+      "editorX": -169,
+      "editorY": -241
+    },
+    {
+      "id": "node_1",
+      "speaker": "duck",
+      "text": "Quaaaaaack",
+      "editorX": 71,
+      "editorY": 65
+    }
+  ]
+}
