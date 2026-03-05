@@ -329,6 +329,24 @@ public class MapPanel : Panel
         }
     }
 
+    public override void UpdateContent(EditorState state, MouseState mouse, MouseState prevMouse,
+                                        InputEvent input, SpriteFont font, GameTime gameTime,
+                                        int screenW, int screenH)
+    {
+        // Run the existing update logic
+        UpdateContent(state, mouse, prevMouse, font, gameTime, screenW, screenH);
+
+        // Context menu visible → consume all clicks (modal overlay)
+        if (_contextMenu.IsVisible)
+        {
+            input.ConsumeClick();
+            return;
+        }
+
+        // Consume clicks within content area for inter-panel consumption
+        input.TryConsumeClick(ContentBounds);
+    }
+
     private void HandleLayerHeaderInput(EditorState state, LayoutEntry entry,
                                          MouseState mouse, bool leftPressed, bool rightClick, int entryIndex)
     {

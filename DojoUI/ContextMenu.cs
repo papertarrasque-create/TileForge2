@@ -109,6 +109,60 @@ public class ContextMenu
         return -1;
     }
 
+    /// <summary>
+    /// InputEvent-aware update. When visible, ALL clicks are consumed
+    /// (context menu acts as a modal overlay).
+    /// Returns clicked item index (0+), or -1 if no action this frame.
+    /// </summary>
+    public int Update(InputEvent input)
+    {
+        if (!_isVisible) return -1;
+
+        // Hit test
+        _hoveredIndex = -1;
+        if (input.Mouse.X >= _x && input.Mouse.X < _x + _menuWidth &&
+            input.Mouse.Y >= _y && input.Mouse.Y < _y + _menuHeight)
+        {
+            int index = (input.Mouse.Y - _y) / _itemHeight;
+            if (index >= 0 && index < _items.Length)
+                _hoveredIndex = index;
+        }
+
+        // Left-click — consume regardless of position (modal overlay)
+        bool hasClick = input.Mouse.LeftButton == ButtonState.Pressed &&
+                        input.PrevMouse.LeftButton == ButtonState.Released;
+        if (hasClick)
+        {
+            input.ConsumeClick();
+
+            if (_hoveredIndex >= 0)
+            {
+                int clicked = _hoveredIndex;
+                Hide();
+                return clicked;
+            }
+
+            // Clicked outside — dismiss
+            Hide();
+            return -1;
+        }
+
+        // Right-click outside — dismiss
+        bool hasRightClick = input.Mouse.RightButton == ButtonState.Pressed &&
+                             input.PrevMouse.RightButton == ButtonState.Released;
+        if (hasRightClick)
+        {
+            input.ConsumeClick();
+            if (_hoveredIndex < 0)
+            {
+                Hide();
+                return -1;
+            }
+        }
+
+        return -1;
+    }
+
     public void Draw(SpriteBatch spriteBatch, SpriteFont font, Renderer renderer)
     {
         if (!_isVisible) return;

@@ -84,7 +84,7 @@ public class TextInputField
         ResetBlink();
     }
 
-    public void Draw(SpriteBatch spriteBatch, SpriteFont font, Renderer renderer, Rectangle bounds, GameTime gameTime)
+    public void Update(GameTime gameTime)
     {
         _cursorBlinkTimer += gameTime.ElapsedGameTime.TotalSeconds;
         if (_cursorBlinkTimer >= 0.5)
@@ -92,6 +92,13 @@ public class TextInputField
             _cursorBlinkTimer = 0;
             _cursorVisible = !_cursorVisible;
         }
+    }
+
+    public void Draw(SpriteBatch spriteBatch, SpriteFont font, Renderer renderer, Rectangle bounds, GameTime gameTime)
+    {
+        // Update cursor blink in Draw as well for callers that haven't adopted Update() yet.
+        // Once all callers call Update(), this can be removed.
+        Update(gameTime);
 
         renderer.DrawRect(spriteBatch, bounds, BackgroundColor);
 
@@ -105,13 +112,16 @@ public class TextInputField
         string beforeCursor = _text[.._cursorPos];
         float cursorX = font.MeasureString(beforeCursor).X;
         float scrollOffset = 0;
-        if (cursorX > visibleWidth)
+        if (IsFocused && cursorX > visibleWidth)
             scrollOffset = cursorX - visibleWidth;
 
-        var prevScissor = spriteBatch.GraphicsDevice.ScissorRectangle;
+        var gd = spriteBatch.GraphicsDevice;
+        var prevScissor = gd.ScissorRectangle;
+        var prevRasterizer = gd.RasterizerState;
         spriteBatch.End();
         spriteBatch.Begin(samplerState: SamplerState.PointClamp, rasterizerState: _scissorRasterizer);
-        spriteBatch.GraphicsDevice.ScissorRectangle = new Rectangle(bounds.X + pad, bounds.Y, (int)visibleWidth, bounds.Height);
+        var fieldClip = new Rectangle(bounds.X + pad, bounds.Y, (int)visibleWidth, bounds.Height);
+        gd.ScissorRectangle = Rectangle.Intersect(prevScissor, fieldClip);
 
         var textPos = new Vector2(bounds.X + pad - scrollOffset, textY);
         spriteBatch.DrawString(font, _text, textPos, TextColor);
@@ -125,8 +135,18 @@ public class TextInputField
         }
 
         spriteBatch.End();
-        spriteBatch.Begin(samplerState: SamplerState.PointClamp);
-        spriteBatch.GraphicsDevice.ScissorRectangle = prevScissor;
+        spriteBatch.Begin(samplerState: SamplerState.PointClamp, rasterizerState: prevRasterizer);
+        gd.ScissorRectangle = prevScissor;
+    }
+
+    /// <summary>
+    /// Returns true if the text is wider than the given field bounds (minus padding).
+    /// Used by editors to trigger tooltip display on hover.
+    /// </summary>
+    public bool IsTextOverflowing(SpriteFont font, Rectangle bounds)
+    {
+        float visibleWidth = bounds.Width - 12; // 6px padding each side
+        return font.MeasureString(_text).X > visibleWidth;
     }
 
     private void ResetBlink()

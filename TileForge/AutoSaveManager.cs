@@ -23,7 +23,7 @@ public class AutoSaveManager
     public double IntervalSeconds { get; set; } = 120;
 
     /// <summary>Whether auto-save is enabled.</summary>
-    public bool Enabled { get; set; } = true;
+    public bool Enabled { get; set; } = false;
 
     /// <summary>The last time an auto-save was performed, or null if never.</summary>
     public DateTime? LastAutoSave { get; private set; }

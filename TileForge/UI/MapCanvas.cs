@@ -6,6 +6,8 @@ using DojoUI;
 using TileForge.Data;
 using TileForge.Editor;
 using TileForge.Editor.Tools;
+using TileForge.Game;
+using TileForge.Play;
 
 namespace TileForge.UI;
 
@@ -143,12 +145,14 @@ public class MapCanvas
                     _lastPaintX = -1;
                     _lastPaintY = -1;
                     state.ActiveTool.OnPress(HoverX, HoverY, state);
+                    Minimap.MarkDirty();
                     _lastPaintX = HoverX;
                     _lastPaintY = HoverY;
                 }
                 else if (HoverX != _lastPaintX || HoverY != _lastPaintY)
                 {
                     state.ActiveTool.OnDrag(HoverX, HoverY, state);
+                    Minimap.MarkDirty();
                     _lastPaintX = HoverX;
                     _lastPaintY = HoverY;
                 }
@@ -158,11 +162,26 @@ public class MapCanvas
         {
             _isPainting = false;
             state.ActiveTool?.OnRelease(state);
+            Minimap.MarkDirty();
         }
 
         // Grid toggle (cycles Normal → Fine → Off)
         if (keyboard.IsKeyDown(Keys.G) && prevKeyboard.IsKeyUp(Keys.G))
             state.Grid.CycleMode();
+    }
+
+    /// <summary>
+    /// InputEvent-aware update. Consumes canvas clicks so they don't
+    /// propagate back to toolbar or panels.
+    /// </summary>
+    public void Update(EditorState state, InputEvent input,
+                       KeyboardState keyboard, KeyboardState prevKeyboard,
+                       Rectangle bounds)
+    {
+        Update(state, input.Mouse, input.PrevMouse, keyboard, prevKeyboard, bounds);
+
+        // Consume clicks within canvas bounds for cross-component consumption
+        input.TryConsumeClick(bounds);
     }
 
     public void Draw(SpriteBatch spriteBatch, EditorState state, Renderer renderer, Rectangle bounds)
@@ -339,7 +358,43 @@ public class MapCanvas
             var screenPos = Camera.WorldToScreen(new Vector2(drawX * tileW, drawY * tileH));
             var destRect = new Rectangle((int)screenPos.X, (int)screenPos.Y, cellW, cellH);
 
-            spriteBatch.Draw(state.Sheet.Texture, destRect, srcRect, Color.White);
+            // Determine horizontal flip based on facing vs default_facing (play mode only)
+            var effects = SpriteEffects.None;
+            if (state.IsPlayMode && state.PlayState != null
+                && group.DefaultProperties != null
+                && group.DefaultProperties.TryGetValue("default_facing", out var defaultFacing))
+            {
+                bool defaultIsLeft = defaultFacing == "left";
+                Direction facing;
+                if (entity == state.PlayState.PlayerEntity)
+                    facing = state.PlayState.PlayerFacing;
+                else
+                    state.PlayState.EntityFacings.TryGetValue(entity.Id, out facing);
+
+                bool currentlyLeft = facing == Direction.Left;
+                if (currentlyLeft != defaultIsLeft)
+                    effects = SpriteEffects.FlipHorizontally;
+            }
+
+            spriteBatch.Draw(state.Sheet.Texture, destRect, srcRect, Color.White,
+                             0f, Vector2.Zero, effects, 0f);
+
+            // Per-sprite damage flash overlays (play mode only)
+            if (state.IsPlayMode && state.PlayState != null)
+            {
+                if (entity == state.PlayState.PlayerEntity && state.PlayState.PlayerFlashTimer > 0)
+                {
+                    float intensity = state.PlayState.PlayerFlashTimer / PlayState.FlashDuration;
+                    int alpha = (int)(intensity * 150);
+                    renderer.DrawRect(spriteBatch, destRect, new Color(255, 0, 0, alpha));
+                }
+                else if (entity.Id == state.PlayState.FlashedEntityId && state.PlayState.EntityFlashTimer > 0)
+                {
+                    float intensity = state.PlayState.EntityFlashTimer / PlayState.FlashDuration;
+                    int alpha = (int)(intensity * 200);
+                    renderer.DrawRect(spriteBatch, destRect, new Color(255, 255, 255, alpha));
+                }
+            }
         }
 
         // Selection highlight (editor mode only)

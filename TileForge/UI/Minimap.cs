@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using DojoUI;
+using TileForge.Data;
 using TileForge.Editor;
 
 namespace TileForge.UI;
@@ -10,6 +12,16 @@ public class Minimap
 {
     private bool _isVisible = true;
 
+    // --- Tile cache fields ---
+    private readonly Dictionary<string, Color> _colorCache = new();
+    private Color[] _pixelCache;
+    private int _cachedMapW;
+    private int _cachedMapH;
+    private bool _dirty = true;
+    private MapData _cachedMapRef;
+    private int _cachedLayerCount;
+    private bool[] _cachedLayerVisibility;
+
     public bool IsVisible
     {
         get => _isVisible;
@@ -17,6 +29,12 @@ public class Minimap
     }
 
     public void Toggle() => _isVisible = !_isVisible;
+
+    /// <summary>
+    /// Marks the minimap tile cache as stale. Call this when map data changes
+    /// (tile paint/erase, fill, undo/redo, entity add/remove, etc.).
+    /// </summary>
+    public void MarkDirty() => _dirty = true;
 
     public void Draw(SpriteBatch spriteBatch, EditorState state, Renderer renderer,
                      Camera camera, Rectangle canvasBounds)
@@ -34,32 +52,35 @@ public class Minimap
         float cellW = (float)mmRect.Width / mapW;
         float cellH = (float)mmRect.Height / mapH;
 
-        // Draw tiles as colored pixels
-        for (int layerIdx = 0; layerIdx < state.Map.Layers.Count; layerIdx++)
+        // Auto-detect staleness: map reference changed, dimensions changed, or layer state changed
+        if (IsCacheStale(state.Map, mapW, mapH))
+            _dirty = true;
+
+        // Rebuild pixel cache when dirty
+        if (_dirty)
+            RebuildPixelCache(state.Map, mapW, mapH);
+
+        // Draw tiles from cache
+        int pixelW = Math.Max(1, (int)Math.Ceiling(cellW));
+        int pixelH = Math.Max(1, (int)Math.Ceiling(cellH));
+
+        for (int y = 0; y < mapH; y++)
         {
-            var layer = state.Map.Layers[layerIdx];
-            if (!layer.Visible) continue;
-
-            for (int y = 0; y < mapH; y++)
+            for (int x = 0; x < mapW; x++)
             {
-                for (int x = 0; x < mapW; x++)
-                {
-                    string groupName = layer.GetCell(x, y, mapW);
-                    if (groupName == null) continue;
+                Color pixelColor = _pixelCache[y * mapW + x];
+                if (pixelColor.A == 0) continue;
 
-                    Color pixelColor = GetGroupColor(groupName);
-                    var pixelRect = new Rectangle(
-                        mmRect.X + (int)(x * cellW),
-                        mmRect.Y + (int)(y * cellH),
-                        Math.Max(1, (int)Math.Ceiling(cellW)),
-                        Math.Max(1, (int)Math.Ceiling(cellH)));
+                var pixelRect = new Rectangle(
+                    mmRect.X + (int)(x * cellW),
+                    mmRect.Y + (int)(y * cellH),
+                    pixelW, pixelH);
 
-                    renderer.DrawRect(spriteBatch, pixelRect, pixelColor);
-                }
+                renderer.DrawRect(spriteBatch, pixelRect, pixelColor);
             }
         }
 
-        // Entity dots
+        // Entity dots (not cached — entities move in play mode)
         foreach (var entity in state.Map.Entities)
         {
             var entityRect = new Rectangle(
@@ -87,6 +108,83 @@ public class Minimap
 
         // Border
         renderer.DrawRectOutline(spriteBatch, mmRect, LayoutConstants.MinimapBorderColor, 1);
+    }
+
+    private bool IsCacheStale(MapData map, int mapW, int mapH)
+    {
+        // Map reference or dimensions changed
+        if (map != _cachedMapRef || mapW != _cachedMapW || mapH != _cachedMapH)
+            return true;
+
+        // Layer count changed
+        if (map.Layers.Count != _cachedLayerCount)
+            return true;
+
+        // Layer visibility changed
+        if (_cachedLayerVisibility == null || _cachedLayerVisibility.Length != map.Layers.Count)
+            return true;
+
+        for (int i = 0; i < map.Layers.Count; i++)
+        {
+            if (map.Layers[i].Visible != _cachedLayerVisibility[i])
+                return true;
+        }
+
+        return false;
+    }
+
+    private void RebuildPixelCache(MapData map, int mapW, int mapH)
+    {
+        int totalCells = mapW * mapH;
+
+        // Reallocate if dimensions changed
+        if (_pixelCache == null || _pixelCache.Length != totalCells)
+            _pixelCache = new Color[totalCells];
+
+        // Clear cache to transparent
+        Array.Clear(_pixelCache, 0, totalCells);
+
+        // Scan all visible layers (bottom to top, later layers overwrite)
+        for (int layerIdx = 0; layerIdx < map.Layers.Count; layerIdx++)
+        {
+            var layer = map.Layers[layerIdx];
+            if (!layer.Visible) continue;
+
+            for (int y = 0; y < mapH; y++)
+            {
+                for (int x = 0; x < mapW; x++)
+                {
+                    string groupName = layer.GetCell(x, y, mapW);
+                    if (groupName == null) continue;
+
+                    _pixelCache[y * mapW + x] = GetGroupColorCached(groupName);
+                }
+            }
+        }
+
+        // Snapshot tracking state
+        _cachedMapRef = map;
+        _cachedMapW = mapW;
+        _cachedMapH = mapH;
+        _cachedLayerCount = map.Layers.Count;
+
+        if (_cachedLayerVisibility == null || _cachedLayerVisibility.Length != map.Layers.Count)
+            _cachedLayerVisibility = new bool[map.Layers.Count];
+
+        for (int i = 0; i < map.Layers.Count; i++)
+            _cachedLayerVisibility[i] = map.Layers[i].Visible;
+
+        _dirty = false;
+    }
+
+    private Color GetGroupColorCached(string groupName)
+    {
+        if (!_colorCache.TryGetValue(groupName, out var color))
+        {
+            color = GetGroupColor(groupName);
+            _colorCache[groupName] = color;
+        }
+        return color;
     }
 
     public bool HandleClick(int mouseX, int mouseY, EditorState state, Camera camera,

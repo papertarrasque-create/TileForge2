@@ -55,6 +55,7 @@ public class AutoSaveManagerTests
         string savedPath = null;
         var mgr = new AutoSaveManager(state, () => "/tmp/test.tileforge", p => savedPath = p);
         mgr.IntervalSeconds = 10;
+        mgr.Enabled = true;
 
         mgr.Update(11); // 11s > 10s interval
 
@@ -98,6 +99,7 @@ public class AutoSaveManagerTests
         int saveCount = 0;
         var mgr = new AutoSaveManager(state, () => "/tmp/test.tileforge", _ => saveCount++);
         mgr.IntervalSeconds = 10;
+        mgr.Enabled = true;
 
         mgr.Update(11); // Triggers save
         Assert.Equal(1, saveCount);
@@ -114,6 +116,7 @@ public class AutoSaveManagerTests
         int saveCount = 0;
         var mgr = new AutoSaveManager(state, () => "/tmp/test.tileforge", _ => saveCount++);
         mgr.IntervalSeconds = 10;
+        mgr.Enabled = true;
 
         mgr.Update(3);
         mgr.Update(3);
@@ -131,6 +134,7 @@ public class AutoSaveManagerTests
         state.MarkDirty();
         var mgr = new AutoSaveManager(state, () => "/tmp/test.tileforge", _ => { });
         mgr.IntervalSeconds = 1;
+        mgr.Enabled = true;
 
         Assert.Null(mgr.LastAutoSave);
 

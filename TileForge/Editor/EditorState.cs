@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using TileForge.Data;
 using TileForge.Editor.Tools;
+using TileForge.Game;
 using TileForge.Play;
 using DojoUI;
 
@@ -10,19 +11,85 @@ namespace TileForge.Editor;
 
 public class EditorState
 {
-    public MapData Map { get; set; }
+    // --- Multimap support ---
+
+    public List<MapDocumentState> MapDocuments { get; set; } = new();
+    private int _activeMapIndex = -1;
+    private UndoStack _wiredUndoStack;
+    private readonly UndoStack _fallbackUndoStack = new();
+
+    public int ActiveMapIndex
+    {
+        get => _activeMapIndex;
+        set
+        {
+            if (value < -1) value = -1;
+            if (value >= MapDocuments.Count) value = MapDocuments.Count - 1;
+            if (_activeMapIndex == value) return;
+
+            _activeMapIndex = value;
+            WireUndoStack();
+            ActiveMapChanged?.Invoke(ActiveMapDocument);
+        }
+    }
+
+    public MapDocumentState ActiveMapDocument =>
+        _activeMapIndex >= 0 && _activeMapIndex < MapDocuments.Count
+            ? MapDocuments[_activeMapIndex] : null;
+
+    public event Action<MapDocumentState> ActiveMapChanged;
+
+    // --- Map facade (delegates to active document) ---
+
+    public MapData Map
+    {
+        get => ActiveMapDocument?.Map;
+        set
+        {
+            if (ActiveMapDocument != null)
+            {
+                ActiveMapDocument.Map = value;
+            }
+            else if (value != null)
+            {
+                // Auto-create a map document for backward compatibility
+                var doc = new MapDocumentState { Name = "main", Map = value };
+                MapDocuments.Add(doc);
+                ActiveMapIndex = 0;
+            }
+        }
+    }
+
+    // --- UndoStack facade ---
+
+    public UndoStack UndoStack => ActiveMapDocument?.UndoStack ?? _fallbackUndoStack;
+
+    // --- Shared project-level state ---
+
     public List<TileGroup> Groups { get; set; } = new();
     public Dictionary<string, TileGroup> GroupsByName { get; private set; } = new();
 
     public ISpriteSheet Sheet { get; set; }
     public string SheetPath { get; set; }
 
-    public UndoStack UndoStack { get; }
+    // --- Constructor ---
 
     public EditorState()
     {
-        UndoStack = new UndoStack();
-        UndoStack.StateChanged += OnUndoStackStateChanged;
+        _fallbackUndoStack.StateChanged += OnUndoStackStateChanged;
+        _wiredUndoStack = _fallbackUndoStack;
+    }
+
+    private void WireUndoStack()
+    {
+        var target = ActiveMapDocument?.UndoStack ?? _fallbackUndoStack;
+        if (target == _wiredUndoStack) return;
+
+        if (_wiredUndoStack != null)
+            _wiredUndoStack.StateChanged -= OnUndoStackStateChanged;
+
+        _wiredUndoStack = target;
+        _wiredUndoStack.StateChanged += OnUndoStackStateChanged;
     }
 
     private void OnUndoStackStateChanged()
@@ -40,6 +107,7 @@ public class EditorState
     public event Action<bool> PlayModeChanged;
     public event Action MapDirtied;
     public event Action UndoRedoStateChanged;
+    public event Action QuestsChanged;
 
     // --- Event-raising properties ---
 
@@ -61,15 +129,20 @@ public class EditorState
         }
     }
 
-    private string _activeLayerName = "Ground";
+    private string _fallbackActiveLayerName = "Ground";
     public string ActiveLayerName
     {
-        get => _activeLayerName;
+        get => ActiveMapDocument?.ActiveLayerName ?? _fallbackActiveLayerName;
         set
         {
-            if (_activeLayerName != value)
+            var doc = ActiveMapDocument;
+            string current = doc?.ActiveLayerName ?? _fallbackActiveLayerName;
+            if (current != value)
             {
-                _activeLayerName = value;
+                if (doc != null)
+                    doc.ActiveLayerName = value;
+                else
+                    _fallbackActiveLayerName = value;
                 ActiveLayerChanged?.Invoke(value);
             }
         }
@@ -89,15 +162,20 @@ public class EditorState
         }
     }
 
-    private string _selectedEntityId;
+    private string _fallbackSelectedEntityId;
     public string SelectedEntityId
     {
-        get => _selectedEntityId;
+        get => ActiveMapDocument?.SelectedEntityId ?? _fallbackSelectedEntityId;
         set
         {
-            if (_selectedEntityId != value)
+            var doc = ActiveMapDocument;
+            string current = doc?.SelectedEntityId ?? _fallbackSelectedEntityId;
+            if (current != value)
             {
-                _selectedEntityId = value;
+                if (doc != null)
+                    doc.SelectedEntityId = value;
+                else
+                    _fallbackSelectedEntityId = value;
                 SelectedEntityChanged?.Invoke(value);
             }
         }
@@ -119,10 +197,47 @@ public class EditorState
 
     public PlayState PlayState { get; set; }
 
+    // --- Quest data (loaded from quests.json) ---
+
+    public List<QuestDefinition> Quests { get; set; } = new();
+
+    public void NotifyQuestsChanged()
+    {
+        QuestsChanged?.Invoke();
+        MarkDirty();
+    }
+
+    // --- World layout (grid-based map relationships) ---
+
+    public WorldLayout WorldLayout { get; set; }
+
+    // --- Dialogue data (loaded from dialogues/*.json) ---
+
+    public List<DialogueData> Dialogues { get; set; } = new();
+
+    public event Action DialoguesChanged;
+
+    public void NotifyDialoguesChanged()
+    {
+        DialoguesChanged?.Invoke();
+        MarkDirty();
+    }
+
     // --- Selection & Clipboard ---
 
+    private Rectangle? _fallbackTileSelection;
     /// <summary>Selection rectangle in grid coordinates, or null if no selection.</summary>
-    public Rectangle? TileSelection { get; set; }
+    public Rectangle? TileSelection
+    {
+        get => ActiveMapDocument?.TileSelection ?? _fallbackTileSelection;
+        set
+        {
+            if (ActiveMapDocument != null)
+                ActiveMapDocument.TileSelection = value;
+            else
+                _fallbackTileSelection = value;
+        }
+    }
 
     /// <summary>Clipboard holding copied tile data.</summary>
     public TileClipboard Clipboard { get; set; }
@@ -188,10 +303,11 @@ public class EditorState
         Groups.Remove(group);
         GroupsByName.Remove(name);
 
-        // Clear all map cells referencing this group
-        if (Map != null)
+        // Clear all map cells referencing this group across ALL maps
+        foreach (var doc in MapDocuments)
         {
-            foreach (var layer in Map.Layers)
+            if (doc.Map == null) continue;
+            foreach (var layer in doc.Map.Layers)
             {
                 for (int i = 0; i < layer.Cells.Length; i++)
                 {
@@ -199,8 +315,7 @@ public class EditorState
                         layer.Cells[i] = null;
                 }
             }
-
-            Map.Entities.RemoveAll(e => e.GroupName == name);
+            doc.Map.Entities.RemoveAll(e => e.GroupName == name);
         }
 
         if (SelectedGroupName == name)
@@ -216,9 +331,11 @@ public class EditorState
         GroupsByName.Remove(oldName);
         GroupsByName[newName] = group;
 
-        if (Map != null)
+        // Update references across ALL maps
+        foreach (var doc in MapDocuments)
         {
-            foreach (var layer in Map.Layers)
+            if (doc.Map == null) continue;
+            foreach (var layer in doc.Map.Layers)
             {
                 for (int i = 0; i < layer.Cells.Length; i++)
                 {
@@ -226,8 +343,7 @@ public class EditorState
                         layer.Cells[i] = newName;
                 }
             }
-
-            foreach (var entity in Map.Entities)
+            foreach (var entity in doc.Map.Entities)
             {
                 if (entity.GroupName == oldName)
                     entity.GroupName = newName;

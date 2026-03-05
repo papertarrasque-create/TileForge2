@@ -21,7 +21,7 @@ public static class LayoutConstants
     public const int DefaultMapHeight = 30;
 
     // ---------------------------------------------------------------
-    //  Toolbar
+    //  Toolbar (shared by ToolbarRibbon)
     // ---------------------------------------------------------------
     public const int ToolbarHeight = 28;
     public const int ToolbarButtonSize = 24;
@@ -39,12 +39,50 @@ public static class LayoutConstants
     public static readonly Color ToolbarPlayModeTextColor = new(255, 200, 100);
 
     // ---------------------------------------------------------------
+    //  Toolbar ribbon (replaces Toolbar + ToolPanel)
+    // ---------------------------------------------------------------
+    public const int ToolbarRibbonHeight = 32;
+
+    // ---------------------------------------------------------------
+    //  Map tab bar
+    // ---------------------------------------------------------------
+    public const int MapTabBarHeight = 24;
+    public const int MapTabMinWidth = 60;
+    public const int MapTabMaxWidth = 160;
+    public const int MapTabPadding = 4;
+    public const int MapTabCloseSize = 12;
+    public const int MapTabAddWidth = 28;
+
+    public static readonly Color MapTabBarBackground = new(32, 32, 32);
+    public static readonly Color MapTabActive = new(55, 70, 95);
+    public static readonly Color MapTabInactive = new(45, 45, 45);
+    public static readonly Color MapTabHover = new(50, 55, 65);
+    public static readonly Color MapTabTextColor = new(200, 200, 200);
+    public static readonly Color MapTabDimTextColor = new(140, 140, 140);
+    public static readonly Color MapTabCloseColor = new(150, 80, 80);
+    public static readonly Color MapTabCloseHoverColor = new(200, 100, 100);
+    public static readonly Color MapTabAddColor = new(80, 160, 80);
+    public static readonly Color MapTabAddHoverColor = new(100, 200, 100);
+
+    // ---------------------------------------------------------------
+    //  Top chrome (menu bar + toolbar ribbon + map tab bar)
+    // ---------------------------------------------------------------
+    /// <summary>Menu bar (22) + toolbar ribbon (32) + map tab bar (24) in editor mode.</summary>
+    public const int TopChromeHeight = 78; // MenuBar.Height + ToolbarRibbonHeight + MapTabBarHeight
+    /// <summary>Toolbar ribbon only (32) in play mode — no menu bar.</summary>
+    public const int PlayTopChromeHeight = 32;
+
+    // ---------------------------------------------------------------
     //  Panel dock (left sidebar)
     // ---------------------------------------------------------------
     public const int PanelDockWidth = 200;
+    public const int PanelDockMinWidth = 150;
+    public const int PanelDockMaxWidth = 400;
+    public const int PanelDockResizeGrabSize = 6;
 
     public static readonly Color PanelDockBackground = new(35, 35, 35);
     public static readonly Color PanelDockDragIndicator = new(100, 160, 255);
+    public static readonly Color PanelDockResizeIndicator = new(100, 160, 255, 120);
 
     // ---------------------------------------------------------------
     //  Panel header (shared across all panels)
@@ -183,6 +221,152 @@ public static class LayoutConstants
     public static readonly Color TilePaletteHoverOutline = new(200, 200, 200, 150);
     public static readonly Color TilePaletteUngroupedHint = new(80, 80, 80, 120);
     public static readonly Color TilePaletteBackground = new(30, 30, 30);
+    public static readonly Color TilePaletteUngroupedSelectedHighlight = new(255, 200, 100, 180);
+
+    // Tile Palette Panel — Zoom
+    public const float TilePaletteDefaultZoom = 1.0f;
+    public const float TilePaletteMinZoom = 1.0f;
+    public const float TilePaletteMaxZoom = 4.0f;
+    public const float TilePaletteZoomStep = 0.25f;
+    public const int TilePaletteZoomBarHeight = 18;
+    public const int TilePaletteZoomButtonWidth = 18;
+    public static readonly Color TilePaletteZoomBarBg = new(40, 40, 40);
+    public static readonly Color TilePaletteZoomButtonBg = new(55, 55, 55);
+    public static readonly Color TilePaletteZoomButtonHoverBg = new(70, 70, 70);
+    public static readonly Color TilePaletteZoomButtonText = new(200, 200, 200);
+
+    // ---------------------------------------------------------------
+    //  Quest panel (sidebar)
+    // ---------------------------------------------------------------
+    public const int QuestPanelPreferredHeight = 120;
+    public const int QuestPanelItemHeight = 24;
+    public const int QuestPanelItemPadding = 2;
+    public const int QuestPanelAddButtonHeight = 22;
+    public const double QuestPanelDoubleClickThreshold = 0.4;
+
+    public static readonly Color QuestPanelItemBg = new(42, 42, 42);
+    public static readonly Color QuestPanelSelectedBg = new(60, 80, 120);
+    public static readonly Color QuestPanelHoverBg = new(50, 55, 65);
+    public static readonly Color QuestPanelLabelColor = new(200, 200, 200);
+    public static readonly Color QuestPanelAddButtonBg = new(50, 60, 50);
+    public static readonly Color QuestPanelAddButtonHoverBg = new(60, 72, 60);
+
+    // ---------------------------------------------------------------
+    //  Quest editor (modal overlay)
+    // ---------------------------------------------------------------
+    public const int QuestEditorFieldHeight = 22;
+    public const int QuestEditorRowHeight = 28;
+    public const int QuestEditorLabelWidth = 120;
+    public const int QuestEditorMaxWidth = 660;
+    public const int QuestEditorMaxHeight = 500;
+    public const int QuestEditorObjectiveRowHeight = 80;
+    public const int QuestEditorTypeButtonWidth = 50;
+
+    public static readonly Color QuestEditorOverlay = new(0, 0, 0, 180);
+    public static readonly Color QuestEditorPanelBg = new(35, 35, 35);
+    public static readonly Color QuestEditorHeaderBg = new(45, 45, 45);
+    public static readonly Color QuestEditorLabelColor = new(180, 180, 180);
+    public static readonly Color QuestEditorHintColor = new(120, 120, 120);
+    public static readonly Color QuestEditorSectionColor = new(140, 180, 220);
+    public static readonly Color QuestEditorButtonActive = new(70, 90, 130);
+    public static readonly Color QuestEditorButtonInactive = new(55, 55, 55);
+    public static readonly Color QuestEditorButtonHover = new(65, 65, 65);
+    public static readonly Color QuestEditorAddButtonBg = new(50, 60, 50);
+    public static readonly Color QuestEditorAddButtonHoverBg = new(60, 72, 60);
+    public static readonly Color QuestEditorRemoveColor = new(180, 60, 60);
+    public static readonly Color QuestEditorRemoveHoverColor = new(210, 80, 80);
+
+    // ---------------------------------------------------------------
+    //  Dialogue panel (sidebar)
+    // ---------------------------------------------------------------
+    public const int DialoguePanelPreferredHeight = 120;
+    public const int DialoguePanelItemHeight = 24;
+    public const int DialoguePanelItemPadding = 2;
+    public const int DialoguePanelAddButtonHeight = 22;
+    public const double DialoguePanelDoubleClickThreshold = 0.4;
+
+    public static readonly Color DialoguePanelItemBg = new(42, 42, 42);
+    public static readonly Color DialoguePanelSelectedBg = new(60, 80, 120);
+    public static readonly Color DialoguePanelHoverBg = new(50, 55, 65);
+    public static readonly Color DialoguePanelLabelColor = new(200, 200, 200);
+    public static readonly Color DialoguePanelAddButtonBg = new(50, 60, 50);
+    public static readonly Color DialoguePanelAddButtonHoverBg = new(60, 72, 60);
+
+    // ---------------------------------------------------------------
+    //  Dialogue editor (modal overlay)
+    // ---------------------------------------------------------------
+    public const int DialogueEditorFieldHeight = 22;
+    public const int DialogueEditorRowHeight = 28;
+    public const int DialogueEditorLabelWidth = 110;
+    public const int DialogueEditorMaxWidth = 760;
+    public const int DialogueEditorMaxHeight = 650;
+
+    public static readonly Color DialogueEditorOverlay = new(0, 0, 0, 180);
+    public static readonly Color DialogueEditorPanelBg = new(35, 35, 35);
+    public static readonly Color DialogueEditorHeaderBg = new(45, 45, 45);
+    public static readonly Color DialogueEditorLabelColor = new(180, 180, 180);
+    public static readonly Color DialogueEditorHintColor = new(120, 120, 120);
+    public static readonly Color DialogueEditorSectionColor = new(140, 180, 220);
+    public static readonly Color DialogueEditorNodeSectionColor = new(180, 160, 120);
+    public static readonly Color DialogueEditorAddButtonBg = new(50, 60, 50);
+    public static readonly Color DialogueEditorAddButtonHoverBg = new(60, 72, 60);
+    public static readonly Color DialogueEditorRemoveColor = new(180, 60, 60);
+    public static readonly Color DialogueEditorRemoveHoverColor = new(210, 80, 80);
+    public static readonly Color DialogueEditorNodeSeparator = new(60, 60, 60);
+
+    // ---------------------------------------------------------------
+    //  Dialogue tree editor (visual node graph)
+    // ---------------------------------------------------------------
+    public const int DialogueTreeMaxWidth = 1100;
+    public const int DialogueTreeMaxHeight = 700;
+    public const int DialogueTreeHeaderHeight = 32;
+    public const int DialogueTreeHintHeight = 22;
+    public const float DialogueTreeCanvasSplit = 0.6f;
+
+    public static readonly Color DialogueTreeOverlay = new(0, 0, 0, 180);
+    public static readonly Color DialogueTreePanelBg = new(35, 35, 35);
+    public static readonly Color DialogueTreeHeaderBg = new(45, 45, 45);
+    public static readonly Color DialogueTreeCanvasBg = new(28, 28, 32);
+    public static readonly Color DialogueTreeGridDotColor = new(50, 50, 55);
+    public static readonly Color DialogueTreeDividerColor = new(60, 60, 60);
+    public static readonly Color DialogueTreeHintColor = new(120, 120, 120);
+    public static readonly Color DialogueTreePropsBg = new(38, 38, 38);
+    public static readonly Color DialogueTreePropsSectionColor = new(140, 180, 220);
+
+    public static readonly Color DialogueNodeBg = new(50, 55, 60);
+    public static readonly Color DialogueNodeHeaderBg = new(70, 90, 130);
+    public static readonly Color DialogueNodeSelectedHeaderBg = new(80, 110, 160);
+    public static readonly Color DialogueNodeBorder = new(80, 80, 80);
+    public static readonly Color DialogueNodeSelectedBorder = new(100, 180, 255);
+    public static readonly Color DialogueNodeTextColor = new(200, 200, 200);
+    public static readonly Color DialogueNodeDimTextColor = new(140, 140, 140);
+    public static readonly Color DialogueNodePortColor = new(160, 160, 160);
+    public static readonly Color DialogueNodePortHoverColor = new(100, 180, 255);
+    public static readonly Color DialogueConnectionColor = new(140, 140, 140);
+    public static readonly Color DialogueConnectionActiveColor = new(100, 180, 255);
+    public static readonly Color DialogueConnectionDragColor = new(100, 180, 255, 180);
+
+    // ---------------------------------------------------------------
+    //  Form layout defaults (shared across modal editors)
+    // ---------------------------------------------------------------
+    public const int FormLabelWidth = 110;
+    public const int FormFieldHeight = 22;
+    public const int FormRowHeight = 28;
+    public const int FormPadding = 10;
+    public const int FormTwoFieldGap = 12;
+
+    // ---------------------------------------------------------------
+    //  Scroll panel
+    // ---------------------------------------------------------------
+    public const int ScrollBarWidth = 6;
+    public const int ScrollStep = 20;
+
+    // ---------------------------------------------------------------
+    //  Resizable modal constraints
+    // ---------------------------------------------------------------
+    public const int ModalMinWidth = 500;
+    public const int ModalMinHeight = 400;
+    public const int ModalEdgeGrabSize = 6;
 
     // ---------------------------------------------------------------
     //  Minimap
@@ -196,4 +380,36 @@ public static class LayoutConstants
     public static readonly Color MinimapViewportColor = new(255, 255, 255, 200);
     public static readonly Color MinimapEntityColor = new(255, 200, 100, 220);
     public static readonly Color MinimapPlayerColor = new(100, 255, 100, 255);
+
+    // ---------------------------------------------------------------
+    //  World map editor (visual grid)
+    // ---------------------------------------------------------------
+    public const int WorldMapMaxWidth = 1100;
+    public const int WorldMapMaxHeight = 700;
+    public const int WorldMapHeaderHeight = 32;
+    public const float WorldMapCanvasSplit = 0.65f;
+    public const int WorldMapCellWidth = 120;
+    public const int WorldMapCellHeight = 90;
+    public const int WorldMapGridLineWidth = 1;
+
+    public static readonly Color WorldMapOverlay = new(0, 0, 0, 180);
+    public static readonly Color WorldMapPanelBg = new(35, 35, 35);
+    public static readonly Color WorldMapHeaderBg = new(45, 45, 45);
+    public static readonly Color WorldMapCanvasBg = new(28, 28, 32);
+    public static readonly Color WorldMapGridLineColor = new(50, 50, 55);
+    public static readonly Color WorldMapCellEmptyBg = new(40, 40, 45, 80);
+    public static readonly Color WorldMapCellFilledBg = new(50, 65, 85);
+    public static readonly Color WorldMapCellSelectedBg = new(60, 80, 120);
+    public static readonly Color WorldMapCellHoverBg = new(55, 60, 70);
+    public static readonly Color WorldMapCellBorder = new(80, 80, 80);
+    public static readonly Color WorldMapCellSelectedBorder = new(100, 180, 255);
+    public static readonly Color WorldMapCellTextColor = new(200, 200, 200);
+    public static readonly Color WorldMapCellDimTextColor = new(140, 140, 140);
+    public static readonly Color WorldMapPropsBg = new(38, 38, 38);
+    public static readonly Color WorldMapPropsSectionColor = new(140, 180, 220);
+    public static readonly Color WorldMapUnplacedItemBg = new(42, 42, 42);
+    public static readonly Color WorldMapUnplacedItemHoverBg = new(50, 55, 65);
+    public static readonly Color WorldMapConnectionColor = new(100, 180, 255, 120);
+    public static readonly Color WorldMapDividerColor = new(60, 60, 60);
+    public static readonly Color WorldMapHintColor = new(120, 120, 120);
 }

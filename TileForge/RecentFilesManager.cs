@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
+using TileForge.Infrastructure;
 
 namespace TileForge;
 
@@ -10,16 +11,23 @@ namespace TileForge;
 /// </summary>
 public class RecentFilesManager
 {
-    private static readonly string SettingsDir = Path.Combine(
+    private static readonly string DefaultSettingsDir = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".tileforge");
-    private static readonly string SettingsPath = Path.Combine(SettingsDir, "recent.json");
+    private static readonly string DefaultSettingsPath = Path.Combine(DefaultSettingsDir, "recent.json");
+
+    private readonly string _settingsDir;
+    private readonly string _settingsPath;
+    private readonly IFileSystem _fileSystem;
 
     private const int MaxRecentFiles = 10;
 
     public List<string> RecentFiles { get; private set; } = new();
 
-    public RecentFilesManager()
+    public RecentFilesManager(IFileSystem fileSystem = null, IPathResolver pathResolver = null)
     {
+        _fileSystem = fileSystem ?? new DefaultFileSystem();
+        _settingsDir = pathResolver?.SettingsDirectory ?? DefaultSettingsDir;
+        _settingsPath = pathResolver?.RecentFilesPath ?? DefaultSettingsPath;
         Load();
     }
 
@@ -49,7 +57,7 @@ public class RecentFilesManager
     /// </summary>
     public void PruneNonExistent()
     {
-        int removed = RecentFiles.RemoveAll(p => !File.Exists(p));
+        int removed = RecentFiles.RemoveAll(p => !_fileSystem.Exists(p));
         if (removed > 0) Save();
     }
 
@@ -57,9 +65,9 @@ public class RecentFilesManager
     {
         try
         {
-            if (File.Exists(SettingsPath))
+            if (_fileSystem.Exists(_settingsPath))
             {
-                string json = File.ReadAllText(SettingsPath);
+                string json = _fileSystem.ReadAllText(_settingsPath);
                 RecentFiles = JsonSerializer.Deserialize<List<string>>(json) ?? new();
             }
         }
@@ -73,9 +81,9 @@ public class RecentFilesManager
     {
         try
         {
-            Directory.CreateDirectory(SettingsDir);
+            _fileSystem.CreateDirectory(_settingsDir);
             string json = JsonSerializer.Serialize(RecentFiles, new JsonSerializerOptions { WriteIndented = true });
-            File.WriteAllText(SettingsPath, json);
+            _fileSystem.WriteAllText(_settingsPath, json);
         }
         catch
         {

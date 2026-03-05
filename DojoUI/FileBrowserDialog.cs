@@ -133,6 +133,8 @@ public class FileBrowserDialog : IDialog
 
     public void Update(KeyboardState keyboard, KeyboardState prevKeyboard, GameTime gameTime)
     {
+        _filenameInput?.Update(gameTime);
+
         // Mouse handling
         var mouse = Mouse.GetState();
         if (!_mouseInitialized)
@@ -319,18 +321,7 @@ public class FileBrowserDialog : IDialog
 
     private void SetFilenameText(string text)
     {
-        // TextInputField doesn't have a SetText method, so we simulate it
-        // by clearing and re-typing. This is a workaround.
-        // Actually, we'll need to add a SetText method or work around it.
-        // For now, let's handle it by using HandleKey and HandleCharacter.
-
-        // Clear existing text
-        while (_filenameInput.Text.Length > 0)
-            _filenameInput.HandleKey(Keys.Back);
-
-        // Type new text
-        foreach (char c in text)
-            _filenameInput.HandleCharacter(c);
+        _filenameInput.SetText(text);
     }
 
     private void ConfirmSelection()

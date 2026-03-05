@@ -1,0 +1,43 @@
+{
+  "id": "Townsfolk",
+  "nodes": [
+    {
+      "id": "node_0",
+      "speaker": "Townsfolk",
+      "text": "Welcome to Flibbdibbletown! Watch out for the flaming skull.",
+      "choices": [
+        {
+          "text": "What\u0027s a flaming skull?",
+          "nextNodeId": "node_1"
+        },
+        {
+          "text": "I\u0027ll need to be going.",
+          "nextNodeId": "node_2"
+        }
+      ],
+      "editorX": -150,
+      "editorY": -167
+    },
+    {
+      "id": "node_1",
+      "speaker": "Townsfolk",
+      "text": "Old bibble got cursed and turned into a flaming skull!",
+      "choices": [
+        {
+          "text": "I\u0027ll need to be going.",
+          "nextNodeId": "node_2"
+        }
+      ],
+      "nextNodeId": "node_2",
+      "editorX": 196,
+      "editorY": -217
+    },
+    {
+      "id": "node_2",
+      "speaker": "Townsfolk",
+      "text": "Bye!",
+      "editorX": 197,
+      "editorY": -51
+    }
+  ]
+}

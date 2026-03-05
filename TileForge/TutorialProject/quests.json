@@ -1,0 +1,45 @@
+{
+  "quests": [
+    {
+      "id": "cave_investigation",
+      "name": "Investigate the Caves",
+      "description": "The Village Elder asked you to investigate the caves to the north.",
+      "start_flag": "quest_caves_accepted",
+      "objectives": [
+        {
+          "description": "Enter the cave",
+          "type": "flag",
+          "flag": "visited_map:TestCavernDungeon",
+          "value": 0
+        },
+        {
+          "description": "Defeat the cave creatures",
+          "type": "variable_gte",
+          "variable": "cave_kills",
+          "value": 3
+        }
+      ],
+      "completion_flag": "quest_complete:cave_investigation",
+      "rewards": {
+        "set_flags": [
+          "caves_cleared"
+        ],
+        "set_variables": {
+          "reputation": "5"
+        }
+      }
+    },
+    {
+      "id": "GetTheSword",
+      "name": "Get the Sword",
+      "description": "Get the sword from the ppol",
+      "start_flag": "talk_elder",
+      "objectives": [],
+      "completion_flag": "set_sword_picked",
+      "rewards": {
+        "set_flags": [],
+        "set_variables": {}
+      }
+    }
+  ]
+}

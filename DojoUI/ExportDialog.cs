@@ -34,6 +34,8 @@ public class ExportDialog : IDialog
 
     public void Update(KeyboardState keyboard, KeyboardState prevKeyboard, GameTime gameTime)
     {
+        _pathField.Update(gameTime);
+
         if (KeyPressed(keyboard, prevKeyboard, Keys.Escape))
         {
             IsComplete = true;

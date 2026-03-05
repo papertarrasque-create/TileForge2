@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Text.Json;
 using TileForge.Data;
 using TileForge.Export;
+using TileForge.Game;
 using Xunit;
 
 namespace TileForge.Tests.Export;
@@ -180,5 +181,92 @@ public class MapExporterTests
         Assert.Single(result.Entities);
         Assert.Equal("true", result.Entities[0].Properties["locked"]);
         Assert.True(result.Groups[0].IsSolid);
+    }
+
+    [Fact]
+    public void ExportJson_HazardousTile_IncludesGameplayProperties()
+    {
+        var map = new MapData(3, 3);
+        var groups = new List<TileGroup>
+        {
+            new() { Name = "lava", Type = GroupType.Tile, IsSolid = true,
+                    IsPassable = false, IsHazardous = true, MovementCost = 1.0f,
+                    DamageType = "fire", DamagePerTick = 5,
+                    Sprites = new() { new SpriteRef { Col = 3, Row = 2 } } },
+        };
+
+        string json = MapExporter.ExportJson(map, groups);
+        var result = JsonSerializer.Deserialize<ExportData>(json, DeserializeOptions);
+
+        var lava = result.Groups[0];
+        Assert.True(lava.IsSolid);
+        Assert.False(lava.IsPassable);
+        Assert.True(lava.IsHazardous);
+        Assert.Equal("fire", lava.DamageType);
+        Assert.Equal(5, lava.DamagePerTick);
+    }
+
+    [Fact]
+    public void ExportJson_DefaultTile_OmitsGameplayProperties()
+    {
+        var map = new MapData(3, 3);
+        var groups = new List<TileGroup>
+        {
+            new() { Name = "grass", Type = GroupType.Tile },
+        };
+
+        string json = MapExporter.ExportJson(map, groups);
+
+        // Default values should be omitted
+        Assert.DoesNotContain("\"isPassable\"", json);
+        Assert.DoesNotContain("\"isHazardous\"", json);
+        Assert.DoesNotContain("\"movementCost\"", json);
+        Assert.DoesNotContain("\"damageType\"", json);
+        Assert.DoesNotContain("\"damagePerTick\"", json);
+        Assert.DoesNotContain("\"entityType\"", json);
+    }
+
+    [Fact]
+    public void ExportJson_SlowTile_IncludesMovementCost()
+    {
+        var map = new MapData(3, 3);
+        var groups = new List<TileGroup>
+        {
+            new() { Name = "swamp", Type = GroupType.Tile, MovementCost = 2.0f },
+        };
+
+        string json = MapExporter.ExportJson(map, groups);
+        var result = JsonSerializer.Deserialize<ExportData>(json, DeserializeOptions);
+
+        Assert.Equal(2.0f, result.Groups[0].MovementCost);
+    }
+
+    [Fact]
+    public void ExportJson_EntityGroup_IncludesEntityType()
+    {
+        var map = new MapData(3, 3);
+        var groups = new List<TileGroup>
+        {
+            new() { Name = "npc_elder", Type = GroupType.Entity, EntityType = EntityType.NPC },
+        };
+
+        string json = MapExporter.ExportJson(map, groups);
+        var result = JsonSerializer.Deserialize<ExportData>(json, DeserializeOptions);
+
+        Assert.Equal("NPC", result.Groups[0].EntityType);
+    }
+
+    [Fact]
+    public void ExportJson_TileGroup_OmitsEntityType()
+    {
+        var map = new MapData(3, 3);
+        var groups = new List<TileGroup>
+        {
+            new() { Name = "grass", Type = GroupType.Tile },
+        };
+
+        string json = MapExporter.ExportJson(map, groups);
+
+        Assert.DoesNotContain("\"entityType\"", json);
     }
 }

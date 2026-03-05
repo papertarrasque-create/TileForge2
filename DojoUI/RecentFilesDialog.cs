@@ -31,6 +31,11 @@ public class RecentFilesDialog : IDialog
     private int _hoverIndex = -1;
     private int _scrollOffset;
 
+    // Cached item rectangles from Draw, used for hit-testing in Update (Option B: one-frame latency).
+    private readonly List<(int Index, Rectangle Rect)> _cachedItemRects = new();
+    private MouseState _prevMouse;
+    private bool _mouseInitialized;
+
     public bool IsComplete { get; private set; }
     public bool WasCancelled { get; private set; }
 
@@ -49,6 +54,37 @@ public class RecentFilesDialog : IDialog
             IsComplete = true;
             WasCancelled = true;
         }
+
+        // Mouse input handling
+        var mouse = Mouse.GetState();
+        if (!_mouseInitialized)
+        {
+            _prevMouse = mouse;
+            _mouseInitialized = true;
+        }
+
+        // Hit-test against cached item rects from previous Draw
+        _hoverIndex = -1;
+        foreach (var (index, rect) in _cachedItemRects)
+        {
+            if (rect.Contains(mouse.X, mouse.Y))
+            {
+                _hoverIndex = index;
+                break;
+            }
+        }
+
+        // Handle click (edge-detected: pressed this frame, not last)
+        if (mouse.LeftButton == ButtonState.Pressed &&
+            _prevMouse.LeftButton == ButtonState.Released &&
+            _hoverIndex >= 0)
+        {
+            SelectedPath = _files[_hoverIndex];
+            IsComplete = true;
+            WasCancelled = false;
+        }
+
+        _prevMouse = mouse;
     }
 
     public void OnTextInput(char character) { }
@@ -70,16 +106,15 @@ public class RecentFilesDialog : IDialog
         // Title
         spriteBatch.DrawString(font, "Recent Projects", new Vector2(px + Padding, py + Padding), TitleColor);
 
-        // Items
+        // Items — cache rects for hit-testing in Update
         int itemY = py + TitleHeight;
-        var mouse = Mouse.GetState();
-        _hoverIndex = -1;
+        _cachedItemRects.Clear();
 
         for (int i = _scrollOffset; i < _files.Count && i - _scrollOffset < maxVisible; i++)
         {
             var itemRect = new Rectangle(px + Padding, itemY, PanelWidth - Padding * 2, ItemHeight);
-            bool hover = itemRect.Contains(mouse.X, mouse.Y);
-            if (hover) _hoverIndex = i;
+            _cachedItemRects.Add((i, itemRect));
+            bool hover = _hoverIndex == i;
 
             renderer.DrawRect(spriteBatch, itemRect, hover ? ItemHoverColor : ItemColor);
 
@@ -92,14 +127,6 @@ public class RecentFilesDialog : IDialog
             spriteBatch.DrawString(font, dirName, new Vector2(itemRect.X + 6, itemRect.Y + font.LineSpacing), ItemPathColor);
 
             itemY += ItemHeight;
-        }
-
-        // Handle click
-        if (mouse.LeftButton == ButtonState.Pressed && _hoverIndex >= 0)
-        {
-            SelectedPath = _files[_hoverIndex];
-            IsComplete = true;
-            WasCancelled = false;
         }
 
         // Hint

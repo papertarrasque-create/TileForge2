@@ -38,6 +38,17 @@ public abstract class Panel
     public abstract void UpdateContent(EditorState state, MouseState mouse, MouseState prevMouse,
                                         SpriteFont font, GameTime gameTime, int screenW, int screenH);
 
+    /// <summary>
+    /// InputEvent-aware update. Default delegates to the original overload for backward compat.
+    /// Override this in panels that need click consumption.
+    /// </summary>
+    public virtual void UpdateContent(EditorState state, MouseState mouse, MouseState prevMouse,
+                                       InputEvent input, SpriteFont font, GameTime gameTime,
+                                       int screenW, int screenH)
+    {
+        UpdateContent(state, mouse, prevMouse, font, gameTime, screenW, screenH);
+    }
+
     public abstract void DrawContent(SpriteBatch spriteBatch, SpriteFont font, EditorState state,
                                       Renderer renderer);
 
