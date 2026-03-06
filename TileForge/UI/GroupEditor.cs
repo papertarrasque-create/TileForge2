@@ -23,7 +23,8 @@ public class GroupEditor
 
     private const int HeaderBaseH = LayoutConstants.GroupEditorHeaderBaseHeight;
     private const int PropRowH = 28;
-    private const int PropLabelW = 100;
+    private const int PropLabelWMin = 80;
+    private int _propLabelW = 100;
     private const int PropFieldH = 22;
     private const int DropW = 160;
     private const int NumW = 80;
@@ -522,7 +523,8 @@ public class GroupEditor
         {
             foreach (var pf in _propFields)
             {
-                DrawLabel(sb, font, pf.Key + ":", bounds.X + 8,
+                string propLabel = TextUtils.TruncateToFit(font, pf.Key + ":", _propLabelW - 4);
+                DrawLabel(sb, font, propLabel, bounds.X + 8,
                     pf.Bounds.Y, pf.Bounds.Height);
                 switch (pf.Kind)
                 {
@@ -605,10 +607,20 @@ public class GroupEditor
         // Property field bounds
         if (isEntity && _propFields.Count > 0)
         {
+            // Compute label width from longest property key (cap at half panel width)
+            int maxKeyWidth = 0;
+            foreach (var pf in _propFields)
+            {
+                int kw = (int)font.MeasureString(pf.Key + ":").X + 8;
+                if (kw > maxKeyWidth) maxKeyWidth = kw;
+            }
+            int propLabelWMax = (bounds.Width - 20) / 2;
+            _propLabelW = Math.Clamp(maxKeyWidth, PropLabelWMin, propLabelWMax);
+
             int baseH = HeaderBaseH + PropRowH;
             int startY = bounds.Y + baseH + 2;
-            int fieldX = bounds.X + 8 + PropLabelW + 4;
-            int fieldW = Math.Min(DropW, bounds.Width - PropLabelW - 20);
+            int fieldX = bounds.X + 8 + _propLabelW + 4;
+            int fieldW = Math.Min(DropW, bounds.Width - _propLabelW - 20);
             for (int i = 0; i < _propFields.Count; i++)
             {
                 int w = _propFields[i].Kind == PFK.Numeric ? NumW : fieldW;

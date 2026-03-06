@@ -75,8 +75,18 @@ public class Dropdown
         _itemHeight = font.LineSpacing + 8;
         int visibleCount = Math.Min(_items.Length, MaxVisible);
         int popupH = visibleCount * _itemHeight;
+
+        // Widen popup to fit longest item text (but not beyond screen)
+        int popupW = bounds.Width;
+        foreach (var item in _items)
+        {
+            int itemW = (int)font.MeasureString(item).X + TextPadding * 2;
+            if (itemW > popupW) popupW = itemW;
+        }
+        popupW = Math.Min(popupW, screenW - bounds.X);
+
         int popupY = (bounds.Bottom + popupH > screenH) ? bounds.Y - popupH : bounds.Bottom;
-        _popupBounds = new Rectangle(bounds.X, popupY, bounds.Width, popupH);
+        _popupBounds = new Rectangle(bounds.X, popupY, popupW, popupH);
 
         _buttonHovered = bounds.Contains(mouse.X, mouse.Y);
 
@@ -144,8 +154,18 @@ public class Dropdown
         _itemHeight = font.LineSpacing + 8;
         int visibleCount = Math.Min(_items.Length, MaxVisible);
         int popupH = visibleCount * _itemHeight;
+
+        // Widen popup to fit longest item text (but not beyond screen)
+        int popupW = bounds.Width;
+        foreach (var item in _items)
+        {
+            int itemW = (int)font.MeasureString(item).X + TextPadding * 2;
+            if (itemW > popupW) popupW = itemW;
+        }
+        popupW = Math.Min(popupW, screenW - bounds.X);
+
         int popupY = (bounds.Bottom + popupH > screenH) ? bounds.Y - popupH : bounds.Bottom;
-        _popupBounds = new Rectangle(bounds.X, popupY, bounds.Width, popupH);
+        _popupBounds = new Rectangle(bounds.X, popupY, popupW, popupH);
 
         _buttonHovered = bounds.Contains(input.Mouse.X, input.Mouse.Y);
 
@@ -212,11 +232,13 @@ public class Dropdown
         renderer.DrawRect(spriteBatch, bounds, bg);
         renderer.DrawRectOutline(spriteBatch, bounds, border, 1);
 
-        // Selected item text
+        // Selected item text (truncated to fit button)
         if (_items.Length > 0 && _selectedIndex >= 0 && _selectedIndex < _items.Length)
         {
             float textY = bounds.Y + (bounds.Height - font.LineSpacing) / 2f;
-            spriteBatch.DrawString(font, _items[_selectedIndex],
+            int maxTextW = bounds.Width - TextPadding - ArrowAreaW;
+            string displayText = TextUtils.TruncateToFit(font, _items[_selectedIndex], maxTextW);
+            spriteBatch.DrawString(font, displayText,
                 new Vector2(bounds.X + TextPadding, textY), Color.White);
         }
 
