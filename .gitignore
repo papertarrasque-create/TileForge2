@@ -21,6 +21,9 @@ Content/obj/
 ## TileForge
 *.autosave
 
+## Obsidian
+.obsidian/
+
 ## OS
 .DS_Store
 Thumbs.db
