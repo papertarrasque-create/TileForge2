@@ -337,11 +337,22 @@ public class TileForgeGame : Microsoft.Xna.Framework.Game
         int screenW = _graphics.PreferredBackBufferWidth;
         int screenH = _graphics.PreferredBackBufferHeight;
         int leftOffset = _state.IsPlayMode ? 0 : _panelDock.Width;
+        int rightOffset = _state.IsPlayMode ? LayoutConstants.SidebarWidth : 0;
         int topOffset = _state.IsPlayMode
             ? LayoutConstants.PlayTopChromeHeight
             : LayoutConstants.TopChromeHeight;
         return new Rectangle(leftOffset, topOffset,
-                             screenW - leftOffset,
+                             screenW - leftOffset - rightOffset,
+                             screenH - topOffset - StatusBar.Height);
+    }
+
+    private Rectangle GetSidebarBounds()
+    {
+        int screenW = _graphics.PreferredBackBufferWidth;
+        int screenH = _graphics.PreferredBackBufferHeight;
+        int topOffset = LayoutConstants.PlayTopChromeHeight;
+        return new Rectangle(screenW - LayoutConstants.SidebarWidth, topOffset,
+                             LayoutConstants.SidebarWidth,
                              screenH - topOffset - StatusBar.Height);
     }
 
@@ -404,7 +415,12 @@ public class TileForgeGame : Microsoft.Xna.Framework.Game
         // Global keybinds
         if (_inputRouter.Update(keyboard, _prevKeyboard, mouse))
         {
-            if (_state.IsPlayMode) _playMode.Update(gameTime, keyboard);
+            if (_state.IsPlayMode)
+            {
+                int sd = mouse.ScrollWheelValue - _prevMouse.ScrollWheelValue;
+                bool overSb = GetSidebarBounds().Contains(mouse.X, mouse.Y);
+                _playMode.Update(gameTime, keyboard, sd, overSb);
+            }
             FinishUpdate(keyboard, mouse, gameTime); return;
         }
 
@@ -414,7 +430,9 @@ public class TileForgeGame : Microsoft.Xna.Framework.Game
             _toolbarRibbon.Update(_state, mouse, _prevMouse,
                 _graphics.PreferredBackBufferWidth, _font, gameTime);
             HandleRibbonActions();
-            _playMode.Update(gameTime, keyboard);
+            int scrollDelta = mouse.ScrollWheelValue - _prevMouse.ScrollWheelValue;
+            bool overSidebar = GetSidebarBounds().Contains(mouse.X, mouse.Y);
+            _playMode.Update(gameTime, keyboard, scrollDelta, overSidebar);
             FinishUpdate(keyboard, mouse, gameTime); return;
         }
 
@@ -938,7 +956,11 @@ public class TileForgeGame : Microsoft.Xna.Framework.Game
 
             // Pass 2: UI chrome -- no clipping
             _spriteBatch.Begin(samplerState: SamplerState.PointClamp);
-            if (!_state.IsPlayMode)
+            if (_state.IsPlayMode)
+            {
+                _playMode.DrawSidebar(_spriteBatch, _font, _renderer, GetSidebarBounds());
+            }
+            else
             {
                 _panelDock.Draw(_spriteBatch, _font, _state, _renderer);
                 _menuBar.Draw(_spriteBatch, _font, _renderer, screenW);

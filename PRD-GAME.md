@@ -30,6 +30,7 @@ Evolve TileForge's embedded play mode into a full RPG game runtime. The editor r
 | G12 | World Map Editor — WorldLayout grid, EdgeTransitionResolver, custom spawn/exit points | 1371 |
 | G13 | AP Combat + Floating Messages — 2 AP/turn, directional attack, entity speed, auto-end-turn, floating text | 1443 |
 | G14 | Tactical Combat — terrain defense, backstab/flanking, poise shield, noise/alertness | 1507 |
+| HUD | Sidebar HUD — retro CRPG sidebar, GameLog, word-wrapped scrollable message log | 1507 |
 
 ---
 
@@ -96,6 +97,8 @@ TileForge/Game/
   ├── QuestLoader.cs             # JSON quest loader (snake_case + PascalCase)
   ├── QuestEvent.cs              # QuestEventType enum + data
   ├── QuestManager.cs            # Quest evaluation engine
+  ├── GameLog.cs                 # Persistent message log (200 max, versioned)
+  ├── SidebarHUD.cs              # Retro CRPG sidebar (stats, equipment, inventory, log)
 TileForge/Data/
   ├── QuestFileManager.cs        # Load/save quests.json
   ├── DialogueFileManager.cs     # Load/save dialogues/*.json
@@ -104,6 +107,7 @@ TileForge/Data/
 DojoUI/
   ├── Renderer.cs                # DrawRect, DrawLine, DrawBezier
   ├── Dropdown.cs, MenuBar.cs, Checkbox.cs, NumericField.cs
+  ├── TextUtils.cs               # TruncateToFit, WrapText (word-wrap + char-break)
   ├── TooltipManager.cs, FormLayout.cs, ScrollPanel.cs
 TileForge/Editor/
   ├── MapDocumentState.cs        # Per-map state container

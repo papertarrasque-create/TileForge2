@@ -40,6 +40,7 @@
 | G12 | World Map Editor (WorldLayout grid, EdgeTransitionResolver) | 1371 |
 | G13 | AP Combat + Floating Messages (2 AP/turn, entity speed, auto-end-turn) | 1443 |
 | G14 | Tactical Combat (terrain defense, backstab/flanking, poise, noise/alertness) | 1507 |
+| HUD | Sidebar HUD (retro CRPG sidebar, GameLog, word-wrapped scrollable log) | 1507 |
 
 All phases: 0 failures, 0 regressions.
 
@@ -128,3 +129,10 @@ All phases: 0 failures, 0 regressions.
 - **GroupEditor tile row 3.** Added "Def:" dropdown (0/1/2/3/5) and "Noise:" dropdown (Silent/Normal/Loud) for tile properties. NPC preset gains `poise`, Item preset gains `equip_poise`.
 - **Save backward compat.** `LoadState` fixes zero-MaxPoise from old saves (sets 20/20). Poise bar always visible in HUD (blue > 50%, yellow > 25%, red <= 25%).
 - **Poise bar HUD.** Blue bar below health bar (same dimensions). Color shifts blue/yellow/red by percentage. All subsequent HUD elements shifted down accordingly.
+
+### HUD — Sidebar HUD
+- **Sidebar replaces in-viewport HUD overlay.** Player stats, equipment, inventory, and message log moved from GameplayScreen overlay to a dedicated 280px sidebar drawn outside the game viewport scissor rect. Inspired by Caves of Qud, SKALD: Against the Black Priory, and Return to Kroz.
+- **GameLog captures all game events.** New `GameLog` class (200 max entries, version counter for change detection). `LogAndFloat()` pattern in GameplayScreen writes to both floating messages (world-space) and the persistent log simultaneously. DialogueScreen also logs speaker lines.
+- **Word-wrapped message log with two scroll modes.** Auto-scroll builds visual lines backwards from newest entry to fill viewport bottom-up (shows `-- older --` hint when clipped). Manual scroll renders forward from entry offset. Mouse wheel scrolls 3 entries/tick when hovering over sidebar.
+- **TextUtils.WrapText for pixel-width word wrapping.** Breaks on spaces where possible, falls back to character-level breaks for words wider than maxWidth. Binary search for optimal break points. Shared utility in DojoUI.
+- **Viewport partitioning.** Play mode subtracts `SidebarWidth` from right side of canvas bounds. Sidebar drawn in Pass 2 (outside scissor rect) to avoid clipping conflicts. Mouse scroll hit-tested against sidebar bounds.

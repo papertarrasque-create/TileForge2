@@ -41,8 +41,14 @@ public class PlayModeController
     private Dictionary<string, LoadedMap> _projectMaps;
     private EdgeTransitionResolver _edgeResolver;
 
+    // Sidebar HUD (retro CRPG style)
+    private GameLog _gameLog;
+    private SidebarHUD _sidebarHUD;
+
     public GameStateManager GameStateManager => _gameStateManager;
     public ScreenManager ScreenManager => _screenManager;
+    public GameLog GameLog => _gameLog;
+    public SidebarHUD SidebarHUD => _sidebarHUD;
 
     /// <summary>
     /// Optional base directory for resolving relative map paths in transitions.
@@ -145,8 +151,12 @@ public class PlayModeController
         };
         _state.IsPlayMode = true;
 
+        // Initialize sidebar HUD and game log
+        _gameLog = new GameLog();
+        _sidebarHUD = new SidebarHUD(_gameStateManager, _gameLog, () => _state.PlayState);
+
         // Push the gameplay screen
-        _screenManager.Push(new GameplayScreen(_state, _canvas, _context));
+        _screenManager.Push(new GameplayScreen(_state, _canvas, _context, _gameLog));
 
         return true;
     }
@@ -181,14 +191,26 @@ public class PlayModeController
         _context = null;
         _projectMaps = null;
         _edgeResolver = null;
+        _gameLog = null;
+        _sidebarHUD = null;
     }
 
-    public void Update(GameTime gameTime, KeyboardState keyboard)
+    public void Update(GameTime gameTime, KeyboardState keyboard,
+        int mouseScrollDelta = 0, bool mouseOverSidebar = false)
     {
         if (_state.PlayState == null) return;
 
         _inputManager.Update(keyboard);
         _screenManager.Update(gameTime, _inputManager);
+        _sidebarHUD?.Update();
+
+        // Mouse wheel scrolls the sidebar log when hovering over it
+        if (mouseScrollDelta != 0 && mouseOverSidebar && _sidebarHUD != null)
+        {
+            // ScrollWheelValue increases when scrolling up; negative delta = scroll up (older)
+            int entries = mouseScrollDelta > 0 ? -3 : 3;
+            _sidebarHUD.ScrollLog(entries);
+        }
 
         // Check for pending map transition (set by GameplayScreen on trigger)
         if (_gameStateManager?.PendingTransition != null)
@@ -214,6 +236,16 @@ public class PlayModeController
         Renderer renderer, Rectangle canvasBounds)
     {
         _screenManager?.Draw(spriteBatch, font, renderer, canvasBounds);
+    }
+
+    /// <summary>
+    /// Draws the sidebar HUD in its own region (right of the game viewport).
+    /// Called outside the game viewport scissor rect.
+    /// </summary>
+    public void DrawSidebar(SpriteBatch spriteBatch, SpriteFont font,
+        Renderer renderer, Rectangle sidebarBounds)
+    {
+        _sidebarHUD?.Draw(spriteBatch, font, renderer, sidebarBounds);
     }
 
     private void ExecuteMapTransition(MapTransitionRequest request)
@@ -285,7 +317,7 @@ public class PlayModeController
 
         // Pop the old gameplay screen and push a new one (re-centers camera)
         _screenManager.Clear();
-        _screenManager.Push(new GameplayScreen(_state, _canvas, _context));
+        _screenManager.Push(new GameplayScreen(_state, _canvas, _context, _gameLog));
     }
 
     private QuestManager LoadQuests()

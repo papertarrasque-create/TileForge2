@@ -412,4 +412,36 @@ public static class LayoutConstants
     public static readonly Color WorldMapConnectionColor = new(100, 180, 255, 120);
     public static readonly Color WorldMapDividerColor = new(60, 60, 60);
     public static readonly Color WorldMapHintColor = new(120, 120, 120);
+
+    // ---------------------------------------------------------------
+    //  Sidebar HUD (play mode — retro CRPG style)
+    // ---------------------------------------------------------------
+    public const int SidebarWidth = 280;
+    public const int SidebarPadding = 8;
+    public const int SidebarSectionGap = 6;
+    public const int SidebarBarHeight = 10;
+    public const int SidebarBarWidth = 120;
+    public const int SidebarStatRowHeight = 16;
+    public const int SidebarLogMaxVisible = 40;
+    public const int SidebarSeparatorHeight = 1;
+
+    public static readonly Color SidebarBackground = new(16, 14, 20);
+    public static readonly Color SidebarBorder = new(60, 55, 70);
+    public static readonly Color SidebarHeaderColor = new(180, 170, 140);
+    public static readonly Color SidebarTextColor = new(170, 170, 170);
+    public static readonly Color SidebarDimTextColor = new(100, 100, 100);
+    public static readonly Color SidebarSeparator = new(50, 45, 60);
+
+    // Stat bar colors
+    public static readonly Color SidebarHealthBarBg = new(40, 20, 20);
+    public static readonly Color SidebarHealthBarFill = new(180, 40, 40);
+    public static readonly Color SidebarHealthBarFullFill = new(60, 180, 60);
+    public static readonly Color SidebarPoiseBarBg = new(20, 20, 40);
+    public static readonly Color SidebarPoiseBarFill = new(80, 120, 200);
+    public static readonly Color SidebarPoiseBarLowFill = new(200, 160, 40);
+
+    // Log entry colors (fallback — actual colors come from GameLog)
+    public static readonly Color SidebarLogCombatColor = new(220, 180, 100);
+    public static readonly Color SidebarLogDialogueColor = new(140, 200, 220);
+    public static readonly Color SidebarLogSystemColor = new(120, 120, 120);
 }

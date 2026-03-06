@@ -28,6 +28,7 @@ public class GameplayScreen : GameScreen
     private readonly Func<Rectangle> _getCanvasBounds;
     private readonly EdgeTransitionResolver _edgeResolver;
     private readonly IDialogueLoader _dialogueLoader;
+    private readonly GameLog _gameLog;
     private IPathfinder _pathfinder;
 
     // --- Cached fields to avoid per-frame allocations and redundant computation ---
@@ -59,7 +60,8 @@ public class GameplayScreen : GameScreen
     private float _lastCameraRenderY = float.NaN;
     private Rectangle _lastCanvasBounds;
 
-    public GameplayScreen(EditorState state, MapCanvas canvas, GamePlayContext context)
+    public GameplayScreen(EditorState state, MapCanvas canvas, GamePlayContext context,
+        GameLog gameLog = null)
     {
         _state = state;
         _canvas = canvas;
@@ -71,6 +73,7 @@ public class GameplayScreen : GameScreen
         _getCanvasBounds = context.GetCanvasBounds;
         _edgeResolver = context.EdgeResolver;
         _dialogueLoader = context.DialogueLoader;
+        _gameLog = gameLog;
     }
 
     public override void OnEnter()
@@ -150,7 +153,7 @@ public class GameplayScreen : GameScreen
                 {
                     var effectMessages = _gameStateManager.ProcessStatusEffects();
                     foreach (var effectMsg in effectMessages)
-                        play.AddFloatingMessage(effectMsg, Color.Red, play.PlayerEntity.X, play.PlayerEntity.Y);
+                        LogAndFloat(play,effectMsg, Color.Red, play.PlayerEntity.X, play.PlayerEntity.Y);
                     if (effectMessages.Exists(m => m.Contains("damage")))
                         TriggerDamageFlash();
 
@@ -247,7 +250,7 @@ public class GameplayScreen : GameScreen
                     if (exitReq != null)
                     {
                         _gameStateManager.PendingTransition = exitReq;
-                        play.AddFloatingMessage($"Transitioning to {exitReq.TargetMap}...", Color.White, play.PlayerEntity.X, play.PlayerEntity.Y);
+                        LogAndFloat(play,$"Transitioning to {exitReq.TargetMap}...", Color.White, play.PlayerEntity.X, play.PlayerEntity.Y);
                         dx = 0; dy = 0; // Skip normal movement
                     }
                 }
@@ -285,7 +288,7 @@ public class GameplayScreen : GameScreen
                     if (edgeRequest != null)
                     {
                         _gameStateManager.PendingTransition = edgeRequest;
-                        play.AddFloatingMessage($"Transitioning to {edgeRequest.TargetMap}...", Color.White, play.PlayerEntity.X, play.PlayerEntity.Y);
+                        LogAndFloat(play,$"Transitioning to {edgeRequest.TargetMap}...", Color.White, play.PlayerEntity.X, play.PlayerEntity.Y);
                     }
                 }
             }
@@ -385,71 +388,6 @@ public class GameplayScreen : GameScreen
     {
         _canvas.Draw(spriteBatch, _state, renderer, canvasBounds);
 
-        // Health bar (top-left of canvas)
-        if (_gameStateManager?.State?.Player != null)
-        {
-            var player = _gameStateManager.State.Player;
-            int barX = canvasBounds.X + 8;
-            int barY = canvasBounds.Y + 8;
-            int barWidth = 100;
-            int barHeight = 12;
-
-            // Background (dark)
-            renderer.DrawRect(spriteBatch, new Rectangle(barX, barY, barWidth, barHeight), new Color(40, 40, 40));
-
-            // Fill (red → green based on health %)
-            float healthPct = player.MaxHealth > 0 ? (float)player.Health / player.MaxHealth : 0;
-            int fillWidth = (int)(barWidth * healthPct);
-            if (fillWidth > 0)
-            {
-                Color healthColor = healthPct > 0.5f ? Color.Green : healthPct > 0.25f ? Color.Yellow : Color.Red;
-                renderer.DrawRect(spriteBatch, new Rectangle(barX, barY, fillWidth, barHeight), healthColor);
-            }
-
-            // Poise bar (below health bar)
-            int poiseBarY = barY + barHeight + 2;
-            int maxPoise = _gameStateManager.GetEffectiveMaxPoise();
-            renderer.DrawRect(spriteBatch, new Rectangle(barX, poiseBarY, barWidth, barHeight), new Color(40, 40, 40));
-            float poisePct = maxPoise > 0 ? (float)player.Poise / maxPoise : 0;
-            int poiseFill = (int)(barWidth * poisePct);
-            if (poiseFill > 0)
-            {
-                Color poiseColor = poisePct > 0.5f ? Color.CornflowerBlue : poisePct > 0.25f ? Color.Yellow : Color.Red;
-                renderer.DrawRect(spriteBatch, new Rectangle(barX, poiseBarY, poiseFill, barHeight), poiseColor);
-            }
-
-            // ATK/DEF stats readout (Fix #3: use cached text)
-            var statsPos = new Vector2(barX, poiseBarY + barHeight + 2);
-            spriteBatch.DrawString(font, _cachedStatsText, statsPos, Color.White);
-
-            // Fix #4: Measure stats text once and reuse
-            if (_cachedStatsSize == default && _cachedStatsText.Length > 0)
-                _cachedStatsSize = font.MeasureString(_cachedStatsText);
-
-            // Terrain cover readout (Fix #6: use cached cover value)
-            if (_cachedCover > 0)
-            {
-                string coverText = $"COVER:+{_cachedCover}";
-                var coverPos = new Vector2(statsPos.X + _cachedStatsSize.X + 8, statsPos.Y);
-                spriteBatch.DrawString(font, coverText, coverPos, Color.CornflowerBlue);
-            }
-
-            // AP pips (Fix #2: use cached AP text)
-            float apY = statsPos.Y + _cachedStatsSize.Y + 2;
-            var playForHud = _state.PlayState;
-            int currentAP = playForHud?.PlayerAP ?? 0;
-            Color apColor = currentAP == _cachedMaxAP ? Color.Gold : Color.Gray;
-            spriteBatch.DrawString(font, _cachedAPText, new Vector2(barX, apY), apColor);
-
-            // Combat hint when hostiles nearby (Fix #5: use cached _hostileNearby)
-            if (playForHud != null && playForHud.IsPlayerTurn && currentAP > 0 && _hostileNearby)
-            {
-                string hint = "SPACE: End Turn";
-                float hintY = apY + font.MeasureString(_cachedAPText).Y + 2;
-                spriteBatch.DrawString(font, hint, new Vector2(barX, hintY), Color.Yellow * 0.8f);
-            }
-        }
-
         // Floating messages (world-space, drift upward + fade)
         var play = _state.PlayState;
         if (play?.FloatingMessages?.Count > 0)
@@ -476,36 +414,7 @@ public class GameplayScreen : GameScreen
             }
         }
 
-        // Active status effect indicators
-        if (_gameStateManager?.State?.Player?.ActiveEffects != null)
-        {
-            float effectX = canvasBounds.X + 8 + 100 + 8; // after health bar
-            float effectY = canvasBounds.Y + 8;
-
-            foreach (var effect in _gameStateManager.State.Player.ActiveEffects)
-            {
-                string label = effect.Type?.ToUpperInvariant() switch
-                {
-                    "FIRE" => $"[BURN {effect.RemainingSteps}]",
-                    "POISON" => $"[PSN {effect.RemainingSteps}]",
-                    "ICE" => $"[SLOW {effect.RemainingSteps}]",
-                    _ => $"[{effect.Type?.ToUpperInvariant()} {effect.RemainingSteps}]",
-                };
-
-                Color effectColor = effect.Type switch
-                {
-                    "fire" => Color.OrangeRed,
-                    "poison" => new Color(180, 50, 220),
-                    "ice" => Color.CornflowerBlue,
-                    _ => Color.White,
-                };
-
-                spriteBatch.DrawString(font, label, new Vector2(effectX, effectY), effectColor);
-                effectX += font.MeasureString(label).X + 6;
-            }
-        }
-
-        // Per-sprite damage flash is now rendered in MapCanvas.DrawEntities()
+        // HUD stats + status effects are now shown in the SidebarHUD
     }
 
     private bool CanMoveTo(int x, int y)
@@ -554,12 +463,12 @@ public class GameplayScreen : GameScreen
             {
                 case EntityType.NPC:
                     if (TryShowDialogue(instance, play)) return;
-                    play.AddFloatingMessage($"Talked to {instance.DefinitionName}", Color.White, instance.X, instance.Y);
+                    LogAndFloat(play,$"Talked to {instance.DefinitionName}", Color.White, instance.X, instance.Y);
                     break;
 
                 case EntityType.Item:
                     _gameStateManager.CollectItem(instance);
-                    play.AddFloatingMessage($"Collected {instance.DefinitionName}", Color.LimeGreen, instance.X, instance.Y);
+                    LogAndFloat(play,$"Collected {instance.DefinitionName}", Color.LimeGreen, instance.X, instance.Y);
                     break;
 
                 case EntityType.Trap:
@@ -570,11 +479,11 @@ public class GameplayScreen : GameScreen
                     {
                         _gameStateManager.DamagePlayer(damage);
                         TriggerDamageFlash();
-                        play.AddFloatingMessage($"{instance.DefinitionName} dealt {damage} damage!", Color.Red, play.PlayerEntity.X, play.PlayerEntity.Y);
+                        LogAndFloat(play,$"{instance.DefinitionName} dealt {damage} damage!", Color.Red, play.PlayerEntity.X, play.PlayerEntity.Y);
                     }
                     else
                     {
-                        play.AddFloatingMessage($"Triggered {instance.DefinitionName}", Color.White, instance.X, instance.Y);
+                        LogAndFloat(play,$"Triggered {instance.DefinitionName}", Color.White, instance.X, instance.Y);
                     }
                     if (!_gameStateManager.IsPlayerAlive())
                     {
@@ -597,20 +506,20 @@ public class GameplayScreen : GameScreen
                             TargetX = tx,
                             TargetY = ty,
                         };
-                        play.AddFloatingMessage($"Transitioning to {targetMap}...", Color.White, instance.X, instance.Y);
+                        LogAndFloat(play,$"Transitioning to {targetMap}...", Color.White, instance.X, instance.Y);
                     }
                     else
                     {
-                        play.AddFloatingMessage($"Triggered {instance.DefinitionName}", Color.White, instance.X, instance.Y);
+                        LogAndFloat(play,$"Triggered {instance.DefinitionName}", Color.White, instance.X, instance.Y);
                     }
                     break;
 
                 case EntityType.Interactable:
                     if (TryShowDialogue(instance, play)) return;
-                    play.AddFloatingMessage($"Interacted with {instance.DefinitionName}", Color.White, instance.X, instance.Y);
+                    LogAndFloat(play,$"Interacted with {instance.DefinitionName}", Color.White, instance.X, instance.Y);
                     break;
                 default:
-                    play.AddFloatingMessage($"Interacted with {instance.DefinitionName}", Color.White, instance.X, instance.Y);
+                    LogAndFloat(play,$"Interacted with {instance.DefinitionName}", Color.White, instance.X, instance.Y);
                     break;
             }
 
@@ -633,7 +542,7 @@ public class GameplayScreen : GameScreen
                     _gameStateManager.DamagePlayer(group.DamagePerTick);
                     TriggerDamageFlash();
                     string dmgType = group.DamageType ?? "damage";
-                    play.AddFloatingMessage($"Took {group.DamagePerTick} {dmgType} damage!", Color.Red, play.PlayerEntity.X, play.PlayerEntity.Y);
+                    LogAndFloat(play,$"Took {group.DamagePerTick} {dmgType} damage!", Color.Red, play.PlayerEntity.X, play.PlayerEntity.Y);
                 }
 
                 // Apply lingering status effect based on DamageType
@@ -733,7 +642,7 @@ public class GameplayScreen : GameScreen
             if (existingAlert > 0) continue;
 
             _gameStateManager.SetEntityIntProperty(entity, "alert_turns", 3);
-            play.AddFloatingMessage("!", Color.Yellow, entity.X, entity.Y);
+            LogAndFloat(play,"!", Color.Yellow, entity.X, entity.Y);
         }
     }
 
@@ -774,7 +683,7 @@ public class GameplayScreen : GameScreen
 
             if (msg != null)
             {
-                play.AddFloatingMessage(msg, Color.Cyan, play.PlayerEntity.X, play.PlayerEntity.Y);
+                LogAndFloat(play,msg, Color.Cyan, play.PlayerEntity.X, play.PlayerEntity.Y);
             }
         }
     }
@@ -801,11 +710,11 @@ public class GameplayScreen : GameScreen
 
                 // Show position-based floating message
                 if (attackPos == AttackPosition.Backstab)
-                    play.AddFloatingMessage("BACKSTAB!", Color.OrangeRed, instance.X, instance.Y);
+                    LogAndFloat(play,"BACKSTAB!", Color.OrangeRed, instance.X, instance.Y);
                 else if (attackPos == AttackPosition.Flank)
-                    play.AddFloatingMessage("Flanked!", Color.Orange, instance.X, instance.Y);
+                    LogAndFloat(play,"Flanked!", Color.Orange, instance.X, instance.Y);
 
-                play.AddFloatingMessage(result.Message, Color.Gold, instance.X, instance.Y);
+                LogAndFloat(play,result.Message, Color.Gold, instance.X, instance.Y);
                 TriggerEntityFlash(instance.Id);
                 return true;
             }
@@ -851,7 +760,7 @@ public class GameplayScreen : GameScreen
         {
             int regenAmount = _gameStateManager.RegeneratePoise();
             if (regenAmount > 0)
-                play.AddFloatingMessage($"+{regenAmount} Poise", Color.CornflowerBlue, play.PlayerEntity.X, play.PlayerEntity.Y);
+                LogAndFloat(play,$"+{regenAmount} Poise", Color.CornflowerBlue, play.PlayerEntity.X, play.PlayerEntity.Y);
         }
     }
 
@@ -946,10 +855,10 @@ public class GameplayScreen : GameScreen
                             string posLabel = attackPos == AttackPosition.Backstab ? " (Backstab!)"
                                             : attackPos == AttackPosition.Flank ? " (Flanked!)"
                                             : "";
-                            play.AddFloatingMessage($"{entity.DefinitionName} hit you for {damage}{posLabel}!", Color.Red, play.PlayerEntity.X, play.PlayerEntity.Y);
+                            LogAndFloat(play,$"{entity.DefinitionName} hit you for {damage}{posLabel}!", Color.Red, play.PlayerEntity.X, play.PlayerEntity.Y);
 
                             if (_gameStateManager.LastDamageBrokePoise)
-                                play.AddFloatingMessage("POISE BROKEN!", Color.OrangeRed, play.PlayerEntity.X, play.PlayerEntity.Y);
+                                LogAndFloat(play,"POISE BROKEN!", Color.OrangeRed, play.PlayerEntity.X, play.PlayerEntity.Y);
                         }
                         break;
                 }
@@ -1012,7 +921,7 @@ public class GameplayScreen : GameScreen
         var dialogue = LoadDialogue(dialogueValue);
         dialogue ??= CreateInlineDialogue(instance.DefinitionName, dialogueValue);
 
-        ScreenManager.Push(new DialogueScreen(dialogue, _gameStateManager));
+        ScreenManager.Push(new DialogueScreen(dialogue, _gameStateManager, _gameLog));
         play.FloatingMessages.Clear();
         return true;
     }
@@ -1037,5 +946,14 @@ public class GameplayScreen : GameScreen
     private DialogueData LoadDialogue(string dialogueRef)
     {
         return _dialogueLoader?.LoadDialogue(dialogueRef);
+    }
+
+    /// <summary>
+    /// Adds a floating message AND logs it to the persistent game log.
+    /// </summary>
+    private void LogAndFloat(PlayState play, string text, Color color, int tileX, int tileY)
+    {
+        play.AddFloatingMessage(text, color, tileX, tileY);
+        _gameLog?.Add(text, color);
     }
 }

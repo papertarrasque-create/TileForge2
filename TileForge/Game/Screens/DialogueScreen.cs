@@ -15,6 +15,7 @@ public class DialogueScreen : GameScreen
 {
     private readonly DialogueData _dialogue;
     private readonly GameStateManager _gameStateManager;
+    private readonly GameLog _gameLog;
 
     private DialogueNode _currentNode;
     private List<DialogueChoice> _visibleChoices;
@@ -27,10 +28,12 @@ public class DialogueScreen : GameScreen
 
     public override bool IsOverlay => true;
 
-    public DialogueScreen(DialogueData dialogue, GameStateManager gameStateManager)
+    public DialogueScreen(DialogueData dialogue, GameStateManager gameStateManager,
+        GameLog gameLog = null)
     {
         _dialogue = dialogue;
         _gameStateManager = gameStateManager;
+        _gameLog = gameLog;
     }
 
     public override void OnEnter()
@@ -136,6 +139,13 @@ public class DialogueScreen : GameScreen
         _revealedChars = 0;
         _revealTimer = 0f;
         _selectedChoiceIndex = 0;
+
+        // Log dialogue to the persistent game log
+        if (_gameLog != null && !string.IsNullOrEmpty(node.Text))
+        {
+            string speaker = node.Speaker ?? "???";
+            _gameLog.Add($"{speaker}: {node.Text}", new Color(140, 200, 220));
+        }
 
         // Apply side effects
         if (!string.IsNullOrEmpty(node.SetsFlag))
