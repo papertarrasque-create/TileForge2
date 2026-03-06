@@ -10,4 +10,13 @@ public class Entity
     public int X { get; set; }
     public int Y { get; set; }
     public Dictionary<string, string> Properties { get; set; } = new();
+
+    public Entity DeepCopy() => new()
+    {
+        Id = Id,
+        GroupName = GroupName,
+        X = X,
+        Y = Y,
+        Properties = new Dictionary<string, string>(Properties),
+    };
 }

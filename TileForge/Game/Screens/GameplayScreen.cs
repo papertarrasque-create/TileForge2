@@ -260,8 +260,12 @@ public class GameplayScreen : GameScreen
                     play.MoveFrom = new Vector2(play.PlayerEntity.X, play.PlayerEntity.Y);
                     play.MoveTo = new Vector2(targetX, targetY);
                     play.MoveProgress = 0f;
-                    play.CurrentMoveDuration = PlayState.MoveDuration * GetMovementCostAt(targetX, targetY) * _gameStateManager.GetEffectiveMovementMultiplier();
+                    var (moveCost, slowGroupName) = GetMovementCostWithSource(targetX, targetY);
+                    play.CurrentMoveDuration = PlayState.MoveDuration * moveCost * _gameStateManager.GetEffectiveMovementMultiplier();
                     play.IsMoving = true;
+
+                    if (moveCost > 1.0f && slowGroupName != null)
+                        _gameLog?.Add($"Slowed by {slowGroupName} ({moveCost:0.#}x)", Color.Gray);
                 }
                 else if (_state.Map.InBounds(targetX, targetY))
                 {
@@ -469,6 +473,7 @@ public class GameplayScreen : GameScreen
                 case EntityType.Item:
                     _gameStateManager.CollectItem(instance);
                     LogAndFloat(play,$"Collected {instance.DefinitionName}", Color.LimeGreen, instance.X, instance.Y);
+                    TryShowPickupDialogue(instance, play);
                     break;
 
                 case EntityType.Trap:
@@ -583,6 +588,26 @@ public class GameplayScreen : GameScreen
             }
         }
         return maxCost;
+    }
+
+    internal (float cost, string groupName) GetMovementCostWithSource(int x, int y)
+    {
+        float maxCost = 1.0f;
+        string sourceName = null;
+        foreach (var layer in _state.Map.Layers)
+        {
+            string groupName = layer.GetCell(x, y, _state.Map.Width);
+            if (groupName != null
+                && _state.GroupsByName.TryGetValue(groupName, out var group))
+            {
+                if (group.MovementCost > maxCost)
+                {
+                    maxCost = group.MovementCost;
+                    sourceName = groupName;
+                }
+            }
+        }
+        return (maxCost, sourceName);
     }
 
     internal int GetDefenseBonusAt(int x, int y)
@@ -909,8 +934,39 @@ public class GameplayScreen : GameScreen
             _gameStateManager.State.Player);
     }
 
+    private void TryShowPickupDialogue(EntityInstance instance, PlayState play)
+    {
+        instance.Properties.TryGetValue("on_pickup_dialogue", out var pickupDialogue);
+        if (string.IsNullOrEmpty(pickupDialogue)) return;
+
+        string flag = $"pickup_dialogue_shown:{instance.DefinitionName}";
+        if (_gameStateManager.HasFlag(flag)) return;
+
+        _gameStateManager.SetFlag(flag);
+
+        var dialogue = LoadDialogue(pickupDialogue);
+        dialogue ??= CreateInlineDialogue(instance.DefinitionName, pickupDialogue);
+        ScreenManager.Push(new DialogueScreen(dialogue, _gameStateManager, _gameLog));
+        play.FloatingMessages.Clear();
+    }
+
     private bool TryShowDialogue(EntityInstance instance, PlayState play)
     {
+        // Check if this entity's dialogue has concluded — show reminder instead
+        instance.Properties.TryGetValue("concluded_flag", out var concludedFlag);
+        if (!string.IsNullOrEmpty(concludedFlag) && _gameStateManager.HasFlag(concludedFlag))
+        {
+            instance.Properties.TryGetValue("concluded_dialogue", out var concludedValue);
+            if (!string.IsNullOrEmpty(concludedValue))
+            {
+                var concluded = LoadDialogue(concludedValue);
+                concluded ??= CreateInlineDialogue(instance.DefinitionName, concludedValue);
+                ScreenManager.Push(new DialogueScreen(concluded, _gameStateManager, _gameLog));
+                play.FloatingMessages.Clear();
+                return true;
+            }
+        }
+
         instance.Properties.TryGetValue("dialogue", out var dialogueValue);
         if (string.IsNullOrEmpty(dialogueValue))
             instance.Properties.TryGetValue("dialogue_id", out dialogueValue);

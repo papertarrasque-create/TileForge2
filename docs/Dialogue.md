@@ -99,6 +99,25 @@ Side effects are sequential -- RequiresFlag is checked before entry, SetsFlag is
 
 Dialogue interaction costs 0 AP -- it's a free action.
 
+## Concluded Dialogue
+
+When an NPC's dialogue tree has been fully exhausted, the entity can show a different reminder/repeat dialogue:
+
+1. Set `concluded_flag` on the entity (e.g., `elder_quest_done`)
+2. Set `concluded_dialogue` on the entity (dialogue ID or inline text, e.g., `Have you found my hat?`)
+3. The main dialogue's final node should set the flag via `SetsFlag`
+
+On interaction, if `concluded_flag` is set in GameState, `concluded_dialogue` is shown instead of the main dialogue. This avoids replaying the full tree and gives the NPC a contextual reminder line.
+
+## Pickup Dialogue
+
+Item entities can show dialogue on first pickup via the `on_pickup_dialogue` property:
+
+1. Set `on_pickup_dialogue` on an item entity (dialogue ID or inline text)
+2. When the player picks up an item with this property, the dialogue is shown once
+3. Subsequent pickups of the same item group do not trigger the dialogue again
+4. Tracked via the `pickup_dialogue_shown:{DefinitionName}` flag
+
 ## JSON Format
 
 Stored as `{projectDir}/dialogues/{id}.json` using **camelCase** JSON (unlike quests which use snake_case).

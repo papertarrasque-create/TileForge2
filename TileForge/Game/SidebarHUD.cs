@@ -44,6 +44,19 @@ public class SidebarHUD
     private int _lastContentW;
     private SpriteFont _lastFont;
 
+    /// <summary>
+    /// After Draw(), this contains the rectangle where the minimap should be rendered.
+    /// The caller is responsible for drawing the minimap into this rect.
+    /// </summary>
+    public Rectangle MinimapRect { get; private set; }
+
+    /// <summary>
+    /// Map dimensions used to compute the adaptive minimap height.
+    /// Set by the caller before Draw() when map data is available.
+    /// </summary>
+    public int MapWidth { get; set; }
+    public int MapHeight { get; set; }
+
     public void Update()
     {
         // Auto-scroll: just track that new messages arrived (Draw handles the rest)
@@ -200,9 +213,39 @@ public class SidebarHUD
         // Separator
         cy = DrawSeparator(renderer, sb, cx, cy, contentW);
 
+        // --- Adaptive layout: split remaining space between LOG and MINIMAP ---
+        int separatorCost = LayoutConstants.SidebarSeparatorHeight + LayoutConstants.SidebarSectionGap;
+        int logHeaderH = lineH + LayoutConstants.SidebarSectionGap;
+        int remainingH = sidebarBounds.Bottom - pad - cy - logHeaderH - separatorCost;
+
+        // Compute ideal minimap height from map aspect ratio within content width
+        int mmH;
+        if (MapWidth > 0 && MapHeight > 0)
+        {
+            float mapAspect = (float)MapWidth / MapHeight;
+            mmH = Math.Max(1, (int)(contentW / mapAspect));
+        }
+        else
+        {
+            mmH = contentW; // square fallback
+        }
+
+        // Clamp minimap: at least 60px, at most 40% of remaining space
+        int minMM = 60;
+        int maxMM = Math.Max(minMM, (int)(remainingH * 0.4f));
+        mmH = Math.Clamp(mmH, minMM, maxMM);
+
+        int logH = Math.Max(lineH * 3, remainingH - mmH);
+
         // --- MESSAGE LOG ---
         cy = DrawSectionHeader(sb, font, renderer, "-- LOG --", cx, cy, contentW);
-        DrawMessageLog(sb, font, cx, cy, contentW, sidebarBounds.Bottom - pad - cy, lineH);
+        DrawMessageLog(sb, font, cx, cy, contentW, logH, lineH);
+
+        // --- MINIMAP ---
+        int mmY = cy + logH;
+        DrawSeparator(renderer, sb, cx, mmY, contentW);
+        mmY += separatorCost;
+        MinimapRect = new Rectangle(cx, mmY, contentW, mmH);
     }
 
     private int DrawSectionHeader(SpriteBatch sb, SpriteFont font, Renderer renderer,

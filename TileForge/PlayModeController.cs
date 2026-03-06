@@ -23,6 +23,7 @@ public class PlayModeController
     private readonly MapCanvas _canvas;
     private readonly Func<Rectangle> _getCanvasBounds;
     private readonly IPathResolver _pathResolver;
+    private readonly Minimap _minimap;
 
     private Vector2 _savedCameraOffset;
     private int _savedZoomIndex;
@@ -57,12 +58,13 @@ public class PlayModeController
     public string MapBaseDirectory { get; set; }
 
     public PlayModeController(EditorState state, MapCanvas canvas, Func<Rectangle> getCanvasBounds,
-        IPathResolver pathResolver = null)
+        IPathResolver pathResolver = null, Minimap minimap = null)
     {
         _state = state;
         _canvas = canvas;
         _getCanvasBounds = getCanvasBounds;
         _pathResolver = pathResolver ?? new DefaultPathResolver();
+        _minimap = minimap;
     }
 
     /// <summary>
@@ -86,12 +88,12 @@ public class PlayModeController
         if (playerEntity == null)
             return false;
 
-        // Save editor state for restoration on exit
+        // Save editor state for restoration on exit (deep copy so play mode mutations don't corrupt the snapshot)
         _savedCameraOffset = _canvas.Camera.Offset;
         _savedZoomIndex = _canvas.Camera.ZoomIndex;
         _savedActiveMapIndex = _state.ActiveMapIndex;
-        _savedMapDocuments = new List<MapDocumentState>(_state.MapDocuments);
-        _savedGroups = new List<TileGroup>(_state.Groups);
+        _savedMapDocuments = _state.MapDocuments.ConvertAll(d => d.DeepCopy());
+        _savedGroups = _state.Groups.ConvertAll(g => g.DeepCopy());
 
         // Pre-export all project maps for in-project transitions
         _projectMaps = new Dictionary<string, LoadedMap>(StringComparer.OrdinalIgnoreCase);
@@ -161,24 +163,24 @@ public class PlayModeController
         return true;
     }
 
-    public void Exit()
+    public void Exit(bool revert = true)
     {
         _screenManager?.Clear();
 
         _canvas.Camera.Offset = _savedCameraOffset;
         _canvas.Camera.ZoomIndex = _savedZoomIndex;
 
-        // Restore editor state (multimap-aware)
-        if (_savedMapDocuments != null)
+        // Restore editor state from snapshot (multimap-aware)
+        if (revert && _savedMapDocuments != null)
         {
             _state.MapDocuments.Clear();
             _state.MapDocuments.AddRange(_savedMapDocuments);
             _state.Groups = new List<TileGroup>(_savedGroups);
             _state.RebuildGroupIndex();
             _state.ActiveMapIndex = _savedActiveMapIndex;
-            _savedMapDocuments = null;
-            _savedGroups = null;
         }
+        _savedMapDocuments = null;
+        _savedGroups = null;
 
         _state.IsPlayMode = false;
         _state.PlayState = null;
@@ -245,7 +247,23 @@ public class PlayModeController
     public void DrawSidebar(SpriteBatch spriteBatch, SpriteFont font,
         Renderer renderer, Rectangle sidebarBounds)
     {
+        // Feed map dimensions for adaptive minimap sizing
+        if (_sidebarHUD != null && _state.Map != null)
+        {
+            _sidebarHUD.MapWidth = _state.Map.Width;
+            _sidebarHUD.MapHeight = _state.Map.Height;
+        }
+
         _sidebarHUD?.Draw(spriteBatch, font, renderer, sidebarBounds);
+
+        // Draw minimap in the reserved space at the bottom of the sidebar
+        if (_minimap != null && _sidebarHUD != null)
+        {
+            var mmRect = _sidebarHUD.MinimapRect;
+            if (mmRect.Width > 0 && mmRect.Height > 0)
+                _minimap.DrawInRect(spriteBatch, _state, renderer, _canvas.Camera,
+                    mmRect, _getCanvasBounds());
+        }
     }
 
     private void ExecuteMapTransition(MapTransitionRequest request)

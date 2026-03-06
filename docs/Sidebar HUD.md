@@ -35,6 +35,13 @@ A retro CRPG sidebar (inspired by Caves of Qud, SKALD: Against the Black Priory,
 - Scrollable message history
 - Word-wrapped text via `TextUtils.WrapText()`
 - Color per entry (matches floating message colors)
+- Height adapts to remaining space after minimap reservation
+
+**5. MINIMAP**
+- Renders at the bottom of the sidebar via `Minimap.DrawInRect()`
+- Adaptive height: computed from map aspect ratio within content width, clamped between 60px min and 40% of remaining space
+- Shows tiles (color-cached), entity dots, camera viewport rect, and player position
+- Canvas minimap is hidden during play mode (sidebar version replaces it)
 
 ## GameLog
 

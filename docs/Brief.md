@@ -27,7 +27,7 @@ The editor *is* the authoring tool. There is no separate data pipeline, no exter
 2. Embedded play mode that grows into a full RPG runtime (turn-based, tactical)
 3. In-editor authoring for all game data -- dialogue, quests, world layout, entity properties
 4. Testable without MonoGame (`ISpriteSheet` pattern, pure logic separated from rendering)
-5. Maintainable codebase with high test coverage (1507 tests, 0 failures)
+5. Maintainable codebase with high test coverage (1528 tests, 0 failures)
 
 ## Current Scope
 

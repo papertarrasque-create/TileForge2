@@ -25,4 +25,10 @@ public class MapLayer
         if (index >= 0 && index < Cells.Length)
             Cells[index] = groupName;
     }
+
+    public MapLayer DeepCopy(int width, int height) => new(Name, width, height)
+    {
+        Visible = Visible,
+        Cells = (string[])Cells.Clone(),
+    };
 }

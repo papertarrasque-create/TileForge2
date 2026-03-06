@@ -110,6 +110,94 @@ public class Minimap
         renderer.DrawRectOutline(spriteBatch, mmRect, LayoutConstants.MinimapBorderColor, 1);
     }
 
+    /// <summary>
+    /// Draws the minimap into a specific rectangle (for sidebar HUD embedding).
+    /// Maintains map aspect ratio within the target rect, centering horizontally.
+    /// </summary>
+    public void DrawInRect(SpriteBatch spriteBatch, EditorState state, Renderer renderer,
+                           Camera camera, Rectangle targetRect, Rectangle canvasBounds)
+    {
+        if (state.Map == null || state.Sheet == null) return;
+
+        int mapW = state.Map.Width;
+        int mapH = state.Map.Height;
+
+        // Compute aspect-correct rect within target, centered horizontally
+        float mapAspect = (float)mapW / mapH;
+        int mmW, mmH;
+        if (mapAspect > (float)targetRect.Width / targetRect.Height)
+        {
+            mmW = targetRect.Width;
+            mmH = Math.Max(1, (int)(targetRect.Width / mapAspect));
+        }
+        else
+        {
+            mmH = targetRect.Height;
+            mmW = Math.Max(1, (int)(targetRect.Height * mapAspect));
+        }
+        int mmX = targetRect.X + (targetRect.Width - mmW) / 2;
+        int mmY = targetRect.Y + (targetRect.Height - mmH) / 2;
+        var mmRect = new Rectangle(mmX, mmY, mmW, mmH);
+
+        // Background
+        renderer.DrawRect(spriteBatch, mmRect, LayoutConstants.MinimapBackgroundColor);
+
+        float cellW = (float)mmRect.Width / mapW;
+        float cellH = (float)mmRect.Height / mapH;
+
+        if (IsCacheStale(state.Map, mapW, mapH))
+            _dirty = true;
+        if (_dirty)
+            RebuildPixelCache(state.Map, mapW, mapH);
+
+        // Draw tiles from cache
+        int pixelW = Math.Max(1, (int)Math.Ceiling(cellW));
+        int pixelH = Math.Max(1, (int)Math.Ceiling(cellH));
+
+        for (int y = 0; y < mapH; y++)
+        {
+            for (int x = 0; x < mapW; x++)
+            {
+                Color pixelColor = _pixelCache[y * mapW + x];
+                if (pixelColor.A == 0) continue;
+                var pixelRect = new Rectangle(
+                    mmRect.X + (int)(x * cellW),
+                    mmRect.Y + (int)(y * cellH),
+                    pixelW, pixelH);
+                renderer.DrawRect(spriteBatch, pixelRect, pixelColor);
+            }
+        }
+
+        // Entity dots
+        foreach (var entity in state.Map.Entities)
+        {
+            var entityRect = new Rectangle(
+                mmRect.X + (int)(entity.X * cellW),
+                mmRect.Y + (int)(entity.Y * cellH),
+                Math.Max(2, (int)Math.Ceiling(cellW)),
+                Math.Max(2, (int)Math.Ceiling(cellH)));
+            renderer.DrawRect(spriteBatch, entityRect, LayoutConstants.MinimapEntityColor);
+        }
+
+        // Camera viewport rectangle
+        DrawViewportRect(spriteBatch, renderer, state, camera, canvasBounds, mmRect, mapW, mapH);
+
+        // Player position dot (play mode)
+        if (state.IsPlayMode && state.PlayState != null)
+        {
+            var play = state.PlayState;
+            var playerRect = new Rectangle(
+                mmRect.X + (int)(play.RenderPos.X * cellW),
+                mmRect.Y + (int)(play.RenderPos.Y * cellH),
+                Math.Max(3, (int)Math.Ceiling(cellW * 2)),
+                Math.Max(3, (int)Math.Ceiling(cellH * 2)));
+            renderer.DrawRect(spriteBatch, playerRect, LayoutConstants.MinimapPlayerColor);
+        }
+
+        // Border
+        renderer.DrawRectOutline(spriteBatch, mmRect, LayoutConstants.MinimapBorderColor, 1);
+    }
+
     private bool IsCacheStale(MapData map, int mapW, int mapH)
     {
         // Map reference or dimensions changed

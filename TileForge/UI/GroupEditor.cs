@@ -103,11 +103,11 @@ public class GroupEditor
 
     private static readonly Dictionary<EntityType, string[]> Presets = new()
     {
-        { EntityType.NPC, new[] { "dialogue", "health", "attack", "defense", "poise", "behavior", "speed", "default_facing", "hostile", "hostile_flag", "friendly_flag", "aggro_range", "on_kill_set_flag", "on_kill_increment" } },
-        { EntityType.Item, new[] { "heal", "equip_slot", "equip_attack", "equip_defense", "equip_ap", "equip_poise", "on_collect_set_flag", "on_collect_increment" } },
+        { EntityType.NPC, new[] { "dialogue", "concluded_flag", "concluded_dialogue", "health", "attack", "defense", "poise", "behavior", "speed", "default_facing", "hostile", "hostile_flag", "friendly_flag", "aggro_range", "on_kill_set_flag", "on_kill_increment" } },
+        { EntityType.Item, new[] { "heal", "on_pickup_dialogue", "equip_slot", "equip_attack", "equip_defense", "equip_ap", "equip_poise", "on_collect_set_flag", "on_collect_increment" } },
         { EntityType.Trap, new[] { "damage", "health", "on_kill_set_flag", "on_kill_increment" } },
         { EntityType.Trigger, new[] { "target_map", "target_x", "target_y" } },
-        { EntityType.Interactable, new[] { "dialogue" } },
+        { EntityType.Interactable, new[] { "dialogue", "concluded_flag", "concluded_dialogue" } },
     };
 
     private static readonly Dictionary<string, (int Min, int Max)> NumericSpecs = new()
@@ -691,7 +691,7 @@ public class GroupEditor
             int idx = Array.IndexOf(items, value);
             return new PropField { Key = key, Kind = PFK.Dropdown, DD = new Dropdown(items, Math.Max(0, idx)) };
         }
-        if (key is "dialogue" or "dialogue_id")
+        if (key is "dialogue" or "dialogue_id" or "concluded_dialogue" or "on_pickup_dialogue")
         {
             var items = GetDropdownItems(key);
             int idx = Array.IndexOf(items, value);
@@ -704,7 +704,7 @@ public class GroupEditor
     {
         if (_projectContext == null) return new[] { ProjectContext.CreateNewItem };
         if (key == "target_map") return _projectContext.GetAvailableMaps();
-        if (key is "dialogue" or "dialogue_id") return _projectContext.GetAvailableDialogues();
+        if (key is "dialogue" or "dialogue_id" or "concluded_dialogue" or "on_pickup_dialogue") return _projectContext.GetAvailableDialogues();
         return Array.Empty<string>();
     }
 

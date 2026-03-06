@@ -314,8 +314,9 @@ public class MapCanvas
             state.ActiveTool.DrawPreview(spriteBatch, HoverX, HoverY, state, Camera, renderer);
         }
 
-        // Minimap overlay
-        Minimap.Draw(spriteBatch, state, renderer, Camera, bounds);
+        // Minimap overlay (editor only; play mode uses the sidebar HUD minimap)
+        if (!state.IsPlayMode)
+            Minimap.Draw(spriteBatch, state, renderer, Camera, bounds);
     }
 
     public void CenterOnMap(EditorState state, Rectangle bounds)

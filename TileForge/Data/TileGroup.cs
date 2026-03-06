@@ -34,4 +34,23 @@ public class TileGroup
 
     // G6.4 — Default properties inherited by placed entity instances
     public Dictionary<string, string> DefaultProperties { get; set; } = new();
+
+    public TileGroup DeepCopy() => new()
+    {
+        Name = Name,
+        Type = Type,
+        Sprites = Sprites.ConvertAll(s => new SpriteRef { Col = s.Col, Row = s.Row }),
+        IsSolid = IsSolid,
+        IsPlayer = IsPlayer,
+        LayerName = LayerName,
+        IsPassable = IsPassable,
+        IsHazardous = IsHazardous,
+        MovementCost = MovementCost,
+        DamageType = DamageType,
+        DamagePerTick = DamagePerTick,
+        DefenseBonus = DefenseBonus,
+        NoiseLevel = NoiseLevel,
+        EntityType = EntityType,
+        DefaultProperties = new Dictionary<string, string>(DefaultProperties),
+    };
 }

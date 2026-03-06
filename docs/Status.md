@@ -8,20 +8,26 @@ status: current
 ## Current State
 
 **Branch:** `HUD` (branched from `game-state`, which is ready for merge to `main`)
-**Tests:** 1507 passing, 0 failures
-**Last milestone:** Sidebar HUD (retro CRPG sidebar with GameLog + scrollable message log)
+**Tests:** 1539 passing, 0 failures
+**Last milestone:** G15 gameplay features (pickup dialogue, concluded dialogue, terrain notifications)
 
-All planned phases G1-G14 are complete. The HUD phase added a sidebar but no new tests (rendering-only code). Editor phases R1-R4 and P1-P3 are complete.
+All planned phases G1-G14 are complete. Editor phases R1-R4 and P1-P3 are complete.
 
 ## Active Work
 
-- Obsidian documentation vault created (24 wiki pages) -- see [[Home]]
-- CLAUDE.md slimmed down, legacy root-level docs removed (content captured in vault)
-- Sidebar HUD landed previously with text overflow fixes
+- **G15 gameplay features:**
+  - **Pickup dialogue:** `on_pickup_dialogue` entity property shows dialogue on first pickup of an item group. Tracked via `pickup_dialogue_shown:{name}` flag.
+  - **Concluded dialogue:** `concluded_flag` + `concluded_dialogue` properties on NPC/Interactable entities. When the flag is set, shows reminder dialogue instead of main tree.
+  - **Terrain notifications:** GameLog message when stepping onto slow terrain (MovementCost > 1.0), showing group name and cost multiplier.
+- **Previous:** Play mode revert/keep, HUD minimap, Obsidian vault -- see [[Changelog]]
 
 ## Next Up (G15+)
 
-Per PRD-GAME.md, the next planned features are:
+### Gameplay Features (from Notes 2026-03-06)
+- **Residual damage effects** -- Lingering damage (e.g., fire) with continued damage flash on sprite for duration.
+- **Combat pace redesign** -- Current spam-bump is too fast. Needs research on deliberate, tactical alternatives.
+
+### Architecture/Engine
 - **Ranged combat** -- New `ranged_chase` behavior reading `attack_range`/`preferred_distance` from property bags. Extension point already built.
 - **A* pathfinding** -- Build `AStarPathfinder` implementing `IPathfinder`. One-line swap in GameplayScreen.
 - **Animated enemy movement** -- Queue `EntityAction` list and play as sequential lerps. EntityAction struct is ready.
@@ -41,7 +47,7 @@ A formal code review identified these issues (see `CODE-REVIEW.md` for full deta
 
 ### Architectural Concerns
 
-- **GameplayScreen holds EditorState reference** -- Play mode can mutate editor state via `SyncEntityRenderState()`. A `GameWorldView` DTO would be cleaner.
+- **GameplayScreen holds EditorState reference** -- Play mode mutates editor state via `SyncEntityRenderState()`. Mitigated by deep-copy snapshot in PlayModeController (revert on exit). A `GameWorldView` DTO would still be cleaner long-term.
 - **Editor modals lack formal lifecycle hooks** -- No `OnEnter()`/`OnExit()` like game screens have. Cleanup is scattered.
 - **Property bags are stringly typed** -- All entity properties are `Dictionary<string, string>`. Works for now but error-prone and hard to validate.
 

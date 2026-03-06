@@ -1,0 +1,12 @@
+{
+  "id": "found_sword",
+  "nodes": [
+    {
+      "id": "node_0",
+      "speaker": "sword",
+      "text": "You found a sword!",
+      "editorX": -53,
+      "editorY": -138
+    }
+  ]
+}

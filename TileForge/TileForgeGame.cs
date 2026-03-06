@@ -129,7 +129,8 @@ public class TileForgeGame : Microsoft.Xna.Framework.Game
             _dialogManager = new DialogManager();
             _projectManager = new ProjectManager(_state, GraphicsDevice, Window,
                 _canvas, _panelDock, _mapPanel, GetCanvasBounds, _dialogManager.Show);
-            _playMode = new PlayModeController(_state, _canvas, GetCanvasBounds);
+            _playMode = new PlayModeController(_state, _canvas, GetCanvasBounds,
+                minimap: _canvas.Minimap);
             _inputRouter = new InputRouter(_state,
                 _projectManager.Save, _projectManager.Open,
                 EnterPlayMode, ExitPlayMode, Exit, ResizeMap,
@@ -256,7 +257,14 @@ public class TileForgeGame : Microsoft.Xna.Framework.Game
             Window.Title = "TileForge — No player entity found (mark a group as Player in GroupEditor)";
     }
 
-    private void ExitPlayMode() => _playMode.Exit();
+    private void ExitPlayMode()
+    {
+        _dialogManager.Show(new ConfirmDialog("Revert map to pre-play state? [Y] Revert  [N] Keep changes"), dialog =>
+        {
+            bool revert = !dialog.WasCancelled;
+            _playMode.Exit(revert);
+        });
+    }
 
     private void NewProject()
     {

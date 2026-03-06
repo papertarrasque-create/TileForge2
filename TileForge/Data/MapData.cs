@@ -94,4 +94,15 @@ public class MapData
 
         return removed;
     }
+
+    public MapData DeepCopy()
+    {
+        var copy = new MapData(Width, Height);
+        copy.Layers.Clear();
+        foreach (var layer in Layers)
+            copy.Layers.Add(layer.DeepCopy(Width, Height));
+        copy.Entities = Entities.ConvertAll(e => e.DeepCopy());
+        copy.EntityRenderOrder = EntityRenderOrder;
+        return copy;
+    }
 }

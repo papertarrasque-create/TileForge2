@@ -26,4 +26,17 @@ public class MapDocumentState
 
     // Per-map MapPanel collapse state
     public HashSet<string> CollapsedLayers { get; set; } = new();
+
+    public MapDocumentState DeepCopy() => new()
+    {
+        Name = Name,
+        Map = Map?.DeepCopy(),
+        CameraX = CameraX,
+        CameraY = CameraY,
+        ZoomIndex = ZoomIndex,
+        ActiveLayerName = ActiveLayerName,
+        SelectedEntityId = SelectedEntityId,
+        TileSelection = TileSelection,
+        CollapsedLayers = new HashSet<string>(CollapsedLayers),
+    };
 }
