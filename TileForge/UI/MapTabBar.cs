@@ -214,13 +214,7 @@ public class MapTabBar
             string name = docs[i].Name;
             var textSize = font.MeasureString(name);
             int maxTextWidth = tr.Tab.Width - 24; // leave room for close button
-            if (textSize.X > maxTextWidth)
-            {
-                // Truncate with ellipsis
-                while (name.Length > 1 && font.MeasureString(name + "...").X > maxTextWidth)
-                    name = name[..^1];
-                name += "...";
-            }
+            name = TextUtils.TruncateToFit(font, name, maxTextWidth);
             spriteBatch.DrawString(font, name,
                 new Vector2(tr.Tab.X + 6, tr.Tab.Y + (Height - textSize.Y) / 2f),
                 textColor);
