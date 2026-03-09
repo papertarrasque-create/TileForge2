@@ -196,11 +196,8 @@ public class DialoguePanel : Panel
         {
             var dialogue = state.Dialogues[entry.DialogueIndex];
             string label = dialogue.Id ?? "(unnamed)";
-
-            // Truncate label to fit panel width
             int maxWidth = entry.Rect.Width - 12;
-            while (label.Length > 3 && font.MeasureString(label).X > maxWidth)
-                label = label[..^4] + "...";
+            label = TextUtils.TruncateToFit(font, label, maxWidth);
 
             int textY = entry.Rect.Y + (entry.Rect.Height - font.LineSpacing) / 2;
             spriteBatch.DrawString(font, label, new Vector2(entry.Rect.X + 6, textY), LabelColor);

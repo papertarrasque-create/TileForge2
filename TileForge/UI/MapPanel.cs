@@ -656,7 +656,9 @@ public class MapPanel : Panel
         // Layer name
         var nameColor = layer.Visible ? LabelColor : DimLabelColor;
         int nameX = visX + VisibilitySize + 8;
-        spriteBatch.DrawString(font, layer.Name,
+        int maxLayerNameWidth = entry.Rect.Right - nameX - 4;
+        string layerLabel = TextUtils.TruncateToFit(font, layer.Name, maxLayerNameWidth);
+        spriteBatch.DrawString(font, layerLabel,
             new Vector2(nameX, entry.Rect.Y + (LayerHeaderHeight - font.LineSpacing) / 2),
             nameColor);
     }
@@ -683,8 +685,11 @@ public class MapPanel : Panel
         }
 
         // Group name
-        spriteBatch.DrawString(font, group.Name,
-            new Vector2(entry.Rect.X + 6 + PreviewSize + 6, entry.Rect.Y + 4),
+        int groupNameX = entry.Rect.X + 6 + PreviewSize + 6;
+        int maxGroupNameWidth = entry.Rect.Right - groupNameX - 30; // room for badges
+        string groupLabel = TextUtils.TruncateToFit(font, group.Name, maxGroupNameWidth);
+        spriteBatch.DrawString(font, groupLabel,
+            new Vector2(groupNameX, entry.Rect.Y + 4),
             LabelColor);
 
         // Badges (S for solid, P for player — no T/E)

@@ -59,7 +59,7 @@ public struct FormLayout
         string label, TextInputField field, GameTime gt, Color labelColor)
     {
         int labelY = CenterTextY(CursorY, FieldHeight, font.LineSpacing);
-        sb.DrawString(font, label, new Vector2(ContentX, labelY), labelColor);
+        sb.DrawString(font, TextUtils.TruncateToFit(font, label, LabelWidth - 4), new Vector2(ContentX, labelY), labelColor);
 
         var rect = new Rectangle(FieldX, CursorY, FieldWidth, FieldHeight);
         field.Draw(sb, font, renderer, rect, gt);
@@ -76,7 +76,7 @@ public struct FormLayout
         string label, Dropdown dropdown, Color labelColor, int dropdownWidth = 0)
     {
         int labelY = CenterTextY(CursorY, FieldHeight, font.LineSpacing);
-        sb.DrawString(font, label, new Vector2(ContentX, labelY), labelColor);
+        sb.DrawString(font, TextUtils.TruncateToFit(font, label, LabelWidth - 4), new Vector2(ContentX, labelY), labelColor);
 
         int ddW = dropdownWidth > 0 ? dropdownWidth : FieldWidth;
         var rect = new Rectangle(FieldX, CursorY, ddW, FieldHeight);
@@ -94,7 +94,7 @@ public struct FormLayout
         string label, NumericField field, GameTime gt, Color labelColor, int numericWidth = 80)
     {
         int labelY = CenterTextY(CursorY, FieldHeight, font.LineSpacing);
-        sb.DrawString(font, label, new Vector2(ContentX, labelY), labelColor);
+        sb.DrawString(font, TextUtils.TruncateToFit(font, label, LabelWidth - 4), new Vector2(ContentX, labelY), labelColor);
 
         var rect = new Rectangle(FieldX, CursorY, numericWidth, FieldHeight);
         field.Draw(sb, font, renderer, rect, gt);
@@ -111,7 +111,7 @@ public struct FormLayout
         string label, Checkbox checkbox, Color labelColor, int checkboxWidth = 22)
     {
         int labelY = CenterTextY(CursorY, FieldHeight, font.LineSpacing);
-        sb.DrawString(font, label, new Vector2(ContentX, labelY), labelColor);
+        sb.DrawString(font, TextUtils.TruncateToFit(font, label, LabelWidth - 4), new Vector2(ContentX, labelY), labelColor);
 
         var rect = new Rectangle(FieldX, CursorY, checkboxWidth, FieldHeight);
         checkbox.Draw(sb, renderer, rect);
@@ -164,7 +164,7 @@ public struct FormLayout
     public void DrawSectionHeader(SpriteBatch sb, SpriteFont font, string text, Color color)
     {
         int labelY = CenterTextY(CursorY, FieldHeight, font.LineSpacing);
-        sb.DrawString(font, text, new Vector2(ContentX, labelY), color);
+        sb.DrawString(font, TextUtils.TruncateToFit(font, text, ContentWidth), new Vector2(ContentX, labelY), color);
         CursorY += RowHeight;
     }
 
