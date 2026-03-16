@@ -9098,6 +9098,7 @@
               null,
               null,
               null,
+              "gravel",
               null,
               null,
               null,
@@ -9108,10 +9109,9 @@
               null,
               null,
               null,
-              null,
-              null,
-              null,
-              null,
+              "gravel",
+              "gravel",
+              "gravel",
               null,
               null,
               null,
@@ -15268,13 +15268,9 @@
     "zoomIndex": 0,
     "panelOrder": [
       "Map",
-      "Quests",
-      "Dialogues",
       "Tileset"
     ],
-    "collapsedPanels": [
-      "Quests"
-    ],
+    "collapsedPanels": [],
     "collapsedLayers": [
       "Ground"
     ],

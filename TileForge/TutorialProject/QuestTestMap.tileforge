@@ -10,20 +10,35 @@
     {
       "name": "grass",
       "type": "Tile",
-      "sprites": [{ "col": 4, "row": 6 }],
+      "sprites": [
+        {
+          "col": 4,
+          "row": 6
+        }
+      ],
       "layer": "Ground"
     },
     {
       "name": "tree",
       "type": "Tile",
-      "sprites": [{ "col": 4, "row": 4 }],
+      "sprites": [
+        {
+          "col": 4,
+          "row": 4
+        }
+      ],
       "isSolid": true,
       "layer": "Ground"
     },
     {
       "name": "Hero",
       "type": "Entity",
-      "sprites": [{ "col": 5, "row": 34 }],
+      "sprites": [
+        {
+          "col": 5,
+          "row": 34
+        }
+      ],
       "isSolid": true,
       "isPlayer": true,
       "layer": "Entities",
@@ -42,7 +57,12 @@
     {
       "name": "Sage",
       "type": "Entity",
-      "sprites": [{ "col": 17, "row": 34 }],
+      "sprites": [
+        {
+          "col": 17,
+          "row": 34
+        }
+      ],
       "isSolid": true,
       "layer": "Entities",
       "entityType": "NPC",
@@ -60,7 +80,12 @@
     {
       "name": "Guard",
       "type": "Entity",
-      "sprites": [{ "col": 8, "row": 33 }],
+      "sprites": [
+        {
+          "col": 8,
+          "row": 33
+        }
+      ],
       "isSolid": true,
       "layer": "Entities",
       "entityType": "NPC",
@@ -78,9 +103,13 @@
     {
       "name": "Sign",
       "type": "Entity",
-      "sprites": [{ "col": 41, "row": 21 }],
+      "sprites": [
+        {
+          "col": 41,
+          "row": 21
+        }
+      ],
       "layer": "Entities",
-      "entityType": "Interactable",
       "defaultProperties": {
         "dialogue_id": "cellar_sign"
       }
@@ -88,7 +117,12 @@
     {
       "name": "Rat",
       "type": "Entity",
-      "sprites": [{ "col": 5, "row": 31 }],
+      "sprites": [
+        {
+          "col": 5,
+          "row": 31
+        }
+      ],
       "isSolid": true,
       "layer": "Entities",
       "entityType": "NPC",
@@ -106,11 +140,198 @@
     {
       "name": "Amulet",
       "type": "Entity",
-      "sprites": [{ "col": 12, "row": 35 }],
+      "sprites": [
+        {
+          "col": 12,
+          "row": 35
+        }
+      ],
       "layer": "Entities",
       "entityType": "Item",
       "defaultProperties": {
         "on_pickup_dialogue": "found_amulet"
+      }
+    },
+    {
+      "name": "Amulet2",
+      "type": "Entity",
+      "sprites": [
+        {
+          "col": 13,
+          "row": 38
+        }
+      ],
+      "layer": "Ground",
+      "entityType": "Item",
+      "defaultProperties": {
+        "dialogue_id": "0",
+        "on_pickup_dialogue": "found_amulet",
+        "heal": "1",
+        "equip_attack": "0",
+        "equip_defense": "0",
+        "equip_ap": "0",
+        "equip_poise": "0",
+        "dialogue": "0"
+      }
+    },
+    {
+      "name": "Rat2",
+      "type": "Entity",
+      "sprites": [
+        {
+          "col": 10,
+          "row": 28
+        }
+      ],
+      "isSolid": true,
+      "layer": "Ground",
+      "entityType": "NPC",
+      "defaultProperties": {
+        "dialogue_id": "0",
+        "dialogue": "0",
+        "health": "5",
+        "attack": "2",
+        "defense": "0",
+        "poise": "0",
+        "behavior": "chase",
+        "speed": "1",
+        "default_facing": "right",
+        "hostile": "true",
+        "aggro_range": "3",
+        "on_kill_increment": "rats_killed"
+      }
+    },
+    {
+      "name": "Guard2",
+      "type": "Entity",
+      "sprites": [
+        {
+          "col": 7,
+          "row": 34
+        }
+      ],
+      "isSolid": true,
+      "layer": "Ground",
+      "entityType": "NPC",
+      "defaultProperties": {
+        "dialogue_id": "guard_01",
+        "dialogue": "0",
+        "health": "1",
+        "attack": "0",
+        "defense": "0",
+        "poise": "0",
+        "behavior": "idle",
+        "speed": "1",
+        "default_facing": "right",
+        "hostile": "false",
+        "aggro_range": "1"
+      }
+    },
+    {
+      "name": "Sage2",
+      "type": "Entity",
+      "sprites": [
+        {
+          "col": 10,
+          "row": 34
+        }
+      ],
+      "isSolid": true,
+      "layer": "Ground",
+      "entityType": "NPC",
+      "defaultProperties": {
+        "dialogue_id": "sage_01",
+        "dialogue": "0",
+        "health": "1",
+        "attack": "0",
+        "defense": "0",
+        "poise": "0",
+        "behavior": "idle",
+        "speed": "1",
+        "default_facing": "right",
+        "hostile": "false",
+        "aggro_range": "1"
+      }
+    },
+    {
+      "name": "Sign2",
+      "type": "Entity",
+      "sprites": [
+        {
+          "col": 9,
+          "row": 26
+        }
+      ],
+      "isSolid": true,
+      "layer": "Ground",
+      "defaultProperties": {
+        "dialogue_id": "cellar_sign",
+        "dialogue": "0"
+      }
+    },
+    {
+      "name": "Player",
+      "type": "Entity",
+      "sprites": [
+        {
+          "col": 5,
+          "row": 34
+        }
+      ],
+      "isSolid": true,
+      "isPlayer": true,
+      "layer": "Ground",
+      "entityType": "NPC",
+      "defaultProperties": {
+        "dialogue_id": "0",
+        "dialogue": "0",
+        "health": "1",
+        "attack": "0",
+        "defense": "0",
+        "poise": "0",
+        "behavior": "idle",
+        "speed": "1",
+        "default_facing": "right",
+        "hostile": "true",
+        "aggro_range": "1"
+      }
+    },
+    {
+      "name": "WallVert",
+      "type": "Tile",
+      "sprites": [
+        {
+          "col": 4,
+          "row": 20
+        }
+      ],
+      "isSolid": true,
+      "layer": "Ground"
+    },
+    {
+      "name": "Goblin",
+      "type": "Entity",
+      "sprites": [
+        {
+          "col": 5,
+          "row": 31
+        }
+      ],
+      "isSolid": true,
+      "layer": "Ground",
+      "entityType": "NPC",
+      "defaultProperties": {
+        "dialogue_id": "0",
+        "dialogue": "0",
+        "health": "10",
+        "attack": "4",
+        "defense": "0",
+        "poise": "0",
+        "behavior": "idle",
+        "speed": "1",
+        "default_facing": "right",
+        "hostile": "true",
+        "aggro_range": "1"
       }
     }
   ],
@@ -126,34 +347,303 @@
             "name": "Ground",
             "visible": true,
             "cells": [
-              "tree", "tree", "tree", "tree", "tree", "tree", "tree", "tree", "tree", "tree", "tree", "tree", "tree", "tree", "tree",
-              "tree", "grass", "grass", "grass", "grass", "grass", "grass", "tree", "grass", "grass", "grass", "grass", "grass", "grass", "tree",
-              "tree", "grass", "grass", "grass", "grass", "grass", "grass", "tree", "grass", "grass", "grass", "grass", "grass", "grass", "tree",
-              "tree", "grass", "grass", "grass", "grass", "grass", "grass", "tree", "grass", "grass", "grass", "grass", "grass", "grass", "tree",
-              "tree", "grass", "grass", "grass", "grass", "grass", "grass", "tree", "grass", "grass", "grass", "grass", "grass", "grass", "tree",
-              "tree", "grass", "grass", "grass", "grass", "grass", "grass", "grass", "grass", "grass", "grass", "grass", "grass", "grass", "tree",
-              "tree", "grass", "grass", "grass", "grass", "grass", "grass", "tree", "grass", "grass", "grass", "grass", "grass", "grass", "tree",
-              "tree", "grass", "grass", "grass", "grass", "grass", "grass", "grass", "grass", "grass", "grass", "grass", "grass", "grass", "tree",
-              "tree", "grass", "grass", "grass", "grass", "grass", "grass", "tree", "grass", "grass", "grass", "grass", "grass", "grass", "tree",
-              "tree", "grass", "grass", "grass", "grass", "grass", "grass", "tree", "grass", "grass", "grass", "grass", "grass", "grass", "tree",
-              "tree", "grass", "grass", "grass", "grass", "grass", "grass", "tree", "grass", "grass", "grass", "grass", "grass", "grass", "tree",
-              "tree", "grass", "grass", "grass", "grass", "grass", "grass", "tree", "grass", "grass", "grass", "grass", "grass", "grass", "tree",
-              "tree", "grass", "grass", "grass", "grass", "grass", "grass", "tree", "grass", "grass", "grass", "grass", "grass", "grass", "tree",
-              "tree", "grass", "grass", "grass", "grass", "grass", "grass", "tree", "grass", "grass", "grass", "grass", "grass", "grass", "tree",
-              "tree", "tree", "tree", "tree", "tree", "tree", "tree", "tree", "tree", "tree", "tree", "tree", "tree", "tree", "tree"
+              "tree",
+              "tree",
+              "tree",
+              "tree",
+              "tree",
+              "tree",
+              "tree",
+              "tree",
+              "tree",
+              "tree",
+              "tree",
+              "tree",
+              "tree",
+              "tree",
+              "tree",
+              "tree",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "tree",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "tree",
+              "tree",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "tree",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "tree",
+              "tree",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "tree",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "tree",
+              "tree",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "tree",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "tree",
+              "tree",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "tree",
+              "tree",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "tree",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "tree",
+              "tree",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "tree",
+              "tree",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "tree",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "tree",
+              "tree",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "tree",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "tree",
+              "tree",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "tree",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "tree",
+              "tree",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "tree",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "tree",
+              "tree",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "tree",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "tree",
+              "tree",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "tree",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "grass",
+              "tree",
+              "tree",
+              "tree",
+              "tree",
+              "tree",
+              "tree",
+              "tree",
+              "tree",
+              "tree",
+              "tree",
+              "tree",
+              "tree",
+              "tree",
+              "tree",
+              "tree",
+              "tree"
             ]
           }
-        ],
-        "entities": [
-          { "id": "a0000001", "groupName": "Hero", "x": 3, "y": 5 },
-          { "id": "a0000002", "groupName": "Sage", "x": 3, "y": 3 },
-          { "id": "a0000003", "groupName": "Guard", "x": 5, "y": 7 },
-          { "id": "a0000004", "groupName": "Sign", "x": 6, "y": 7 },
-          { "id": "a0000005", "groupName": "Rat", "x": 11, "y": 4 },
-          { "id": "a0000006", "groupName": "Rat", "x": 10, "y": 9 },
-          { "id": "a0000007", "groupName": "Amulet", "x": 10, "y": 11 }
         ]
-      }
+      },
+      "entities": [
+        {
+          "id": "193a3da6",
+          "groupName": "Amulet2",
+          "x": 13,
+          "y": 1
+        },
+        {
+          "id": "76c074db",
+          "groupName": "Rat2",
+          "x": 13,
+          "y": 5
+        },
+        {
+          "id": "1f26e1e9",
+          "groupName": "Rat2",
+          "x": 13,
+          "y": 7
+        },
+        {
+          "id": "36132bdd",
+          "groupName": "Guard2",
+          "x": 7,
+          "y": 7
+        },
+        {
+          "id": "847786b2",
+          "groupName": "Sage2",
+          "x": 3,
+          "y": 3
+        },
+        {
+          "id": "27ecf8c5",
+          "groupName": "Sign2",
+          "x": 6,
+          "y": 6
+        },
+        {
+          "id": "77bf3241",
+          "groupName": "Player",
+          "x": 3,
+          "y": 9
+        }
+      ]
     }
-  ]
+  ],
+  "editorState": {
+    "activeLayer": "Ground",
+    "cameraX": 680,
+    "cameraY": 279,
+    "zoomIndex": 0,
+    "panelOrder": [
+      "Map",
+      "Tileset"
+    ],
+    "collapsedPanels": [
+      "Tileset"
+    ],
+    "collapsedLayers": [],
+    "activeMapName": "main",
+    "mapStates": [
+      {
+        "mapName": "main",
+        "cameraX": 680,
+        "cameraY": 279,
+        "zoomIndex": 1,
+        "activeLayer": "Ground"
+      }
+    ]
+  }
 }
