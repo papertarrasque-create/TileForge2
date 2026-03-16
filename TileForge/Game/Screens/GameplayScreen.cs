@@ -30,6 +30,7 @@ public class GameplayScreen : GameScreen
     private readonly IDialogueLoader _dialogueLoader;
     private readonly GameLog _gameLog;
     private IPathfinder _pathfinder;
+    private BarkOverlay _activeBark;
 
     // --- Cached fields to avoid per-frame allocations and redundant computation ---
 
@@ -105,6 +106,14 @@ public class GameplayScreen : GameScreen
         if (play == null) return;
 
         float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
+
+        // Tick active bark overlay
+        if (_activeBark != null)
+        {
+            _activeBark.Update(dt);
+            if (!_activeBark.IsActive)
+                _activeBark = null;
+        }
 
         // Tick floating messages
         for (int i = play.FloatingMessages.Count - 1; i >= 0; i--)
@@ -418,6 +427,9 @@ public class GameplayScreen : GameScreen
             }
         }
 
+        // Active bark overlay (floating text bubble above entity)
+        _activeBark?.Draw(spriteBatch, font, renderer, canvasBounds);
+
         // HUD stats + status effects are now shown in the SidebarHUD
     }
 
@@ -463,10 +475,15 @@ public class GameplayScreen : GameScreen
             if (!_state.GroupsByName.TryGetValue(instance.DefinitionName, out var group))
                 continue;
 
+            // Unified dialogue: any entity type can have dialogue
+            // For Items, dialogue is handled via on_pickup_dialogue after collection
+            if (group.EntityType != EntityType.Item)
+                TryShowDialogue(instance, play);
+
+            // Type-specific behavior
             switch (group.EntityType)
             {
                 case EntityType.NPC:
-                    if (TryShowDialogue(instance, play)) return;
                     LogAndFloat(play,$"Talked to {instance.DefinitionName}", Color.White, instance.X, instance.Y);
                     break;
 
@@ -520,7 +537,6 @@ public class GameplayScreen : GameScreen
                     break;
 
                 case EntityType.Interactable:
-                    if (TryShowDialogue(instance, play)) return;
                     LogAndFloat(play,$"Interacted with {instance.DefinitionName}", Color.White, instance.X, instance.Y);
                     break;
                 default:
@@ -934,6 +950,29 @@ public class GameplayScreen : GameScreen
             _gameStateManager.State.Player);
     }
 
+    private void ShowDialogue(DialogueData dialogue, EntityInstance instance, PlayState play)
+    {
+        var sheet = _state.Sheet;
+        int tileW = sheet?.TileWidth ?? 16;
+        int tileH = sheet?.TileHeight ?? 16;
+        var worldPos = new Vector2(
+            (instance.X + 0.5f) * tileW,
+            instance.Y * tileH);
+
+        var result = DialogueScreenFactory.Create(dialogue, _gameStateManager, _gameLog, worldPos);
+
+        if (result.BarkOverlay != null)
+        {
+            _activeBark = result.BarkOverlay;
+            _activeBark.Start();
+        }
+        else if (result.Screen != null)
+        {
+            ScreenManager.Push(result.Screen);
+            play.FloatingMessages.Clear();
+        }
+    }
+
     private void TryShowPickupDialogue(EntityInstance instance, PlayState play)
     {
         instance.Properties.TryGetValue("on_pickup_dialogue", out var pickupDialogue);
@@ -946,13 +985,12 @@ public class GameplayScreen : GameScreen
 
         var dialogue = LoadDialogue(pickupDialogue);
         dialogue ??= CreateInlineDialogue(instance.DefinitionName, pickupDialogue);
-        ScreenManager.Push(new DialogueScreen(dialogue, _gameStateManager, _gameLog));
-        play.FloatingMessages.Clear();
+        ShowDialogue(dialogue, instance, play);
     }
 
     private bool TryShowDialogue(EntityInstance instance, PlayState play)
     {
-        // Check if this entity's dialogue has concluded — show reminder instead
+        // v1 fallback: check concluded_flag/concluded_dialogue
         instance.Properties.TryGetValue("concluded_flag", out var concludedFlag);
         if (!string.IsNullOrEmpty(concludedFlag) && _gameStateManager.HasFlag(concludedFlag))
         {
@@ -961,15 +999,15 @@ public class GameplayScreen : GameScreen
             {
                 var concluded = LoadDialogue(concludedValue);
                 concluded ??= CreateInlineDialogue(instance.DefinitionName, concludedValue);
-                ScreenManager.Push(new DialogueScreen(concluded, _gameStateManager, _gameLog));
-                play.FloatingMessages.Clear();
+                ShowDialogue(concluded, instance, play);
                 return true;
             }
         }
 
-        instance.Properties.TryGetValue("dialogue", out var dialogueValue);
+        // Resolve dialogue reference: dialogue_id preferred, dialogue as fallback
+        instance.Properties.TryGetValue("dialogue_id", out var dialogueValue);
         if (string.IsNullOrEmpty(dialogueValue))
-            instance.Properties.TryGetValue("dialogue_id", out dialogueValue);
+            instance.Properties.TryGetValue("dialogue", out dialogueValue);
         if (string.IsNullOrEmpty(dialogueValue))
             return false;
 
@@ -977,8 +1015,11 @@ public class GameplayScreen : GameScreen
         var dialogue = LoadDialogue(dialogueValue);
         dialogue ??= CreateInlineDialogue(instance.DefinitionName, dialogueValue);
 
-        ScreenManager.Push(new DialogueScreen(dialogue, _gameStateManager, _gameLog));
-        play.FloatingMessages.Clear();
+        // OneShot check: skip if already shown
+        if (dialogue.OneShot == true && _gameStateManager.HasFlag($"dialogue_shown:{dialogue.Id}"))
+            return false;
+
+        ShowDialogue(dialogue, instance, play);
         return true;
     }
 
@@ -1001,7 +1042,10 @@ public class GameplayScreen : GameScreen
 
     private DialogueData LoadDialogue(string dialogueRef)
     {
-        return _dialogueLoader?.LoadDialogue(dialogueRef);
+        var dialogue = _dialogueLoader?.LoadDialogue(dialogueRef);
+        if (dialogue != null)
+            Data.DialogueFileManager.MigrateV1ToV2(dialogue);
+        return dialogue;
     }
 
     /// <summary>
