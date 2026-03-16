@@ -181,12 +181,8 @@ public class ToolbarRibbon
         // Group 5: Export
         DrawIconButton(spriteBatch, renderer, 12, state.Sheet != null, state);
 
-        // Title right-aligned
-        string title = "TileForge";
-        var titleSize = font.MeasureString(title);
-        spriteBatch.DrawString(font, title,
-            new Vector2(screenWidth - titleSize.X - 10, _topOffset + (Height - titleSize.Y) / 2),
-            LayoutConstants.ToolbarDimTextColor);
+        // Workspace buttons occupy the right side of the toolbar now;
+        // title removed (window title shows "TileForge" already).
 
         // Tooltip
         if (_tooltipIndex >= 0 && _tooltipIndex < ButtonLabels.Length)

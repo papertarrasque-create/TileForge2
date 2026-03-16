@@ -1162,9 +1162,10 @@ public class TileForgeGame : Microsoft.Xna.Framework.Game
                 _menuBar.Draw(_spriteBatch, _font, _renderer, screenW);
                 if (_state.ActiveWorkspace == WorkspaceMode.Map)
                     _mapTabBar.Draw(_spriteBatch, _font, _renderer, _state, screenW);
-                DrawWorkspaceButtons(_spriteBatch, _font, _renderer, screenW);
             }
             _toolbarRibbon.Draw(_spriteBatch, _font, _state, _renderer, screenW);
+            if (!_state.IsPlayMode)
+                DrawWorkspaceButtons(_spriteBatch, _font, _renderer, screenW);
             _statusBar.Draw(_spriteBatch, _font, _state, _renderer, _canvas, screenW, screenH);
             // Menu submenus drawn last (on top of everything)
             if (!_state.IsPlayMode)
