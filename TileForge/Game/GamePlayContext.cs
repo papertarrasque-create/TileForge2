@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using TileForge.Infrastructure;
 
@@ -19,6 +20,7 @@ public class GamePlayContext
     public Func<Rectangle> GetCanvasBounds { get; }
     public EdgeTransitionResolver EdgeResolver { get; }
     public IDialogueLoader DialogueLoader { get; }
+    public Dictionary<string, DialogueData> Dialogues { get; }
 
     public GamePlayContext(
         GameStateManager stateManager,
@@ -28,7 +30,8 @@ public class GamePlayContext
         QuestManager questManager,
         Func<Rectangle> getCanvasBounds,
         EdgeTransitionResolver edgeResolver = null,
-        IDialogueLoader dialogueLoader = null)
+        IDialogueLoader dialogueLoader = null,
+        Dictionary<string, DialogueData> dialogues = null)
     {
         StateManager = stateManager;
         SaveManager = saveManager;
@@ -38,5 +41,6 @@ public class GamePlayContext
         GetCanvasBounds = getCanvasBounds;
         EdgeResolver = edgeResolver;
         DialogueLoader = dialogueLoader;
+        Dialogues = dialogues ?? new Dictionary<string, DialogueData>();
     }
 }

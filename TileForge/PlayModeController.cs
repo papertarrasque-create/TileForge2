@@ -138,10 +138,43 @@ public class PlayModeController
         IDialogueLoader dialogueLoader = !string.IsNullOrEmpty(MapBaseDirectory)
             ? new FileDialogueLoader(MapBaseDirectory)
             : null;
+
+        // Build pre-loaded dialogue dictionary for TriggerManager
+        var dialogues = new Dictionary<string, Game.DialogueData>(StringComparer.OrdinalIgnoreCase);
+        if (_state.Dialogues != null)
+        {
+            foreach (var d in _state.Dialogues)
+            {
+                if (!string.IsNullOrEmpty(d.Id))
+                    dialogues[d.Id] = d;
+            }
+        }
+        // Also load from disk (catches files not in editor state)
+        if (dialogueLoader != null && !string.IsNullOrEmpty(MapBaseDirectory))
+        {
+            string dialoguesDir = Path.Combine(MapBaseDirectory, "dialogues");
+            if (Directory.Exists(dialoguesDir))
+            {
+                foreach (var file in Directory.GetFiles(dialoguesDir, "*.json"))
+                {
+                    string id = Path.GetFileNameWithoutExtension(file);
+                    if (!dialogues.ContainsKey(id))
+                    {
+                        var loaded = dialogueLoader.LoadDialogue(id);
+                        if (loaded != null)
+                        {
+                            Data.DialogueFileManager.MigrateV1ToV2(loaded);
+                            dialogues[id] = loaded;
+                        }
+                    }
+                }
+            }
+        }
+
         _context = new GamePlayContext(
             _gameStateManager, _saveManager, _inputManager,
             _bindingsPath, _questManager,
-            _getCanvasBounds, _edgeResolver, dialogueLoader);
+            _getCanvasBounds, _edgeResolver, dialogueLoader, dialogues);
 
         // Create play state (rendering/lerp + AP)
         _state.PlayState = new PlayState
