@@ -36,7 +36,6 @@ public class TileForgeGame : Microsoft.Xna.Framework.Game
     private QuestPanel _questPanel;
     private QuestEditor _questEditor;
     private DialoguePanel _dialoguePanel;
-    private DialogueTreeEditor _dialogueEditor;
     private WorldMapEditor _worldMapEditor;
     private MapTabBar _mapTabBar;
 
@@ -243,7 +242,6 @@ public class TileForgeGame : Microsoft.Xna.Framework.Game
     {
         if (_dialogManager.IsActive) { _dialogManager.OnTextInput(e.Character); return; }
         if (_questEditor != null) { _questEditor.OnTextInput(e.Character); return; }
-        if (_dialogueEditor != null) { _dialogueEditor.OnTextInput(e.Character); return; }
         if (_worldMapEditor != null) { _worldMapEditor.OnTextInput(e.Character); return; }
         // Route to workspace editors
         if (_state.ActiveWorkspace == WorkspaceMode.Dialogues)
@@ -465,17 +463,6 @@ public class TileForgeGame : Microsoft.Xna.Framework.Game
             _questEditor.Update(mouse, _prevMouse, keyboard, _prevKeyboard,
                 GetCanvasBounds(), _state.Quests, _font, qScreenW, screenH, gameTime);
             if (_questEditor.IsComplete) { HandleQuestEditorResult(); _questEditor = null; }
-            FinishUpdate(keyboard, mouse, gameTime); return;
-        }
-
-        // DialogueEditor priority (modal overlay — only in Map workspace legacy mode)
-        if (_dialogueEditor != null)
-        {
-            int dScreenW = _graphics.PreferredBackBufferWidth;
-            _dialogueEditor.Update(mouse, _prevMouse, keyboard, _prevKeyboard,
-                GetCanvasBounds(), _state.Dialogues, _font, dScreenW, screenH, gameTime,
-                _projectContext, _state.Quests, _state.Groups);
-            if (_dialogueEditor.IsComplete) { HandleDialogueEditorResult(); _dialogueEditor = null; }
             FinishUpdate(keyboard, mouse, gameTime); return;
         }
 
@@ -942,76 +929,6 @@ public class TileForgeGame : Microsoft.Xna.Framework.Game
         QuestFileManager.Save(projectDir, _state.Quests);
     }
 
-    private void HandleDialoguePanelActions()
-    {
-        if (_dialoguePanel.WantsNewDialogue)
-        {
-            _dialogueEditor = DialogueTreeEditor.ForNewDialogue();
-        }
-        else if (_dialoguePanel.WantsEditDialogueIndex >= 0)
-        {
-            int idx = _dialoguePanel.WantsEditDialogueIndex;
-            if (idx < _state.Dialogues.Count)
-                _dialogueEditor = DialogueTreeEditor.ForExistingDialogue(_state.Dialogues[idx]);
-        }
-        else if (_dialoguePanel.WantsDeleteDialogueIndex >= 0)
-        {
-            int idx = _dialoguePanel.WantsDeleteDialogueIndex;
-            if (idx < _state.Dialogues.Count)
-            {
-                string name = _state.Dialogues[idx].Id;
-                int capturedIdx = idx;
-                _dialogManager.Show(new ConfirmDialog($"Delete dialogue \"{name}\"?"), dialog =>
-                {
-                    if (!dialog.WasCancelled && capturedIdx < _state.Dialogues.Count)
-                    {
-                        string deletedId = _state.Dialogues[capturedIdx].Id;
-                        _state.Dialogues.RemoveAt(capturedIdx);
-                        if (_projectManager.ProjectPath != null)
-                        {
-                            string projectDir = Path.GetDirectoryName(_projectManager.ProjectPath);
-                            DialogueFileManager.DeleteOne(projectDir, deletedId);
-                        }
-                        _state.NotifyDialoguesChanged();
-                    }
-                });
-            }
-        }
-    }
-
-    private void HandleDialogueEditorResult()
-    {
-        if (_dialogueEditor.WasCancelled || _dialogueEditor.Result == null) return;
-        var result = _dialogueEditor.Result;
-
-        if (_dialogueEditor.IsNew)
-        {
-            _state.Dialogues.Add(result);
-        }
-        else
-        {
-            string origId = _dialogueEditor.OriginalId;
-            int idx = _state.Dialogues.FindIndex(d => d.Id == origId);
-            if (idx >= 0)
-            {
-                // If id changed, delete old file
-                if (result.Id != origId && _projectManager.ProjectPath != null)
-                {
-                    string projectDir = Path.GetDirectoryName(_projectManager.ProjectPath);
-                    DialogueFileManager.DeleteOne(projectDir, origId);
-                }
-                _state.Dialogues[idx] = result;
-            }
-            else
-            {
-                _state.Dialogues.Add(result);
-            }
-        }
-
-        SaveDialogue(result);
-        _state.NotifyDialoguesChanged();
-    }
-
     // --- Workspace switching ---
 
     private void SwitchWorkspace(WorkspaceMode mode)
@@ -1139,8 +1056,6 @@ public class TileForgeGame : Microsoft.Xna.Framework.Game
                     _groupEditor.Draw(_spriteBatch, _font, _state, _renderer, canvasBounds, gameTime);
                 if (_questEditor != null)
                     _questEditor.Draw(_spriteBatch, _font, _renderer, canvasBounds, gameTime);
-                if (_dialogueEditor != null)
-                    _dialogueEditor.Draw(_spriteBatch, _font, _renderer, canvasBounds, gameTime);
                 if (_worldMapEditor != null)
                     _worldMapEditor.Draw(_spriteBatch, _font, _renderer, canvasBounds, gameTime);
             }

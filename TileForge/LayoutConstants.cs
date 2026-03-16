@@ -306,28 +306,6 @@ public static class LayoutConstants
     public static readonly Color DialoguePanelAddButtonHoverBg = new(60, 72, 60);
 
     // ---------------------------------------------------------------
-    //  Dialogue editor (modal overlay)
-    // ---------------------------------------------------------------
-    public const int DialogueEditorFieldHeight = 22;
-    public const int DialogueEditorRowHeight = 28;
-    public const int DialogueEditorLabelWidth = 110;
-    public const int DialogueEditorMaxWidth = 760;
-    public const int DialogueEditorMaxHeight = 650;
-
-    public static readonly Color DialogueEditorOverlay = new(0, 0, 0, 180);
-    public static readonly Color DialogueEditorPanelBg = new(35, 35, 35);
-    public static readonly Color DialogueEditorHeaderBg = new(45, 45, 45);
-    public static readonly Color DialogueEditorLabelColor = new(180, 180, 180);
-    public static readonly Color DialogueEditorHintColor = new(120, 120, 120);
-    public static readonly Color DialogueEditorSectionColor = new(140, 180, 220);
-    public static readonly Color DialogueEditorNodeSectionColor = new(180, 160, 120);
-    public static readonly Color DialogueEditorAddButtonBg = new(50, 60, 50);
-    public static readonly Color DialogueEditorAddButtonHoverBg = new(60, 72, 60);
-    public static readonly Color DialogueEditorRemoveColor = new(180, 60, 60);
-    public static readonly Color DialogueEditorRemoveHoverColor = new(210, 80, 80);
-    public static readonly Color DialogueEditorNodeSeparator = new(60, 60, 60);
-
-    // ---------------------------------------------------------------
     //  Dialogue tree editor (tree visualizer)
     // ---------------------------------------------------------------
     public const int DialogueTreeMaxWidth = 1100;
@@ -361,6 +339,12 @@ public static class LayoutConstants
     public static readonly Color DialogueTreeCycleColor = new(200, 80, 80);
     public static readonly Color DialogueTreeExpandColor = new(140, 140, 140);
     public static readonly Color DialogueTreeRouteColor = new(140, 180, 160);
+    public static readonly Color DialogueTreeLabelColor = new(180, 180, 180);
+    public static readonly Color DialogueTreeAddButtonBg = new(50, 60, 50);
+    public static readonly Color DialogueTreeAddButtonHoverBg = new(60, 72, 60);
+    public static readonly Color DialogueTreeRemoveColor = new(180, 60, 60);
+    public static readonly Color DialogueTreeRemoveHoverColor = new(210, 80, 80);
+    public const int DialogueTreeLabelWidth = 110;
 
     // ---------------------------------------------------------------
     //  Form layout defaults (shared across modal editors)

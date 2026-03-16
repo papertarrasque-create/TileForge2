@@ -7,7 +7,7 @@ using DojoUI;
 namespace TileForge.UI;
 
 /// <summary>
-/// Reusable resize logic for modal editor overlays (DialogueEditor, QuestEditor).
+/// Reusable resize logic for modal editor overlays (DialogueTreeEditor, QuestEditor).
 /// Handles edge-drag resizing, centered panel layout, and resize grip drawing.
 /// Value type — embed as a field in each editor.
 /// </summary>
