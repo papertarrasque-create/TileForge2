@@ -5,78 +5,127 @@ status: current
 
 # Dialogue System
 
-Dialogues are per-file JSON definitions (`dialogues/{id}.json`) displayed via the DialogueScreen overlay during play mode. They support linear sequences, branching choices, flag conditions, and side effects.
+Dialogues are per-file JSON definitions (`dialogues/{id}.json`) displayed via the DialogueScreen overlay during play mode. They support linear sequences, branching choices, conditional routing, rich conditions, and side-effect actions.
+
+## Top-Level Fields
+
+```
+DialogueFile
+  id: string              -- Unique dialogue identifier
+  type: string            -- "conversation" (default). Reserved: bark, cutscene, shop, inspect
+  oneShot: bool           -- If true, auto-sets "dialogue_shown:{id}" after completion; skipped on re-interact
+  routes: list            -- Conditional entry points (evaluated top-to-bottom)
+  nodes: list             -- The dialogue nodes
+```
+
+## Routes
+
+Routes replace the old concluded_flag/concluded_dialogue entity property pattern. A `routes` array on the dialogue file defines conditional entry points:
+
+- Evaluated **top-to-bottom** -- first match wins
+- Each route has a `conditions` array and a `startNodeId`
+- If no route matches, falls through to the default `"start"` node
+- Enables a single dialogue file to handle first-visit, post-quest, and repeat interactions
+
+```
+DialogueRoute
+  conditions: list        -- All must pass (AND logic)
+  startNodeId: string     -- Node to begin dialogue at if conditions match
+```
 
 ## Node Structure
 
 ```
 DialogueNode
-  Id: string              -- Node identifier within dialogue
-  Speaker: string         -- Who is speaking
-  Text: string            -- The spoken text
-  Choices: list or null   -- null = linear auto-advance
-  NextNodeId: string      -- For linear sequences (no choices)
-  RequiresFlag: string    -- Skip node if flag not set
-  SetsFlag: string        -- Set flag when node is displayed
-  SetsVariable: string    -- "key=value" format, applied when shown
-  EditorX, EditorY: int?  -- Layout positions for [[Dialogue Tree Editor]]
+  id: string              -- Node identifier within dialogue
+  speaker: string         -- Who is speaking
+  text: string            -- The spoken text
+  choices: list or null   -- null = linear auto-advance
+  nextNodeId: string      -- For linear sequences (no choices)
+  conditions: list        -- Skip node if any condition fails
+  actions: list           -- Side effects applied when node is displayed
+  tags: list              -- Optional string tags (extension hook, not interpreted yet)
+  editorX, editorY: int?  -- Layout positions for [[Dialogue Tree Editor]]
 ```
 
 ```
 DialogueChoice
-  Text: string            -- Choice display text
-  NextNodeId: string      -- Where this choice leads
-  RequiresFlag: string    -- Hide choice if flag not set
-  SetsFlag: string        -- Set flag when choice selected
+  text: string            -- Choice display text
+  nextNodeId: string      -- Where this choice leads
+  conditions: list        -- Hide choice if any condition fails
+  actions: list           -- Side effects applied when choice is selected
 ```
 
 ## Flow Types
 
 ### Linear Dialogue
 
-When `Choices` is null, the dialogue auto-advances:
+When `choices` is null, the dialogue auto-advances:
 - Player presses Interact to progress
-- Follows the `NextNodeId` chain
-- Ends when NextNodeId is null or empty
+- Follows the `nextNodeId` chain
+- Ends when nextNodeId is null or empty
 - Good for cutscenes, monologues, NPC greetings
 
 ### Branching Dialogue
 
-When `Choices` is populated:
+When `choices` is populated:
 - Up/Down arrows select a choice
 - Interact confirms the selection
-- Each choice has its own `NextNodeId`
-- Choices can be conditionally hidden via `RequiresFlag`
+- Each choice has its own `nextNodeId`
+- Choices can be conditionally hidden via `conditions`
 
 ## Conditions
 
-### Node-Level (`RequiresFlag`)
+Nodes and choices share the same `conditions` array. All conditions must pass (AND logic). Available condition types:
 
-If the flag is not set in GameState:
+| Type | Description |
+|------|-------------|
+| `has_flag` | Flag is set in GameState |
+| `not_flag` | Flag is NOT set in GameState |
+| `has_item` | Player has the named item in inventory |
+| `variable_eq` | GameState variable equals a value |
+| `variable_gte` | GameState variable is >= a value |
+| `variable_lt` | GameState variable is < a value |
+| `quest_active` | Named quest is currently active |
+| `quest_complete` | Named quest has been completed |
+
+### Node-Level Conditions
+
+If any condition fails:
 - Node is **skipped entirely** (not shown to player)
-- Advances to `NextNodeId` without display
+- Advances to `nextNodeId` without display
 - Enables silent branching based on prior decisions
 
-### Choice-Level (`RequiresFlag`)
+### Choice-Level Conditions
 
-If the flag is not set:
+If any condition fails:
 - Choice is **hidden** from the visible list
 - Other choices remain visible
 - Enables conditional conversation paths
 
-## Side Effects
+## Actions
 
-**When a node is shown:**
-1. Text logged to [[Sidebar HUD]] GameLog
-2. `SetsFlag` applied (if set)
-3. `SetsVariable` applied (if set, "key=value" format parsed)
-4. Visible choices filtered by RequiresFlag
+Nodes and choices share the same `actions` array. Actions on nodes fire when the node is displayed. Actions on choices fire when the choice is selected. Available action types:
 
-**When a choice is selected:**
-1. Choice's `SetsFlag` applied
-2. Advance to choice's `NextNodeId`
+| Type | Description |
+|------|-------------|
+| `set_flag` | Set a flag in GameState |
+| `set_variable` | Set a variable to a value |
+| `increment` | Increment a numeric variable by a value |
+| `give_item` | Add an item to the player's inventory |
+| `remove_item` | Remove an item from the player's inventory |
+| `start_quest` | Start the named quest |
+| `complete_objective` | Complete an objective on an active quest |
+| `heal` | Heal the player by a value |
+| `damage` | Damage the player by a value |
+| `log` | Write a message to the [[Sidebar HUD]] GameLog |
 
-Side effects are sequential -- RequiresFlag is checked before entry, SetsFlag is applied during display, choice flags update after selection.
+## OneShot Dialogues
+
+Setting `"oneShot": true` on the dialogue file:
+1. After the dialogue completes, automatically sets the flag `dialogue_shown:{id}`
+2. On re-interaction, the dialogue is skipped entirely
+3. Useful for item inspections, one-time lore, tutorial prompts
 
 ## Typewriter Text Reveal
 
@@ -90,33 +139,14 @@ Side effects are sequential -- RequiresFlag is checked before entry, SetsFlag is
 `CheckEntityInteractionAt()` in GameplayScreen:
 
 1. Player uses Interact action adjacent to entity
-2. Entity must be NPC or Interactable type
-3. Checks for `dialogue_id` property (preferred) or `dialogue` property (inline fallback)
-4. `dialogue_id` loads from `dialogues/{id}.json` via `IDialogueLoader`
+2. **Any entity type** can trigger dialogue via the `dialogue_id` property (not limited to NPC/Interactable)
+3. `dialogue_id` loads from `dialogues/{id}.json` via `IDialogueLoader`
+4. Routes are evaluated to determine the start node
 5. Creates DialogueScreen overlay on the screen stack
 6. Floating messages cleared on dialogue start
-7. DialogueScreen closes when node chain exhausts (null NextNodeId, no choices)
+7. DialogueScreen closes when node chain exhausts (null nextNodeId, no choices)
 
 Dialogue interaction costs 0 AP -- it's a free action.
-
-## Concluded Dialogue
-
-When an NPC's dialogue tree has been fully exhausted, the entity can show a different reminder/repeat dialogue:
-
-1. Set `concluded_flag` on the entity (e.g., `elder_quest_done`)
-2. Set `concluded_dialogue` on the entity (dialogue ID or inline text, e.g., `Have you found my hat?`)
-3. The main dialogue's final node should set the flag via `SetsFlag`
-
-On interaction, if `concluded_flag` is set in GameState, `concluded_dialogue` is shown instead of the main dialogue. This avoids replaying the full tree and gives the NPC a contextual reminder line.
-
-## Pickup Dialogue
-
-Item entities can show dialogue on first pickup via the `on_pickup_dialogue` property:
-
-1. Set `on_pickup_dialogue` on an item entity (dialogue ID or inline text)
-2. When the player picks up an item with this property, the dialogue is shown once
-3. Subsequent pickups of the same item group do not trigger the dialogue again
-4. Tracked via the `pickup_dialogue_shown:{DefinitionName}` flag
 
 ## JSON Format
 
@@ -125,6 +155,22 @@ Stored as `{projectDir}/dialogues/{id}.json` using **camelCase** JSON (unlike qu
 ```json
 {
   "id": "elder_01",
+  "type": "conversation",
+  "oneShot": false,
+  "routes": [
+    {
+      "conditions": [
+        { "type": "has_flag", "flag": "caves_cleared" }
+      ],
+      "startNodeId": "post_quest"
+    },
+    {
+      "conditions": [
+        { "type": "quest_active", "quest": "clear_caves" }
+      ],
+      "startNodeId": "quest_reminder"
+    }
+  ],
   "nodes": [
     {
       "id": "start",
@@ -132,6 +178,13 @@ Stored as `{projectDir}/dialogues/{id}.json` using **camelCase** JSON (unlike qu
       "text": "Welcome, traveler.",
       "choices": [
         { "text": "What happened?", "nextNodeId": "explain" },
+        {
+          "text": "About those caves...",
+          "nextNodeId": "quest_reminder",
+          "conditions": [
+            { "type": "quest_active", "quest": "clear_caves" }
+          ]
+        },
         { "text": "Just passing through.", "nextNodeId": "decline" }
       ],
       "editorX": 56,
@@ -145,9 +198,28 @@ Stored as `{projectDir}/dialogues/{id}.json` using **camelCase** JSON (unlike qu
         {
           "text": "I will help!",
           "nextNodeId": "quest_accept",
-          "setsFlag": "quest_caves_accepted"
+          "actions": [
+            { "type": "set_flag", "flag": "quest_caves_accepted" },
+            { "type": "start_quest", "quest": "clear_caves" }
+          ]
         }
       ]
+    },
+    {
+      "id": "quest_reminder",
+      "speaker": "Village Elder",
+      "text": "Have you cleared the caves yet? Please hurry!",
+      "nextNodeId": null
+    },
+    {
+      "id": "post_quest",
+      "speaker": "Village Elder",
+      "text": "You saved us all! Take this reward.",
+      "actions": [
+        { "type": "give_item", "item": "gold_ring" },
+        { "type": "log", "message": "The Elder gives you a gold ring." }
+      ],
+      "nextNodeId": null
     }
   ]
 }
@@ -155,16 +227,26 @@ Stored as `{projectDir}/dialogues/{id}.json` using **camelCase** JSON (unlike qu
 
 See [[File Formats]] for the full spec.
 
+## Backward Compatibility
+
+Old v1 dialogue format (using `requiresFlag`, `setsFlag`, `setsVariable` on nodes and choices) is auto-migrated on load:
+
+- `requiresFlag` converts to `conditions: [{ "type": "has_flag", "flag": "..." }]`
+- `setsFlag` converts to `actions: [{ "type": "set_flag", "flag": "..." }]`
+- `setsVariable` (key=value format) converts to `actions: [{ "type": "set_variable", "variable": "key", "value": "value" }]`
+
+No manual migration needed -- v1 files work as-is.
+
 ## Authoring
 
-Dialogues are authored in the [[Dialogue Tree Editor]] -- a visual node-graph editor with pannable/zoomable canvas, draggable nodes, and Bezier connection lines. `EditorX`/`EditorY` on each node persist layout positions.
+Dialogues are authored in the [[Dialogue Tree Editor]] -- a visual node-graph editor with pannable/zoomable canvas, draggable nodes, and Bezier connection lines. `editorX`/`editorY` on each node persist layout positions.
 
 ## Integration with Quests
 
-Dialogue side effects (`SetsFlag`, `SetsVariable`) are the primary mechanism for:
-- Starting [[Quests]] (setting a quest's `StartFlag`)
-- Completing "talk to NPC" objectives
-- Gating conversation paths based on quest progress
+Dialogue actions (`set_flag`, `set_variable`, `start_quest`, `complete_objective`) are the primary mechanism for:
+- Starting [[Quests]] via `start_quest` action
+- Completing "talk to NPC" objectives via `complete_objective`
+- Gating conversation paths based on quest progress via `quest_active`/`quest_complete` conditions
 
 ## Related
 

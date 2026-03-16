@@ -1,0 +1,121 @@
+<h2>Current Sidebar Layout</h2>
+<p class="subtitle">All four panels compete for vertical space in one narrow column</p>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">Current: Everything in Sidebar</div>
+    <div class="mockup-body" style="font-family: monospace; font-size: 12px; line-height: 1.4; background: #1a1a2e;">
+      <div style="background: #2a2a3e; padding: 4px 8px; color: #888; font-size: 10px;">Menu Bar</div>
+      <div style="background: #333; padding: 4px 8px; color: #888; font-size: 10px;">Toolbar</div>
+      <div style="background: #2a2a3e; padding: 4px 8px; color: #888; font-size: 10px;">Map Tabs</div>
+      <div style="display: flex; min-height: 350px;">
+        <div style="width: 35%; border-right: 1px solid #444; display: flex; flex-direction: column;">
+          <!-- Map Panel -->
+          <div style="border-bottom: 1px solid #444;">
+            <div style="background: #2a2a4e; padding: 4px 8px; color: #aaa; font-size: 10px;">&#9660; Map Layers</div>
+            <div style="padding: 4px 8px; color: #6a6; font-size: 10px;">
+              Layer 0<br>Layer 1<br>Layer 2
+            </div>
+            <div style="background: #2a2a4e; padding: 4px 8px; color: #aaa; font-size: 10px;">Groups</div>
+            <div style="padding: 4px 8px; color: #6a6; font-size: 10px;">
+              grass_01<br>wall_stone<br>npc_elder<br>...
+            </div>
+          </div>
+          <!-- Quest Panel - cramped -->
+          <div style="border-bottom: 1px solid #444;">
+            <div style="background: #2a2a4e; padding: 4px 8px; color: #aaa; font-size: 10px;">&#9660; Quests</div>
+            <div style="padding: 4px 8px; color: #c84; font-size: 10px; max-height: 40px; overflow: hidden;">
+              cave_quest<br>fetch_herbs<br><span style="color:#666">(...clipped)</span>
+            </div>
+          </div>
+          <!-- Dialogue Panel - cramped -->
+          <div style="border-bottom: 1px solid #444;">
+            <div style="background: #2a2a4e; padding: 4px 8px; color: #aaa; font-size: 10px;">&#9660; Dialogues</div>
+            <div style="padding: 4px 8px; color: #48c; font-size: 10px; max-height: 40px; overflow: hidden;">
+              elder_01<br>shopkeeper<br><span style="color:#666">(...clipped)</span>
+            </div>
+          </div>
+          <!-- Tileset - cramped -->
+          <div>
+            <div style="background: #2a2a4e; padding: 4px 8px; color: #aaa; font-size: 10px;">&#9660; Tileset</div>
+            <div style="padding: 8px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px;">
+              <div style="background: #3a5a3a; width: 100%; padding-top: 100%;"></div>
+              <div style="background: #5a5a3a; width: 100%; padding-top: 100%;"></div>
+              <div style="background: #3a3a5a; width: 100%; padding-top: 100%;"></div>
+              <div style="background: #5a3a3a; width: 100%; padding-top: 100%;"></div>
+            </div>
+          </div>
+        </div>
+        <div style="flex: 1; display: flex; align-items: center; justify-content: center; color: #555;">
+          Canvas / Map Editor
+        </div>
+      </div>
+      <div style="background: #2a2a3e; padding: 4px 8px; color: #888; font-size: 10px;">Status Bar</div>
+    </div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 16px;">
+    <div class="mockup">
+      <div class="mockup-header">Problems</div>
+      <div class="mockup-body" style="font-size: 13px; padding: 16px;">
+        <div style="margin-bottom: 12px;">
+          <span style="color: #e55;">&#x2718;</span> <strong>Quest & Dialogue panels get ~40px each</strong><br>
+          <span style="color: #888; font-size: 12px;">Barely room for 2 items before clipping</span>
+        </div>
+        <div style="margin-bottom: 12px;">
+          <span style="color: #e55;">&#x2718;</span> <strong>Tileset palette is starved for space</strong><br>
+          <span style="color: #888; font-size: 12px;">4 panels = 25% height each at best</span>
+        </div>
+        <div style="margin-bottom: 12px;">
+          <span style="color: #e55;">&#x2718;</span> <strong>All panels visible = none usable</strong><br>
+          <span style="color: #888; font-size: 12px;">Collapse panels to free space, but then you can't see them</span>
+        </div>
+        <div>
+          <span style="color: #e55;">&#x2718;</span> <strong>Sidebar width constrains everything</strong><br>
+          <span style="color: #888; font-size: 12px;">200-400px wide = no room for quest details, dialogue previews</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2 style="margin-top: 32px;">Which reorganization approach feels right?</h2>
+<p class="subtitle">Click to select</p>
+
+<div class="options">
+  <div class="option" data-choice="tabs" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Tabbed Sidebar</h3>
+      <p>Replace stacked panels with tabs: <strong>Map | Content | Tiles</strong>. "Content" tab holds dialogues + quests with full sidebar height. Map layers and tileset each get a dedicated tab. Simple change, keeps sidebar paradigm.</p>
+      <div class="pros-cons" style="margin-top: 8px;">
+        <div class="pros"><h4>Pros</h4><ul><li>Minimal code change</li><li>Each panel gets full height</li><li>Familiar pattern</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Can't see tiles + layers simultaneously</li><li>Sidebar width still constrains content</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="context" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Context-Sensitive Sidebar</h3>
+      <p>Sidebar shows what's relevant to current task. <strong>Painting?</strong> Show layers + tileset. <strong>Editing entity?</strong> Show properties + dialogue link. <strong>Quest work?</strong> Show quest list + objectives. Mode switches via toolbar or automatic detection.</p>
+      <div class="pros-cons" style="margin-top: 8px;">
+        <div class="pros"><h4>Pros</h4><ul><li>Maximum space for active task</li><li>Reduces clutter</li><li>Smart UX</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>More complex state management</li><li>Users may not know where things went</li><li>Bigger refactor</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="promote" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Promote Dialogues & Quests Out of Sidebar</h3>
+      <p>Dialogues and quests become <strong>full-canvas editors</strong> (like the current modal tree editor, but better). Sidebar keeps only what you need while painting: layers + tileset. Quest/dialogue editors open as full workspace views, not cramped sidebar panels.</p>
+      <div class="pros-cons" style="margin-top: 8px;">
+        <div class="pros"><h4>Pros</h4><ul><li>Editors get full canvas space</li><li>Sidebar stays focused on painting</li><li>Room for proper quest/dialogue UX</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Need navigation to switch modes</li><li>Modal editors need redesign</li></ul></div>
+      </div>
+    </div>
+  </div>
+</div>

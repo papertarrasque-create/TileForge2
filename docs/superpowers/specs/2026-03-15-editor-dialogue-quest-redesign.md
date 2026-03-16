@@ -1,4 +1,4 @@
-# Editor, Dialogue & Quest System Redesign
+ # Editor, Dialogue & Quest System Redesign
 
 **Date:** 2026-03-15
 **Status:** Proposed

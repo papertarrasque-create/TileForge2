@@ -1,5 +1,5 @@
 ---
-updated: 2026-03-06
+updated: 2026-03-16
 status: current
 ---
 
@@ -7,19 +7,17 @@ status: current
 
 ## Current State
 
-**Branch:** `HUD` (branched from `game-state`, which is ready for merge to `main`)
-**Tests:** 1539 passing, 0 failures
-**Last milestone:** G15 gameplay features (pickup dialogue, concluded dialogue, terrain notifications)
+**Branch:** `Dialog` (branched from `HUD` from `game-state`)
+**Tests:** 1681 passing, 0 failures
+**Last milestone:** Phase 5 V1 Cleanup -- removed all v1 backward-compatibility fallback code
 
-All planned phases G1-G14 are complete. Editor phases R1-R4 and P1-P3 are complete.
+All planned phases G1-G14 are complete. Editor phases R1-R4 and P1-P3 are complete. Dialogue 2.0 is complete with v1 compat code removed.
 
 ## Active Work
 
-- **G15 gameplay features:**
-  - **Pickup dialogue:** `on_pickup_dialogue` entity property shows dialogue on first pickup of an item group. Tracked via `pickup_dialogue_shown:{name}` flag.
-  - **Concluded dialogue:** `concluded_flag` + `concluded_dialogue` properties on NPC/Interactable entities. When the flag is set, shows reminder dialogue instead of main tree.
-  - **Terrain notifications:** GameLog message when stepping onto slow terrain (MovementCost > 1.0), showing group name and cost multiplier.
-- **Previous:** Play mode revert/keep, HUD minimap, Obsidian vault -- see [[Changelog]]
+- **V1 Cleanup (complete):** Removed legacy DialogueEditor, QuestRewards class, v1 fallback code from DialogueScreen, concluded_flag/concluded_dialogue entity properties. V1 JSON properties kept for deserialization; MigrateV1ToV2 handles conversion on load.
+- **Dialogue 2.0 (complete):** Routes with conditions, actions, oneShot, unified triggering. DialogueTreeEditor now has native v2 UI. See [[ADR-002]].
+- **Previous:** G15 gameplay features (pickup dialogue, terrain notifications), play mode revert/keep, HUD minimap, Obsidian vault -- see [[Changelog]]
 
 ## Next Up (G15+)
 

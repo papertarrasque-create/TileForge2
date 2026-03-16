@@ -59,11 +59,8 @@ See [[Entities]] for behavior details and [[Noise and Alertness]] for the alert 
 |-----|------|-------------|
 | `dialogue_id` | string | References `dialogues/{id}.json` file |
 | `dialogue` | string | Inline dialogue text (fallback if dialogue_id missing) |
-| `concluded_flag` | string | Flag name; when set, NPC shows concluded_dialogue instead |
-| `concluded_dialogue` | string | Dialogue ID or inline text shown after main dialogue concludes |
-| `on_pickup_dialogue` | string | Dialogue ID or inline text shown on first pickup of this item group |
 
-See [[Dialogue]] for the dialogue system.
+`dialogue_id` works on ALL entity types: NPC, Item, Trap, Trigger, and Interactable. The dialogue file defines routes with conditions and actions, enabling branching conversations, oneShot lines, and conditional responses without extra entity properties. See [[Dialogue]] for the full dialogue system and ADR-002 for design rationale.
 
 ## Map Transitions
 
@@ -136,7 +133,7 @@ Common flag patterns used across the codebase:
 | `quest_started:{quest_id}` | `quest_started:rescue` | Quest StartFlag |
 | `quest_complete:{quest_id}` | `quest_complete:rescue` | Quest CompletionFlag |
 | `visited_map:{map_id}` | `visited_map:cave` | Map visit tracking |
-| `pickup_dialogue_shown:{name}` | `pickup_dialogue_shown:Sword` | First-pickup dialogue tracking |
+| `dialogue_shown:{id}` | `dialogue_shown:old_man_intro` | OneShot dialogue tracking |
 | Custom | `has_sword`, `elder_spoke` | Dialogue/quest authored |
 
 ## Related

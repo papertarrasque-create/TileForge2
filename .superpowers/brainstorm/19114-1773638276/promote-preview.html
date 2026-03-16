@@ -1,0 +1,308 @@
+<h2>Option C: Promoted Editors</h2>
+<p class="subtitle">Sidebar stays focused on painting. Dialogues & quests get full-canvas workspaces.</p>
+
+<div class="section">
+  <h3>Mode 1: Map Editing (default)</h3>
+  <p class="subtitle">Sidebar has only what you need for painting</p>
+  <div class="mockup">
+    <div class="mockup-header">Map Editing Mode</div>
+    <div class="mockup-body" style="font-family: monospace; font-size: 11px; line-height: 1.4; background: #1a1a2e;">
+      <div style="background: #2a2a3e; padding: 4px 8px; color: #aaa; font-size: 10px; display: flex; justify-content: space-between;">
+        <span>File  Edit  View  Tools  Play  Help</span>
+        <span></span>
+      </div>
+      <div style="background: #333; padding: 4px 8px; color: #aaa; font-size: 10px; display: flex; gap: 12px; align-items: center;">
+        <span style="color: #6cf;">&#9998; Paint</span>
+        <span>&#9744; Select</span>
+        <span>&#8722; Erase</span>
+        <span>&#9781; Fill</span>
+        <span style="margin-left: auto; color: #666;">|</span>
+        <span style="background: #3a3a5e; padding: 2px 8px; border-radius: 3px; color: #8af;">&#128488; Dialogues</span>
+        <span style="background: #3a3a5e; padding: 2px 8px; border-radius: 3px; color: #c84;">&#9873; Quests</span>
+        <span style="background: #3a3a5e; padding: 2px 8px; border-radius: 3px; color: #6a6;">&#127760; World Map</span>
+      </div>
+      <div style="background: #2a2a4e; padding: 3px 8px; color: #aaa; font-size: 10px;">
+        &#9641; town_square &nbsp; &#9641; cave_level1 &nbsp; <span style="color: #fff;">&#9642; forest_path</span>
+      </div>
+      <div style="display: flex; min-height: 300px;">
+        <div style="width: 200px; border-right: 1px solid #444; display: flex; flex-direction: column;">
+          <!-- Layers - full space now -->
+          <div style="border-bottom: 1px solid #444; flex: 0 0 auto;">
+            <div style="background: #2a2a4e; padding: 4px 8px; color: #aaa; font-size: 10px;">Layers</div>
+            <div style="padding: 4px 8px; color: #6a6; font-size: 10px;">
+              <div style="padding: 2px 0;">&#9673; Layer 0 - Ground</div>
+              <div style="padding: 2px 0; color: #fff; background: #3a3a5e;">&#9673; Layer 1 - Objects</div>
+              <div style="padding: 2px 0;">&#9673; Layer 2 - Overlay</div>
+            </div>
+          </div>
+          <!-- Groups -->
+          <div style="border-bottom: 1px solid #444; flex: 1; overflow: hidden;">
+            <div style="background: #2a2a4e; padding: 4px 8px; color: #aaa; font-size: 10px;">Groups</div>
+            <div style="padding: 4px 8px; color: #6a6; font-size: 10px;">
+              <div style="padding: 2px 0;">grass_01</div>
+              <div style="padding: 2px 0;">grass_02</div>
+              <div style="padding: 2px 0;">wall_stone</div>
+              <div style="padding: 2px 0;">wall_brick</div>
+              <div style="padding: 2px 0; color: #c84;">npc_elder</div>
+              <div style="padding: 2px 0; color: #c84;">npc_guard</div>
+              <div style="padding: 2px 0; color: #48c;">item_potion</div>
+              <div style="padding: 2px 0; color: #48c;">trigger_door</div>
+            </div>
+          </div>
+          <!-- Tileset - generous space -->
+          <div style="flex: 1;">
+            <div style="background: #2a2a4e; padding: 4px 8px; color: #aaa; font-size: 10px;">Tileset</div>
+            <div style="padding: 6px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px;">
+              <div style="background: #3a5a3a; padding-top: 100%;"></div>
+              <div style="background: #4a5a3a; padding-top: 100%;"></div>
+              <div style="background: #3a5a4a; padding-top: 100%;"></div>
+              <div style="background: #5a5a3a; padding-top: 100%;"></div>
+              <div style="background: #3a4a3a; padding-top: 100%;"></div>
+              <div style="background: #5a3a3a; padding-top: 100%;"></div>
+              <div style="background: #3a3a5a; padding-top: 100%;"></div>
+              <div style="background: #4a3a5a; padding-top: 100%;"></div>
+              <div style="background: #5a4a3a; padding-top: 100%;"></div>
+              <div style="background: #3a5a5a; padding-top: 100%;"></div>
+              <div style="background: #3a5a3a; padding-top: 100%;"></div>
+              <div style="background: #4a5a3a; padding-top: 100%;"></div>
+              <div style="background: #3a5a4a; padding-top: 100%;"></div>
+              <div style="background: #5a5a3a; padding-top: 100%;"></div>
+              <div style="background: #3a4a3a; padding-top: 100%;"></div>
+            </div>
+          </div>
+        </div>
+        <div style="flex: 1; display: flex; align-items: center; justify-content: center; color: #555; background: #16162a;">
+          <div style="text-align: center;">
+            <div style="font-size: 24px; margin-bottom: 8px;">&#9782;</div>
+            Map Canvas
+          </div>
+        </div>
+      </div>
+      <div style="background: #2a2a3e; padding: 3px 8px; color: #666; font-size: 10px;">forest_path.json | Layer 1 | Brush: wall_stone | 48x32</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Mode 2: Dialogue Editor (full canvas)</h3>
+  <p class="subtitle">Clicking "Dialogues" in toolbar replaces canvas with dialogue workspace</p>
+  <div class="mockup">
+    <div class="mockup-header">Dialogue Editor Mode</div>
+    <div class="mockup-body" style="font-family: monospace; font-size: 11px; line-height: 1.4; background: #1a1a2e;">
+      <div style="background: #2a2a3e; padding: 4px 8px; color: #aaa; font-size: 10px;">File  Edit  View  Tools  Play  Help</div>
+      <div style="background: #333; padding: 4px 8px; color: #aaa; font-size: 10px; display: flex; gap: 12px; align-items: center;">
+        <span>&#9998; Paint</span>
+        <span>&#9744; Select</span>
+        <span>&#8722; Erase</span>
+        <span>&#9781; Fill</span>
+        <span style="margin-left: auto; color: #666;">|</span>
+        <span style="background: #4a4a7e; padding: 2px 8px; border-radius: 3px; color: #fff; border: 1px solid #8af;">&#128488; Dialogues</span>
+        <span style="background: #3a3a5e; padding: 2px 8px; border-radius: 3px; color: #c84;">&#9873; Quests</span>
+        <span style="background: #3a3a5e; padding: 2px 8px; border-radius: 3px; color: #6a6;">&#127760; World Map</span>
+      </div>
+      <div style="display: flex; min-height: 340px;">
+        <!-- Dialogue list sidebar -->
+        <div style="width: 180px; border-right: 1px solid #444; display: flex; flex-direction: column;">
+          <div style="background: #2a2a4e; padding: 4px 8px; color: #8af; font-size: 10px; display: flex; justify-content: space-between;">
+            <span>Dialogues</span>
+            <span style="color: #6a6;">+ New</span>
+          </div>
+          <div style="padding: 4px; font-size: 10px; flex: 1;">
+            <div style="padding: 3px 6px; color: #fff; background: #3a3a6e; border-radius: 2px; margin-bottom: 2px;">elder_01</div>
+            <div style="padding: 3px 6px; color: #aaa; margin-bottom: 2px;">shopkeeper</div>
+            <div style="padding: 3px 6px; color: #aaa; margin-bottom: 2px;">guard_patrol</div>
+            <div style="padding: 3px 6px; color: #aaa; margin-bottom: 2px;">cave_entrance</div>
+            <div style="padding: 3px 6px; color: #aaa; margin-bottom: 2px;">herb_inspect</div>
+            <div style="padding: 3px 6px; color: #aaa; margin-bottom: 2px;">rock_trigger</div>
+          </div>
+          <div style="border-top: 1px solid #444; padding: 4px 8px; color: #666; font-size: 9px;">
+            6 dialogues
+          </div>
+        </div>
+        <!-- Main editor area -->
+        <div style="flex: 1; display: flex; flex-direction: column;">
+          <!-- Node graph area -->
+          <div style="flex: 1; background: #16162a; padding: 12px; position: relative; overflow: hidden;">
+            <!-- Route bar at top -->
+            <div style="background: #2a2a4e; border: 1px solid #444; border-radius: 4px; padding: 6px 10px; margin-bottom: 12px; font-size: 10px;">
+              <div style="color: #8af; margin-bottom: 4px;">Routes (evaluated top to bottom)</div>
+              <div style="display: flex; gap: 8px;">
+                <span style="background: #3a4a3a; padding: 2px 6px; border-radius: 2px; color: #6a6;">if quest_complete &rarr; thanks</span>
+                <span style="background: #3a4a3a; padding: 2px 6px; border-radius: 2px; color: #6a6;">if quest_active &rarr; reminder</span>
+                <span style="background: #3a3a4a; padding: 2px 6px; border-radius: 2px; color: #aaa;">default &rarr; start</span>
+              </div>
+            </div>
+            <!-- Nodes as visual cards -->
+            <div style="display: flex; gap: 20px;">
+              <div style="background: #2a2a3e; border: 1px solid #8af; border-radius: 4px; width: 160px; padding: 8px; font-size: 10px;">
+                <div style="color: #8af; font-weight: bold; margin-bottom: 4px;">start</div>
+                <div style="color: #cc8; font-size: 9px;">Elder</div>
+                <div style="color: #ccc; margin: 4px 0;">"Welcome, traveler. The caves..."</div>
+                <div style="border-top: 1px solid #444; padding-top: 4px; margin-top: 4px;">
+                  <div style="color: #6c6; font-size: 9px;">&#8594; "I'll help!" &rarr; accept</div>
+                  <div style="color: #c66; font-size: 9px;">&#8594; "Not now" &rarr; decline</div>
+                </div>
+              </div>
+              <div style="background: #2a2a3e; border: 1px solid #555; border-radius: 4px; width: 160px; padding: 8px; font-size: 10px;">
+                <div style="color: #aaa; font-weight: bold; margin-bottom: 4px;">accept</div>
+                <div style="color: #cc8; font-size: 9px;">Elder</div>
+                <div style="color: #ccc; margin: 4px 0;">"Wonderful! Take this potion."</div>
+                <div style="border-top: 1px solid #444; padding-top: 4px; margin-top: 4px; font-size: 9px;">
+                  <div style="color: #c84;">&#9889; start_quest: cave_quest</div>
+                  <div style="color: #c84;">&#9889; give_item: Potion</div>
+                </div>
+              </div>
+              <div style="background: #2a2a3e; border: 1px solid #555; border-radius: 4px; width: 160px; padding: 8px; font-size: 10px;">
+                <div style="color: #aaa; font-weight: bold; margin-bottom: 4px;">thanks</div>
+                <div style="color: #cc8; font-size: 9px;">Elder</div>
+                <div style="color: #ccc; margin: 4px 0;">"You cleared the caves! Here's your reward."</div>
+                <div style="border-top: 1px solid #444; padding-top: 4px; margin-top: 4px; font-size: 9px;">
+                  <div style="color: #c84;">&#9889; complete_objective: caves_cleared</div>
+                  <div style="color: #c84;">&#9889; give_item: Gold Ring</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- Properties panel at bottom -->
+          <div style="height: 100px; border-top: 1px solid #444; background: #1e1e2e; padding: 8px 12px; font-size: 10px; display: flex; gap: 24px;">
+            <div style="flex: 1;">
+              <div style="color: #8af; margin-bottom: 4px;">Node: start</div>
+              <div style="display: grid; grid-template-columns: 60px 1fr; gap: 2px 8px; color: #aaa;">
+                <span>Speaker</span><span style="background: #2a2a3e; padding: 1px 4px; color: #cc8;">Elder</span>
+                <span>Text</span><span style="background: #2a2a3e; padding: 1px 4px; color: #ccc;">Welcome, traveler. The caves...</span>
+              </div>
+            </div>
+            <div style="width: 1px; background: #444;"></div>
+            <div style="flex: 1;">
+              <div style="color: #6a6; margin-bottom: 4px;">Conditions (all must pass)</div>
+              <div style="color: #888; font-style: italic;">No conditions</div>
+            </div>
+            <div style="width: 1px; background: #444;"></div>
+            <div style="flex: 1;">
+              <div style="color: #c84; margin-bottom: 4px;">Actions (on enter)</div>
+              <div style="color: #888; font-style: italic;">No actions</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Mode 3: Quest Editor (full canvas)</h3>
+  <p class="subtitle">Clicking "Quests" in toolbar replaces canvas with quest workspace</p>
+  <div class="mockup">
+    <div class="mockup-header">Quest Editor Mode</div>
+    <div class="mockup-body" style="font-family: monospace; font-size: 11px; line-height: 1.4; background: #1a1a2e;">
+      <div style="background: #2a2a3e; padding: 4px 8px; color: #aaa; font-size: 10px;">File  Edit  View  Tools  Play  Help</div>
+      <div style="background: #333; padding: 4px 8px; color: #aaa; font-size: 10px; display: flex; gap: 12px; align-items: center;">
+        <span>&#9998; Paint</span>
+        <span>&#9744; Select</span>
+        <span>&#8722; Erase</span>
+        <span>&#9781; Fill</span>
+        <span style="margin-left: auto; color: #666;">|</span>
+        <span style="background: #3a3a5e; padding: 2px 8px; border-radius: 3px; color: #8af;">&#128488; Dialogues</span>
+        <span style="background: #4a4a7e; padding: 2px 8px; border-radius: 3px; color: #fff; border: 1px solid #c84;">&#9873; Quests</span>
+        <span style="background: #3a3a5e; padding: 2px 8px; border-radius: 3px; color: #6a6;">&#127760; World Map</span>
+      </div>
+      <div style="display: flex; min-height: 300px;">
+        <!-- Quest list sidebar -->
+        <div style="width: 180px; border-right: 1px solid #444; display: flex; flex-direction: column;">
+          <div style="background: #2a2a4e; padding: 4px 8px; color: #c84; font-size: 10px; display: flex; justify-content: space-between;">
+            <span>Quests</span>
+            <span style="color: #6a6;">+ New</span>
+          </div>
+          <div style="padding: 4px; font-size: 10px; flex: 1;">
+            <div style="padding: 3px 6px; color: #fff; background: #4a3a3a; border-radius: 2px; margin-bottom: 2px;">cave_quest</div>
+            <div style="padding: 3px 6px; color: #aaa; margin-bottom: 2px;">fetch_herbs</div>
+            <div style="padding: 3px 6px; color: #aaa; margin-bottom: 2px;">lost_ring</div>
+          </div>
+        </div>
+        <!-- Quest detail -->
+        <div style="flex: 1; padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+          <div style="display: flex; gap: 16px;">
+            <div style="flex: 1;">
+              <div style="color: #c84; font-size: 12px; font-weight: bold; margin-bottom: 8px;">cave_quest</div>
+              <div style="display: grid; grid-template-columns: 80px 1fr; gap: 4px 12px; font-size: 10px; color: #aaa;">
+                <span>Name</span><span style="background: #2a2a3e; padding: 2px 6px; color: #ccc;">Clear the Caves</span>
+                <span>Description</span><span style="background: #2a2a3e; padding: 2px 6px; color: #ccc;">The Elder asks you to clear monsters from the nearby caves.</span>
+                <span>Start Flag</span><span style="background: #2a2a3e; padding: 2px 6px; color: #6a6;">quest_started:cave_quest</span>
+                <span>Complete Flag</span><span style="background: #2a2a3e; padding: 2px 6px; color: #6a6;">quest_complete:cave_quest</span>
+              </div>
+            </div>
+          </div>
+          <!-- Objectives -->
+          <div style="border: 1px solid #444; border-radius: 4px; padding: 8px;">
+            <div style="color: #8af; font-size: 10px; margin-bottom: 6px; display: flex; justify-content: space-between;">
+              <span>Objectives</span>
+              <span style="color: #6a6; cursor: pointer;">+ Add</span>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 4px; font-size: 10px;">
+              <div style="background: #2a2a3e; padding: 6px 8px; border-radius: 3px; display: flex; align-items: center; gap: 8px;">
+                <span style="color: #c84;">1.</span>
+                <span style="background: #333; padding: 1px 6px; border-radius: 2px; color: #cc8;">flag</span>
+                <span style="color: #ccc;">caves_cleared</span>
+                <span style="color: #666; margin-left: auto;">&#10005;</span>
+              </div>
+              <div style="background: #2a2a3e; padding: 6px 8px; border-radius: 3px; display: flex; align-items: center; gap: 8px;">
+                <span style="color: #c84;">2.</span>
+                <span style="background: #333; padding: 1px 6px; border-radius: 2px; color: #cc8;">variable_gte</span>
+                <span style="color: #ccc;">monsters_killed >= 5</span>
+                <span style="color: #666; margin-left: auto;">&#10005;</span>
+              </div>
+            </div>
+          </div>
+          <!-- Rewards - STRUCTURED, not string parsing -->
+          <div style="border: 1px solid #444; border-radius: 4px; padding: 8px;">
+            <div style="color: #8af; font-size: 10px; margin-bottom: 6px; display: flex; justify-content: space-between;">
+              <span>Rewards</span>
+              <span style="color: #6a6; cursor: pointer;">+ Add</span>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 4px; font-size: 10px;">
+              <div style="background: #2a2a3e; padding: 6px 8px; border-radius: 3px; display: flex; align-items: center; gap: 8px;">
+                <span style="background: #333; padding: 1px 6px; border-radius: 2px; color: #6a6;">set_flag</span>
+                <span style="color: #ccc;">caves_hero</span>
+                <span style="color: #666; margin-left: auto;">&#10005;</span>
+              </div>
+              <div style="background: #2a2a3e; padding: 6px 8px; border-radius: 3px; display: flex; align-items: center; gap: 8px;">
+                <span style="background: #333; padding: 1px 6px; border-radius: 2px; color: #6a6;">set_variable</span>
+                <span style="color: #ccc;">gold = 100</span>
+                <span style="color: #666; margin-left: auto;">&#10005;</span>
+              </div>
+            </div>
+          </div>
+          <!-- Cross-references -->
+          <div style="border: 1px solid #333; border-radius: 4px; padding: 8px; background: #1a1a2a;">
+            <div style="color: #666; font-size: 10px; margin-bottom: 4px;">Referenced by</div>
+            <div style="font-size: 10px; display: flex; gap: 8px;">
+              <span style="color: #8af; text-decoration: underline; cursor: pointer;">elder_01</span>
+              <span style="color: #888;">(start_quest: cave_quest)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h3 style="margin-top: 24px;">Key Changes</h3>
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px;">
+  <div style="background: #1a2a1a; border: 1px solid #3a5a3a; border-radius: 6px; padding: 12px;">
+    <div style="color: #6a6; font-weight: bold; margin-bottom: 6px;">Sidebar (painting mode)</div>
+    <ul style="margin: 0; padding-left: 16px; color: #aaa;">
+      <li>Layers + Groups + Tileset only</li>
+      <li>Full height for each panel</li>
+      <li>No more cramming</li>
+    </ul>
+  </div>
+  <div style="background: #1a1a2a; border: 1px solid #3a3a5a; border-radius: 6px; padding: 12px;">
+    <div style="color: #8af; font-weight: bold; margin-bottom: 6px;">Content editors (toolbar buttons)</div>
+    <ul style="margin: 0; padding-left: 16px; color: #aaa;">
+      <li>Full canvas space for dialogue/quest</li>
+      <li>Own sidebar with item list</li>
+      <li>Structured UIs (no string parsing)</li>
+      <li>Cross-references between systems</li>
+    </ul>
+  </div>
+</div>
