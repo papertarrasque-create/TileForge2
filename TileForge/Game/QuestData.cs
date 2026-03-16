@@ -62,12 +62,3 @@ public class QuestObjective
     /// <summary>For variable types: the target value (integer comparison).</summary>
     public int Value { get; set; }
 }
-
-/// <summary>
-/// Rewards applied when a quest completes (flags set, variables assigned).
-/// </summary>
-public class QuestRewards
-{
-    public List<string> SetFlags { get; set; } = new();
-    public Dictionary<string, string> SetVariables { get; set; } = new();
-}

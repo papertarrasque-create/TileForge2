@@ -42,16 +42,6 @@ public class QuestDataTests
     }
 
     [Fact]
-    public void QuestRewards_DefaultValues()
-    {
-        var rewards = new QuestRewards();
-        Assert.NotNull(rewards.SetFlags);
-        Assert.Empty(rewards.SetFlags);
-        Assert.NotNull(rewards.SetVariables);
-        Assert.Empty(rewards.SetVariables);
-    }
-
-    [Fact]
     public void QuestFile_DefaultValues()
     {
         var file = new QuestFile();
