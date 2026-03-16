@@ -40,6 +40,12 @@ public class TileForgeGame : Microsoft.Xna.Framework.Game
     private WorldMapEditor _worldMapEditor;
     private MapTabBar _mapTabBar;
 
+    // Workspaces
+    private MapWorkspace _mapWorkspace;
+    private DialogueWorkspace _dialogueWorkspace;
+    private QuestWorkspace _questWorkspace;
+    private readonly Dictionary<WorkspaceMode, IWorkspace> _workspaces = new();
+
     // Central state
     private EditorState _state;
     private IProjectContext _projectContext;
@@ -116,8 +122,6 @@ public class TileForgeGame : Microsoft.Xna.Framework.Game
             _dialoguePanel = new DialoguePanel();
             _panelDock = new PanelDock();
             _panelDock.Panels.Add(_mapPanel);
-            _panelDock.Panels.Add(_questPanel);
-            _panelDock.Panels.Add(_dialoguePanel);
             _panelDock.Panels.Add(_tilePalettePanel);
             DebugLog.Log("LoadContent: UI panels created");
 
@@ -171,6 +175,42 @@ public class TileForgeGame : Microsoft.Xna.Framework.Game
                 () => _state.MapDocuments.Select(d => d.Name).ToList());
             _autoSave = new AutoSaveManager(_state,
                 () => _projectManager.ProjectPath, _projectManager.SaveToPath);
+
+            // --- Workspaces ---
+            _mapWorkspace = new MapWorkspace(
+                UpdateMapWorkspace, DrawMapCanvas, DrawMapSidebar);
+            _dialogueWorkspace = new DialogueWorkspace(
+                () => _projectContext,
+                () => _projectManager.ProjectPath != null
+                    ? Path.GetDirectoryName(_projectManager.ProjectPath) : null,
+                SaveDialogue,
+                deletedId =>
+                {
+                    if (_projectManager.ProjectPath != null)
+                        DialogueFileManager.DeleteOne(
+                            Path.GetDirectoryName(_projectManager.ProjectPath), deletedId);
+                },
+                onConfirmed =>
+                {
+                    // onConfirmed expects Action<string> but we use a confirm dialog
+                    _dialogManager.Show(new ConfirmDialog("Delete this dialogue?"), dialog =>
+                    {
+                        if (!dialog.WasCancelled) onConfirmed("confirmed");
+                    });
+                });
+            _questWorkspace = new QuestWorkspace(
+                quests => SaveQuests(),
+                (name, onConfirmed) =>
+                {
+                    _dialogManager.Show(new ConfirmDialog($"Delete quest \"{name}\"?"), dialog =>
+                    {
+                        if (!dialog.WasCancelled) onConfirmed();
+                    });
+                });
+            _workspaces[WorkspaceMode.Map] = _mapWorkspace;
+            _workspaces[WorkspaceMode.Dialogues] = _dialogueWorkspace;
+            _workspaces[WorkspaceMode.Quests] = _questWorkspace;
+
             DebugLog.Log("LoadContent: all managers created");
 
             string defaultProject = Path.GetFullPath(Path.Combine(
@@ -205,6 +245,11 @@ public class TileForgeGame : Microsoft.Xna.Framework.Game
         if (_questEditor != null) { _questEditor.OnTextInput(e.Character); return; }
         if (_dialogueEditor != null) { _dialogueEditor.OnTextInput(e.Character); return; }
         if (_worldMapEditor != null) { _worldMapEditor.OnTextInput(e.Character); return; }
+        // Route to workspace editors
+        if (_state.ActiveWorkspace == WorkspaceMode.Dialogues)
+        { _dialogueWorkspace.OnTextInput(e.Character); return; }
+        if (_state.ActiveWorkspace == WorkspaceMode.Quests)
+        { _questWorkspace.OnTextInput(e.Character); return; }
         _groupEditor?.OnTextInput(e.Character);
     }
 
@@ -364,6 +409,40 @@ public class TileForgeGame : Microsoft.Xna.Framework.Game
                              screenH - topOffset - StatusBar.Height);
     }
 
+    // --- Workspace delegates for MapWorkspace ---
+
+    private void UpdateMapWorkspace(EditorState state, MouseState mouse, MouseState prevMouse,
+                                     InputEvent input, SpriteFont font, Rectangle canvasBounds,
+                                     GameTime gameTime, int screenW, int screenH)
+    {
+        _mapTabBar.Update(state, mouse, prevMouse, screenW, font, gameTime);
+        HandleMapTabBarActions();
+
+        int topOffset = LayoutConstants.TopChromeHeight;
+        var dockBounds = new Rectangle(0, topOffset, _panelDock.Width,
+                                        screenH - topOffset - StatusBar.Height);
+        _panelDock.Update(state, mouse, prevMouse, input, font, dockBounds, gameTime, screenW, screenH);
+        _canvas.Update(state, input, Keyboard.GetState(), _prevKeyboard, GetCanvasBounds());
+
+        HandleMapPanelActions();
+        HandleTilePaletteActions();
+    }
+
+    private void DrawMapCanvas(SpriteBatch spriteBatch, SpriteFont font,
+                                EditorState state, Renderer renderer, Rectangle canvasBounds)
+    {
+        _canvas.Draw(spriteBatch, state, renderer, canvasBounds);
+    }
+
+    private void DrawMapSidebar(SpriteBatch spriteBatch, SpriteFont font,
+                                 EditorState state, Renderer renderer)
+    {
+        _panelDock.Draw(spriteBatch, font, state, renderer);
+    }
+
+    private IWorkspace ActiveWorkspace =>
+        _workspaces.TryGetValue(_state.ActiveWorkspace, out var ws) ? ws : _mapWorkspace;
+
     // --- Update ---
 
     protected override void Update(GameTime gameTime)
@@ -379,7 +458,7 @@ public class TileForgeGame : Microsoft.Xna.Framework.Game
         if (_dialogManager.Update(keyboard, _prevKeyboard, gameTime))
         { FinishUpdate(keyboard, mouse, gameTime); return; }
 
-        // QuestEditor priority (modal overlay)
+        // QuestEditor priority (modal overlay — only in Map workspace legacy mode)
         if (_questEditor != null)
         {
             int qScreenW = _graphics.PreferredBackBufferWidth;
@@ -389,13 +468,32 @@ public class TileForgeGame : Microsoft.Xna.Framework.Game
             FinishUpdate(keyboard, mouse, gameTime); return;
         }
 
-        // DialogueEditor priority (modal overlay)
+        // DialogueEditor priority (modal overlay — only in Map workspace legacy mode)
         if (_dialogueEditor != null)
         {
             int dScreenW = _graphics.PreferredBackBufferWidth;
             _dialogueEditor.Update(mouse, _prevMouse, keyboard, _prevKeyboard,
-                GetCanvasBounds(), _state.Dialogues, _font, dScreenW, screenH, gameTime);
+                GetCanvasBounds(), _state.Dialogues, _font, dScreenW, screenH, gameTime,
+                _projectContext, _state.Quests, _state.Groups);
             if (_dialogueEditor.IsComplete) { HandleDialogueEditorResult(); _dialogueEditor = null; }
+            FinishUpdate(keyboard, mouse, gameTime); return;
+        }
+
+        // Workspace editor modals (Dialogue/Quest workspace)
+        if (_state.ActiveWorkspace == WorkspaceMode.Dialogues && _dialogueWorkspace.IsEditorActive)
+        {
+            int screenW2 = _graphics.PreferredBackBufferWidth;
+            var input2 = new InputEvent(mouse, _prevMouse);
+            _dialogueWorkspace.Update(_state, mouse, _prevMouse, input2, _font,
+                GetCanvasBounds(), gameTime, screenW2, screenH);
+            FinishUpdate(keyboard, mouse, gameTime); return;
+        }
+        if (_state.ActiveWorkspace == WorkspaceMode.Quests && _questWorkspace.IsEditorActive)
+        {
+            int screenW2 = _graphics.PreferredBackBufferWidth;
+            var input2 = new InputEvent(mouse, _prevMouse);
+            _questWorkspace.Update(_state, mouse, _prevMouse, input2, _font,
+                GetCanvasBounds(), gameTime, screenW2, screenH);
             FinishUpdate(keyboard, mouse, gameTime); return;
         }
 
@@ -459,21 +557,13 @@ public class TileForgeGame : Microsoft.Xna.Framework.Game
         // Toolbar ribbon (consumes before panels/canvas)
         _toolbarRibbon.Update(_state, input, screenW, _font, gameTime);
 
-        // Map tab bar
-        _mapTabBar.Update(_state, mouse, _prevMouse, screenW, _font, gameTime);
-        HandleMapTabBarActions();
+        // Check for workspace button clicks
+        HandleWorkspaceButtons(mouse, _prevMouse, _font, screenW);
 
-        // Editor panels (consumes before canvas)
-        int topOffset = LayoutConstants.TopChromeHeight;
-        var dockBounds = new Rectangle(0, topOffset, _panelDock.Width,
-                                        screenH - topOffset - StatusBar.Height);
-        _panelDock.Update(_state, mouse, _prevMouse, input, _font, dockBounds, gameTime, screenW, screenH);
-        _canvas.Update(_state, input, keyboard, _prevKeyboard, GetCanvasBounds());
+        // Route through active workspace
+        ActiveWorkspace.Update(_state, mouse, _prevMouse, input, _font,
+                              GetCanvasBounds(), gameTime, screenW, screenH);
 
-        HandleMapPanelActions();
-        HandleQuestPanelActions();
-        HandleDialoguePanelActions();
-        HandleTilePaletteActions();
         HandleRibbonActions();
 
         FinishUpdate(keyboard, mouse, gameTime);
@@ -922,6 +1012,100 @@ public class TileForgeGame : Microsoft.Xna.Framework.Game
         _state.NotifyDialoguesChanged();
     }
 
+    // --- Workspace switching ---
+
+    private void SwitchWorkspace(WorkspaceMode mode)
+    {
+        if (_state.ActiveWorkspace == mode) return;
+        var oldMode = _state.ActiveWorkspace;
+        if (_workspaces.TryGetValue(oldMode, out var oldWs))
+            oldWs.OnExit(_state);
+        _state.ActiveWorkspace = mode;
+        if (_workspaces.TryGetValue(mode, out var newWs))
+            newWs.OnEnter(_state);
+    }
+
+    private Rectangle[] _workspaceButtonRects;
+    private int _workspaceHoverIndex = -1;
+
+    private void HandleWorkspaceButtons(MouseState mouse, MouseState prevMouse,
+                                         SpriteFont font, int screenW)
+    {
+        ComputeWorkspaceButtonRects(font, screenW);
+
+        _workspaceHoverIndex = -1;
+        for (int i = 0; i < _workspaceButtonRects.Length; i++)
+        {
+            if (_workspaceButtonRects[i].Contains(mouse.X, mouse.Y))
+            {
+                _workspaceHoverIndex = i;
+                break;
+            }
+        }
+
+        bool leftClick = mouse.LeftButton == ButtonState.Pressed
+                      && prevMouse.LeftButton == ButtonState.Released;
+        if (leftClick && _workspaceHoverIndex >= 0)
+        {
+            var mode = (WorkspaceMode)_workspaceHoverIndex;
+            SwitchWorkspace(mode);
+        }
+    }
+
+    private void ComputeWorkspaceButtonRects(SpriteFont font, int screenW)
+    {
+        if (_workspaceButtonRects == null)
+            _workspaceButtonRects = new Rectangle[3]; // Map, Dialogues, Quests
+
+        int btnW = LayoutConstants.WorkspaceButtonWidth;
+        int btnH = LayoutConstants.WorkspaceButtonHeight;
+        int spacing = LayoutConstants.WorkspaceButtonSpacing;
+        int totalW = 3 * btnW + 2 * spacing;
+        int startX = screenW - totalW - 10; // Right-aligned
+        int y = MenuBar.Height + (LayoutConstants.ToolbarRibbonHeight - btnH) / 2;
+
+        for (int i = 0; i < 3; i++)
+            _workspaceButtonRects[i] = new Rectangle(startX + i * (btnW + spacing), y, btnW, btnH);
+    }
+
+    private static readonly string[] WorkspaceButtonLabels = { "Map", "Dialogues", "Quests" };
+    private static readonly Color[] WorkspaceButtonAccents =
+    {
+        LayoutConstants.ToolbarIconColor,
+        LayoutConstants.WorkspaceDialogueColor,
+        LayoutConstants.WorkspaceQuestColor,
+    };
+
+    private void DrawWorkspaceButtons(SpriteBatch spriteBatch, SpriteFont font,
+                                       Renderer renderer, int screenW)
+    {
+        ComputeWorkspaceButtonRects(font, screenW);
+
+        for (int i = 0; i < _workspaceButtonRects.Length; i++)
+        {
+            var rect = _workspaceButtonRects[i];
+            var mode = (WorkspaceMode)i;
+            bool isActive = _state.ActiveWorkspace == mode;
+            bool isHovered = _workspaceHoverIndex == i;
+
+            var bgColor = isActive ? LayoutConstants.WorkspaceButtonActiveColor
+                : isHovered ? LayoutConstants.ToolbarButtonHoverColor
+                : LayoutConstants.WorkspaceButtonColor;
+            renderer.DrawRect(spriteBatch, rect, bgColor);
+
+            if (isActive)
+                renderer.DrawRectOutline(spriteBatch, rect,
+                    LayoutConstants.WorkspaceButtonActiveBorder, 1);
+
+            string label = WorkspaceButtonLabels[i];
+            var textSize = font.MeasureString(label);
+            var textColor = isActive ? WorkspaceButtonAccents[i] : LayoutConstants.ToolbarDimTextColor;
+            spriteBatch.DrawString(font, label,
+                new Vector2(rect.X + (rect.Width - textSize.X) / 2,
+                            rect.Y + (rect.Height - textSize.Y) / 2), textColor);
+        }
+    }
+
     private void SaveDialogue(Game.DialogueData dialogue)
     {
         if (_projectManager.ProjectPath == null) return;
@@ -950,7 +1134,7 @@ public class TileForgeGame : Microsoft.Xna.Framework.Game
             }
             else
             {
-                _canvas.Draw(_spriteBatch, _state, _renderer, canvasBounds);
+                ActiveWorkspace.Draw(_spriteBatch, _font, _state, _renderer, canvasBounds);
                 if (_groupEditor != null)
                     _groupEditor.Draw(_spriteBatch, _font, _state, _renderer, canvasBounds, gameTime);
                 if (_questEditor != null)
@@ -970,9 +1154,15 @@ public class TileForgeGame : Microsoft.Xna.Framework.Game
             }
             else
             {
-                _panelDock.Draw(_spriteBatch, _font, _state, _renderer);
+                // Draw sidebar (PanelDock for Map, list panel for others)
+                int topOffset = LayoutConstants.TopChromeHeight;
+                var sidebarBounds = new Rectangle(0, topOffset, _panelDock.Width,
+                                                   screenH - topOffset - StatusBar.Height);
+                ActiveWorkspace.DrawSidebar(_spriteBatch, _font, _state, _renderer, sidebarBounds);
                 _menuBar.Draw(_spriteBatch, _font, _renderer, screenW);
-                _mapTabBar.Draw(_spriteBatch, _font, _renderer, _state, screenW);
+                if (_state.ActiveWorkspace == WorkspaceMode.Map)
+                    _mapTabBar.Draw(_spriteBatch, _font, _renderer, _state, screenW);
+                DrawWorkspaceButtons(_spriteBatch, _font, _renderer, screenW);
             }
             _toolbarRibbon.Draw(_spriteBatch, _font, _state, _renderer, screenW);
             _statusBar.Draw(_spriteBatch, _font, _state, _renderer, _canvas, screenW, screenH);
