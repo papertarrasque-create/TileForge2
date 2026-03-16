@@ -222,7 +222,7 @@ This demonstrates both "auto-resolving" objectives (guard, rats, amulet) and "re
 | Routes (conditional entry) | sage_01 (4 routes), guard_01 (3 routes) | First-match-wins evaluation |
 | Condition: quest_active | sage routes 2-3, guard route 2 | Checks start flag set + complete flag not set |
 | Condition: quest_complete | sage route 1, guard route 1 | Post-quest dialogue |
-| Condition: has_item | sage route 2 | Checks player inventory (uses DefinitionName `Amulet`) |
+| Condition: has_item | sage route 2 | Checks player inventory via `item` field (uses DefinitionName `Amulet`) |
 | Condition: not_flag | guard route 3 | Inverse flag check |
 | Action: start_quest | sage default route | Sets quest start flag |
 | Action: complete_objective | sage route 2 | Sets `objective_complete:return_amulet` flag |
