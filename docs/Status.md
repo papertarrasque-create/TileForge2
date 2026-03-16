@@ -33,15 +33,15 @@ All planned phases G1-G14 are complete. Editor phases R1-R4 and P1-P3 are comple
 
 ## Known Issues
 
-### From Code Review (2026-03-03)
+### From Code Review (2026-03-03, re-assessed 2026-03-16)
 
-A formal code review identified these issues (see `CODE-REVIEW.md` for full details):
+Original review identified 5 issues. Re-assessment after dialogue 2.0 and v1 cleanup work:
 
-1. **Logic in Draw methods** (C- grade) -- 16 violations where input handling, state mutation, or game logic runs during rendering. RecentFilesDialog and QuestLogScreen are the worst offenders.
-2. **No layer depth system** (F grade, but architecturally justified) -- All sprite draws use `SpriteSortMode.Deferred` with painter's algorithm. Works correctly but won't scale to Y-sorting or projectiles.
-3. **Excessive SpriteBatch Begin/End pairs** (D grade) -- Up to 52 pairs/frame in worst case, primarily caused by TextInputField scissor clipping.
-4. **Per-frame allocations** (C grade) -- Dictionary allocations in SyncEntityRenderState, string concatenation in HUD, LINQ in InventoryScreen, dictionary cloning in SettingsScreen.
-5. **TextInputField rasterizer state bug** -- Restores wrong rasterizer state when called from non-scissor context.
+1. **Logic in Draw methods** -- Originally 16 violations (C-), now **4 remaining**. SettingsScreen, SaveLoadScreen, InventoryScreen, PauseScreen, GameOverScreen all refactored. Remaining: QuestLogScreen (quest filtering in Draw -- high), PanelDock (3x Mouse.GetState in Draw -- high), DialogueTreeEditor (mouse hover -- moderate), RecentFilesDialog (hit-test cache -- moderate).
+2. ~~**No layer depth system**~~ -- **Removed as issue.** Deferred mode with painter's algorithm is a deliberate design choice required by scissor clipping (TextInputField, DialogueTreeEditor). EntityRenderOrder handles layer boundaries. No Y-sorting or projectiles in current feature set.
+3. **Excessive SpriteBatch Begin/End pairs** (D grade) -- Still present. TextInputField creates 2 extra pairs per Draw call. No easy fix without rearchitecting the scissor approach. Low runtime impact.
+4. **Per-frame allocations** -- Original issues mostly fixed. SyncEntityRenderState dict (fixed, reuse pattern), AP/stats text (fixed, cached), InventoryScreen LINQ (gated by dirty flag), SettingsScreen dict clone (gated by dirty flag). **New issues:** SidebarHUD allocates `new Dictionary` for inventory and `new List` for message log every Draw call -- easy fix using same Clear() pattern.
+5. **TextInputField rasterizer state bug** -- Still present. Restores potentially wrong rasterizer state when called from non-scissor context. Cosmetic impact only.
 
 ### Architectural Concerns
 
@@ -59,16 +59,16 @@ A formal code review identified these issues (see `CODE-REVIEW.md` for full deta
 - Property bag extensibility has avoided class proliferation
 
 **Weaknesses:**
-- Rendering code has accumulated logic that belongs in Update (systematic Draw-side issue)
-- Performance debt from per-frame allocations and uncached queries
+- 4 remaining Draw-side logic violations (down from 16)
+- SidebarHUD has 2 new per-frame allocations (easy fix)
+- TextInputField scissor clipping creates excess SpriteBatch pairs and has rasterizer bug
 - Immediate-mode UI means no retained widget state -- some patterns are awkward
-- Large files (GameplayScreen is likely 800+ lines, TileForgeGame.cs handles too much routing)
+- Large files (GameplayScreen, TileForgeGame.cs)
 
-**Overall:** The architecture has held up well through rapid feature development. The main debt is in the rendering layer (Draw-side logic, batch management) and per-frame allocation patterns. The core data model and state management are solid.
+**Overall:** The architecture has held up well through rapid feature development. Most original code review debt has been addressed. Remaining issues are localized (SidebarHUD allocations, 4 Draw-side violations) rather than systemic. The core data model, state management, and dialogue/quest systems are solid and validated end-to-end.
 
 ## Open Questions
 
 - Should the game runtime eventually be separable from the editor?
 - Is the property bag approach sustainable as entity complexity grows?
-- When does the project need a proper render layer with depth sorting?
 - Should TileForge Next be a rewrite or an evolution of v1?
