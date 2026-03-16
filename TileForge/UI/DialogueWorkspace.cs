@@ -20,6 +20,8 @@ public class DialogueWorkspace : IWorkspace
     private DialogueTreeEditor _editor;
     private KeyboardState _prevKeyboard;
     private GameTime _cachedGameTime;
+    private string _lastSaveWarning;
+    private float _warningTimer;
 
     // Dependencies injected from TileForgeGame
     private readonly Func<IProjectContext> _getProjectContext;
@@ -82,6 +84,13 @@ public class DialogueWorkspace : IWorkspace
         }
 
         _prevKeyboard = keyboard;
+
+        if (_warningTimer > 0)
+        {
+            _warningTimer -= (float)gameTime.ElapsedGameTime.TotalSeconds;
+            if (_warningTimer <= 0)
+                _lastSaveWarning = null;
+        }
     }
 
     public void Draw(SpriteBatch spriteBatch, SpriteFont font, EditorState state,
@@ -101,6 +110,13 @@ public class DialogueWorkspace : IWorkspace
                 new Vector2(canvasBounds.X + (canvasBounds.Width - hintSize.X) / 2,
                             canvasBounds.Y + (canvasBounds.Height - hintSize.Y) / 2),
                 LayoutConstants.DialogueTreeHintColor);
+        }
+
+        if (!string.IsNullOrEmpty(_lastSaveWarning))
+        {
+            spriteBatch.DrawString(font, _lastSaveWarning,
+                new Vector2(canvasBounds.X + 8, canvasBounds.Bottom - 24),
+                Color.Orange);
         }
     }
 
@@ -178,6 +194,19 @@ public class DialogueWorkspace : IWorkspace
 
         _saveDialogue(result);
         state.NotifyDialoguesChanged();
+
+        // Validate cross-references after save
+        var brokenRefs = CrossReferenceValidator.FindBrokenQuestReferences(
+            new List<DialogueData> { result }, state.Quests);
+        if (brokenRefs.Count > 0)
+        {
+            _lastSaveWarning = $"Warning: {brokenRefs.Count} broken quest reference(s)";
+            _warningTimer = 5f;
+        }
+        else
+        {
+            _lastSaveWarning = null;
+        }
     }
 
     private static Rectangle ComputeSidebarBounds(int screenH)

@@ -48,6 +48,9 @@ public class QuestListPanel
     public int WantsDeleteIndex { get; private set; } = -1;
     public int SelectedIndex => _selectedIndex;
 
+    /// <summary>Optional reference counts to display next to quest names (quest ID -> count).</summary>
+    public Dictionary<string, int> ReferenceCounts { get; set; }
+
     private enum EntryType { Row, AddButton }
     private struct LayoutEntry
     {
@@ -186,10 +189,25 @@ public class QuestListPanel
         {
             var quest = quests[entry.Index];
             string label = quest.Name ?? quest.Id ?? "(unnamed)";
-            int maxW = entry.Rect.Width - 12;
-            label = TextUtils.TruncateToFit(font, label, maxW);
             int textY = entry.Rect.Y + (entry.Rect.Height - font.LineSpacing) / 2;
+
+            // Reserve space for ref count if present
+            int refCount = 0;
+            bool hasRef = ReferenceCounts != null
+                          && ReferenceCounts.TryGetValue(quest.Id, out refCount)
+                          && refCount > 0;
+            string refText = hasRef ? $"({refCount} refs)" : null;
+            int refTextW = hasRef ? (int)font.MeasureString(refText).X + 8 : 0;
+            int maxW = entry.Rect.Width - 12 - refTextW;
+            label = TextUtils.TruncateToFit(font, label, maxW);
+            float nameEndX = entry.Rect.X + 6 + font.MeasureString(label).X;
             spriteBatch.DrawString(font, label, new Vector2(entry.Rect.X + 6, textY), LabelColor);
+
+            if (hasRef)
+            {
+                spriteBatch.DrawString(font, refText,
+                    new Vector2(nameEndX + 8, textY), Color.Gray);
+            }
         }
     }
 

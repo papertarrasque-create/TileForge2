@@ -98,7 +98,17 @@ public class QuestWorkspace : IWorkspace
         _listPanel.Draw(spriteBatch, font, state, renderer, sidebarBounds);
     }
 
-    public void OnEnter(EditorState state) { }
+    public void OnEnter(EditorState state)
+    {
+        var refCounts = new Dictionary<string, int>();
+        foreach (var quest in state.Quests)
+        {
+            var refs = CrossReferenceValidator.FindDialoguesReferencingQuest(quest.Id, state.Dialogues);
+            if (refs.Count > 0)
+                refCounts[quest.Id] = refs.Count;
+        }
+        _listPanel.ReferenceCounts = refCounts;
+    }
 
     public void OnExit(EditorState state)
     {
