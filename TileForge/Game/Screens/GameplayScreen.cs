@@ -29,6 +29,8 @@ public class GameplayScreen : GameScreen
     private readonly EdgeTransitionResolver _edgeResolver;
     private readonly IDialogueLoader _dialogueLoader;
     private readonly GameLog _gameLog;
+    private readonly TriggerManager _triggerManager = new();
+    private readonly Dictionary<string, DialogueData> _dialogues;
     private IPathfinder _pathfinder;
     private BarkOverlay _activeBark;
 
@@ -74,6 +76,7 @@ public class GameplayScreen : GameScreen
         _getCanvasBounds = context.GetCanvasBounds;
         _edgeResolver = context.EdgeResolver;
         _dialogueLoader = context.DialogueLoader;
+        _dialogues = context.Dialogues;
         _gameLog = gameLog;
     }
 
@@ -980,46 +983,63 @@ public class GameplayScreen : GameScreen
 
         string flag = $"pickup_dialogue_shown:{instance.DefinitionName}";
         if (_gameStateManager.HasFlag(flag)) return;
-
         _gameStateManager.SetFlag(flag);
 
-        var dialogue = LoadDialogue(pickupDialogue);
-        dialogue ??= CreateInlineDialogue(instance.DefinitionName, pickupDialogue);
-        ShowDialogue(dialogue, instance, play);
+        // Route through TriggerManager if it's a dialogue_id reference
+        var props = new Dictionary<string, string>(instance.Properties);
+        if (!props.ContainsKey("dialogue_id") && !props.ContainsKey("dialogue"))
+            props["dialogue_id"] = pickupDialogue;
+
+        var evt = new TriggerEvent
+        {
+            Source = TriggerSource.Pickup,
+            EntityId = instance.Id,
+            Properties = props,
+        };
+
+        var result = _triggerManager.Fire(evt, _gameStateManager, _dialogues);
+
+        if (result == null)
+        {
+            // Fallback: try loading or inline
+            var dialogue = LoadDialogue(pickupDialogue);
+            dialogue ??= CreateInlineDialogue(instance.DefinitionName, pickupDialogue);
+            ShowDialogue(dialogue, instance, play);
+            return;
+        }
+
+        ShowDialogue(result.Dialogue, instance, play);
     }
 
     private bool TryShowDialogue(EntityInstance instance, PlayState play)
     {
-        // v1 fallback: check concluded_flag/concluded_dialogue
-        instance.Properties.TryGetValue("concluded_flag", out var concludedFlag);
-        if (!string.IsNullOrEmpty(concludedFlag) && _gameStateManager.HasFlag(concludedFlag))
+        var evt = new TriggerEvent
         {
-            instance.Properties.TryGetValue("concluded_dialogue", out var concludedValue);
-            if (!string.IsNullOrEmpty(concludedValue))
+            Source = TriggerSource.Interaction,
+            EntityId = instance.Id,
+            Properties = instance.Properties,
+        };
+
+        var result = _triggerManager.Fire(evt, _gameStateManager, _dialogues);
+
+        // Fallback: try loading dialogue if not in pre-loaded dictionary
+        if (result == null)
+        {
+            instance.Properties.TryGetValue("dialogue_id", out var dialogueId);
+            if (!string.IsNullOrEmpty(dialogueId) && !_dialogues.ContainsKey(dialogueId))
             {
-                var concluded = LoadDialogue(concludedValue);
-                concluded ??= CreateInlineDialogue(instance.DefinitionName, concludedValue);
-                ShowDialogue(concluded, instance, play);
-                return true;
+                var loaded = LoadDialogue(dialogueId);
+                if (loaded != null)
+                {
+                    _dialogues[dialogueId] = loaded;
+                    result = _triggerManager.Fire(evt, _gameStateManager, _dialogues);
+                }
             }
         }
 
-        // Resolve dialogue reference: dialogue_id preferred, dialogue as fallback
-        instance.Properties.TryGetValue("dialogue_id", out var dialogueValue);
-        if (string.IsNullOrEmpty(dialogueValue))
-            instance.Properties.TryGetValue("dialogue", out dialogueValue);
-        if (string.IsNullOrEmpty(dialogueValue))
-            return false;
+        if (result == null) return false;
 
-        // Try file-based dialogue first, fall back to inline text
-        var dialogue = LoadDialogue(dialogueValue);
-        dialogue ??= CreateInlineDialogue(instance.DefinitionName, dialogueValue);
-
-        // OneShot check: skip if already shown
-        if (dialogue.OneShot == true && _gameStateManager.HasFlag($"dialogue_shown:{dialogue.Id}"))
-            return false;
-
-        ShowDialogue(dialogue, instance, play);
+        ShowDialogue(result.Dialogue, instance, play);
         return true;
     }
 
