@@ -38,6 +38,19 @@ public class QuestLogScreen : GameScreen
         {
             ScreenManager.Pop();
         }
+
+        // Separate active and completed quests
+        _activeQuests.Clear();
+        _completedQuests.Clear();
+
+        foreach (var quest in _questManager.Quests)
+        {
+            var status = _questManager.GetQuestStatus(quest, _gameStateManager);
+            if (status == QuestStatus.Active)
+                _activeQuests.Add(quest);
+            else if (status == QuestStatus.Completed)
+                _completedQuests.Add(quest);
+        }
     }
 
     public override void Draw(SpriteBatch spriteBatch, SpriteFont font,
@@ -59,23 +72,7 @@ public class QuestLogScreen : GameScreen
         float indentMargin = leftMargin + 20f;
         float lineHeight = font.LineSpacing + 2f;
 
-        // Separate active and completed quests
-        _activeQuests.Clear();
-        _completedQuests.Clear();
-
-        foreach (var quest in _questManager.Quests)
-        {
-            var status = _questManager.GetQuestStatus(quest, _gameStateManager);
-            if (status == QuestStatus.Active)
-                _activeQuests.Add(quest);
-            else if (status == QuestStatus.Completed)
-                _completedQuests.Add(quest);
-        }
-
-        var activeQuests = _activeQuests;
-        var completedQuests = _completedQuests;
-
-        if (activeQuests.Count == 0 && completedQuests.Count == 0)
+        if (_activeQuests.Count == 0 && _completedQuests.Count == 0)
         {
             var emptyText = "No quests";
             var emptySize = font.MeasureString(emptyText);
@@ -87,17 +84,17 @@ public class QuestLogScreen : GameScreen
 
         // Count total content lines for scroll clamping
         int totalLines = 0;
-        foreach (var quest in activeQuests)
+        foreach (var quest in _activeQuests)
         {
             totalLines++; // quest name
             if (!string.IsNullOrEmpty(quest.Description))
                 totalLines++;
             totalLines += quest.Objectives.Count;
         }
-        if (completedQuests.Count > 0)
+        if (_completedQuests.Count > 0)
         {
             totalLines++; // "-- Completed --" header
-            totalLines += completedQuests.Count;
+            totalLines += _completedQuests.Count;
         }
 
         int visibleLines = (int)((canvasBounds.Bottom - contentStartY) / lineHeight);
@@ -106,7 +103,7 @@ public class QuestLogScreen : GameScreen
         float y = contentStartY - _menu.ScrollOffset * lineHeight;
 
         // Active quests
-        foreach (var quest in activeQuests)
+        foreach (var quest in _activeQuests)
         {
             spriteBatch.DrawString(font, quest.Name, new Vector2(leftMargin, y), Color.White);
             y += lineHeight;
@@ -132,14 +129,14 @@ public class QuestLogScreen : GameScreen
         }
 
         // Completed quests
-        if (completedQuests.Count > 0)
+        if (_completedQuests.Count > 0)
         {
             y += 8f;
             spriteBatch.DrawString(font, "-- Completed --",
                 new Vector2(leftMargin, y), Color.DarkGray);
             y += lineHeight + 4f;
 
-            foreach (var quest in completedQuests)
+            foreach (var quest in _completedQuests)
             {
                 spriteBatch.DrawString(font, $"{quest.Name} (Complete)",
                     new Vector2(leftMargin, y), Color.DarkGray);

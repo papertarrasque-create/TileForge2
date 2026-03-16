@@ -94,6 +94,7 @@ public class DialogueTreeEditor
     private Rectangle _treeRect;
     private Rectangle _propsRect;
     private SpriteFont _cachedFont;
+    private Point _cachedMousePos;
 
     // === Constants ===
     private const int HeaderH = LayoutConstants.DialogueTreeHeaderHeight;
@@ -184,6 +185,7 @@ public class DialogueTreeEditor
                        List<QuestDefinition> quests = null,
                        List<TileGroup> groups = null)
     {
+        _cachedMousePos = new Point(mouse.X, mouse.Y);
         if (font != null) _cachedFont = font;
 
         // Update cursor blink for all text fields
@@ -707,7 +709,6 @@ public class DialogueTreeEditor
         int startY = _treeScroll.BeginScroll(sb, scrollViewport);
 
         int y = startY;
-        var ms = Mouse.GetState();
 
         for (int i = 0; i < _flatRows.Count; i++)
         {
@@ -716,7 +717,7 @@ public class DialogueTreeEditor
             _treeRowRects.Add(rowRect);
 
             bool isSelected = i == _selectedRowIndex;
-            bool isHovered = rowRect.Contains(ms.X, ms.Y);
+            bool isHovered = rowRect.Contains(_cachedMousePos);
 
             // Row background
             if (isSelected)
@@ -1700,11 +1701,10 @@ public class DialogueTreeEditor
 
     // === UI Helpers ===
 
-    private static void DrawButton(SpriteBatch sb, SpriteFont font, Renderer renderer,
+    private void DrawButton(SpriteBatch sb, SpriteFont font, Renderer renderer,
         Rectangle rect, string label, Color bg, Color hoverBg)
     {
-        var ms = Mouse.GetState();
-        bool hovered = rect.Contains(ms.X, ms.Y);
+        bool hovered = rect.Contains(_cachedMousePos);
         renderer.DrawRect(sb, rect, hovered ? hoverBg : bg);
         var size = font.MeasureString(label);
         sb.DrawString(font, label,

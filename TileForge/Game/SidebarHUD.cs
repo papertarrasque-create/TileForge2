@@ -23,6 +23,10 @@ public class SidebarHUD
     private int _lastLogVersion = -1;
     private bool _autoScroll = true;
 
+    // Reusable collections to avoid per-frame allocations
+    private readonly Dictionary<string, int> _inventoryCounts = new();
+    private readonly List<(string Text, Color Color)> _visualLines = new();
+
     // Cached stat strings to avoid per-frame allocation
     private int _cachedHP = -1, _cachedMaxHP = -1;
     private int _cachedPoise = -1, _cachedMaxPoise = -1;
@@ -326,12 +330,13 @@ public class SidebarHUD
         }
 
         // Group identical items and show count
-        var counts = new Dictionary<string, int>();
+        _inventoryCounts.Clear();
         foreach (var item in inventory)
         {
-            if (!counts.ContainsKey(item)) counts[item] = 0;
-            counts[item]++;
+            if (!_inventoryCounts.ContainsKey(item)) _inventoryCounts[item] = 0;
+            _inventoryCounts[item]++;
         }
+        var counts = _inventoryCounts;
 
         int maxItems = 8; // Show at most 8 item types to leave room for log
         int shown = 0;
@@ -367,7 +372,8 @@ public class SidebarHUD
         if (_autoScroll)
         {
             // Build visual lines backwards from the last entry to fill the viewport
-            var visualLines = new List<(string Text, Color Color)>();
+            _visualLines.Clear();
+            var visualLines = _visualLines;
             bool hasOlder = false;
 
             for (int i = _log.Count - 1; i >= 0; i--)
@@ -413,7 +419,8 @@ public class SidebarHUD
         else
         {
             // Manual scroll: render forward from _logScrollOffset
-            var visualLines = new List<(string Text, Color Color)>();
+            _visualLines.Clear();
+            var visualLines = _visualLines;
             bool hasMore = false;
 
             int startEntry = Math.Clamp(_logScrollOffset, 0, _log.Count);

@@ -117,7 +117,10 @@ public class TextInputField
 
         var gd = spriteBatch.GraphicsDevice;
         var prevScissor = gd.ScissorRectangle;
-        var prevRasterizer = gd.RasterizerState;
+        // Check if caller was already using scissor clipping so we restore the correct state.
+        // gd.RasterizerState may be stale from a prior SpriteBatch flush, so we check the flag
+        // and use a known-good rasterizer object for restoration.
+        bool callerUsedScissor = gd.RasterizerState?.ScissorTestEnable == true;
         spriteBatch.End();
         spriteBatch.Begin(samplerState: SamplerState.PointClamp, rasterizerState: _scissorRasterizer);
         var fieldClip = new Rectangle(bounds.X + pad, bounds.Y, (int)visibleWidth, bounds.Height);
@@ -135,7 +138,8 @@ public class TextInputField
         }
 
         spriteBatch.End();
-        spriteBatch.Begin(samplerState: SamplerState.PointClamp, rasterizerState: prevRasterizer);
+        var restoreRasterizer = callerUsedScissor ? _scissorRasterizer : null;
+        spriteBatch.Begin(samplerState: SamplerState.PointClamp, rasterizerState: restoreRasterizer);
         gd.ScissorRectangle = prevScissor;
     }
 

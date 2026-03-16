@@ -37,11 +37,11 @@ All planned phases G1-G14 are complete. Editor phases R1-R4 and P1-P3 are comple
 
 Original review identified 5 issues. Re-assessment after dialogue 2.0 and v1 cleanup work:
 
-1. **Logic in Draw methods** -- Originally 16 violations (C-), now **4 remaining**. SettingsScreen, SaveLoadScreen, InventoryScreen, PauseScreen, GameOverScreen all refactored. Remaining: QuestLogScreen (quest filtering in Draw -- high), PanelDock (3x Mouse.GetState in Draw -- high), DialogueTreeEditor (mouse hover -- moderate), RecentFilesDialog (hit-test cache -- moderate).
+1. ~~**Logic in Draw methods**~~ -- Originally 16 violations (C-), **all resolved**. Final 4 fixed: QuestLogScreen (filtering moved to Update), PanelDock (Mouse.GetState cached in Update), DialogueTreeEditor (mouse hover uses cached position), RecentFilesDialog (rect computation extracted to Update).
 2. ~~**No layer depth system**~~ -- **Removed as issue.** Deferred mode with painter's algorithm is a deliberate design choice required by scissor clipping (TextInputField, DialogueTreeEditor). EntityRenderOrder handles layer boundaries. No Y-sorting or projectiles in current feature set.
 3. **Excessive SpriteBatch Begin/End pairs** (D grade) -- Still present. TextInputField creates 2 extra pairs per Draw call. No easy fix without rearchitecting the scissor approach. Low runtime impact.
-4. **Per-frame allocations** -- Original issues mostly fixed. SyncEntityRenderState dict (fixed, reuse pattern), AP/stats text (fixed, cached), InventoryScreen LINQ (gated by dirty flag), SettingsScreen dict clone (gated by dirty flag). **New issues:** SidebarHUD allocates `new Dictionary` for inventory and `new List` for message log every Draw call -- easy fix using same Clear() pattern.
-5. **TextInputField rasterizer state bug** -- Still present. Restores potentially wrong rasterizer state when called from non-scissor context. Cosmetic impact only.
+4. ~~**Per-frame allocations**~~ -- **All resolved.** SidebarHUD Dictionary/List now use Clear() reuse pattern. Previous fixes: SyncEntityRenderState dict, AP/stats text cached, InventoryScreen LINQ gated by dirty flag, SettingsScreen dict clone gated by dirty flag.
+5. ~~**TextInputField rasterizer state bug**~~ -- **Fixed.** Now checks caller's scissor state and restores with a known-good rasterizer object instead of relying on potentially stale device state.
 
 ### Architectural Concerns
 
@@ -59,13 +59,11 @@ Original review identified 5 issues. Re-assessment after dialogue 2.0 and v1 cle
 - Property bag extensibility has avoided class proliferation
 
 **Weaknesses:**
-- 4 remaining Draw-side logic violations (down from 16)
-- SidebarHUD has 2 new per-frame allocations (easy fix)
-- TextInputField scissor clipping creates excess SpriteBatch pairs and has rasterizer bug
+- TextInputField scissor clipping creates excess SpriteBatch pairs (cosmetic, low impact)
 - Immediate-mode UI means no retained widget state -- some patterns are awkward
 - Large files (GameplayScreen, TileForgeGame.cs)
 
-**Overall:** The architecture has held up well through rapid feature development. Most original code review debt has been addressed. Remaining issues are localized (SidebarHUD allocations, 4 Draw-side violations) rather than systemic. The core data model, state management, and dialogue/quest systems are solid and validated end-to-end.
+**Overall:** The architecture has held up well through rapid feature development. All original code review debt has been addressed (Draw-side logic violations, per-frame allocations, rasterizer bug). Only the SpriteBatch Begin/End pair count remains as a known cosmetic issue. The core data model, state management, and dialogue/quest systems are solid and validated end-to-end.
 
 ## Open Questions
 

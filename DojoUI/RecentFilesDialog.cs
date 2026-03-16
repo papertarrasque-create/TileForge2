@@ -31,10 +31,12 @@ public class RecentFilesDialog : IDialog
     private int _hoverIndex = -1;
     private int _scrollOffset;
 
-    // Cached item rectangles from Draw, used for hit-testing in Update (Option B: one-frame latency).
+    // Cached item rectangles for hit-testing (computed in Update and Draw from cached screen dims).
     private readonly List<(int Index, Rectangle Rect)> _cachedItemRects = new();
     private MouseState _prevMouse;
     private bool _mouseInitialized;
+    private int _cachedScreenW;
+    private int _cachedScreenH;
 
     public bool IsComplete { get; private set; }
     public bool WasCancelled { get; private set; }
@@ -45,6 +47,25 @@ public class RecentFilesDialog : IDialog
     public RecentFilesDialog(List<string> files)
     {
         _files = files ?? new();
+    }
+
+    private void ComputeItemRects()
+    {
+        _cachedItemRects.Clear();
+        if (_cachedScreenW == 0 || _cachedScreenH == 0) return;
+
+        int maxVisible = Math.Min(_files.Count, 8);
+        int panelHeight = TitleHeight + maxVisible * ItemHeight + Padding * 2 + 20;
+        int px = (_cachedScreenW - PanelWidth) / 2;
+        int py = (_cachedScreenH - panelHeight) / 2;
+        int itemY = py + TitleHeight;
+
+        for (int i = _scrollOffset; i < _files.Count && i - _scrollOffset < maxVisible; i++)
+        {
+            var itemRect = new Rectangle(px + Padding, itemY, PanelWidth - Padding * 2, ItemHeight);
+            _cachedItemRects.Add((i, itemRect));
+            itemY += ItemHeight;
+        }
     }
 
     public void Update(KeyboardState keyboard, KeyboardState prevKeyboard, GameTime gameTime)
@@ -63,7 +84,10 @@ public class RecentFilesDialog : IDialog
             _mouseInitialized = true;
         }
 
-        // Hit-test against cached item rects from previous Draw
+        // Recompute item rects from cached screen dimensions
+        ComputeItemRects();
+
+        // Hit-test against item rects
         _hoverIndex = -1;
         foreach (var (index, rect) in _cachedItemRects)
         {
@@ -92,6 +116,9 @@ public class RecentFilesDialog : IDialog
     public void Draw(SpriteBatch spriteBatch, SpriteFont font, Renderer renderer,
                      int screenWidth, int screenHeight, GameTime gameTime)
     {
+        _cachedScreenW = screenWidth;
+        _cachedScreenH = screenHeight;
+
         renderer.DrawRect(spriteBatch, new Rectangle(0, 0, screenWidth, screenHeight), OverlayColor);
 
         int maxVisible = Math.Min(_files.Count, 8);
@@ -106,14 +133,15 @@ public class RecentFilesDialog : IDialog
         // Title
         spriteBatch.DrawString(font, "Recent Projects", new Vector2(px + Padding, py + Padding), TitleColor);
 
-        // Items — cache rects for hit-testing in Update
+        // Items — use rects from _cachedItemRects (computed in Update)
+        int itemIdx = 0;
         int itemY = py + TitleHeight;
-        _cachedItemRects.Clear();
 
         for (int i = _scrollOffset; i < _files.Count && i - _scrollOffset < maxVisible; i++)
         {
-            var itemRect = new Rectangle(px + Padding, itemY, PanelWidth - Padding * 2, ItemHeight);
-            _cachedItemRects.Add((i, itemRect));
+            var itemRect = itemIdx < _cachedItemRects.Count ? _cachedItemRects[itemIdx].Rect
+                : new Rectangle(px + Padding, itemY, PanelWidth - Padding * 2, ItemHeight);
+            itemIdx++;
             bool hover = _hoverIndex == i;
 
             renderer.DrawRect(spriteBatch, itemRect, hover ? ItemHoverColor : ItemColor);

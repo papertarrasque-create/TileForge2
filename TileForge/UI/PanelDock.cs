@@ -39,6 +39,9 @@ public class PanelDock
     private int _resizeDragStartX;
     private int _resizeDragStartWidth;
 
+    // Cached mouse state from Update for use in Draw
+    private MouseState _cachedMouse;
+
     public List<Panel> Panels => _panels;
 
     public void Update(EditorState state, MouseState mouse, MouseState prevMouse,
@@ -57,6 +60,7 @@ public class PanelDock
                        InputEvent input, SpriteFont font, Rectangle bounds, GameTime gameTime,
                        int screenW, int screenH)
     {
+        _cachedMouse = mouse;
         bool leftPressed = mouse.LeftButton == ButtonState.Pressed && prevMouse.LeftButton == ButtonState.Released;
         bool leftHeld = mouse.LeftButton == ButtonState.Pressed;
         bool leftReleased = mouse.LeftButton == ButtonState.Released && prevMouse.LeftButton == ButtonState.Pressed;
@@ -186,7 +190,7 @@ public class PanelDock
         if (_isDragging && _dragIndex >= 0 && _dragIndex < _panels.Count)
         {
             // Insertion indicator
-            int insertIdx = GetDragInsertIndex(Mouse.GetState().Y);
+            int insertIdx = GetDragInsertIndex(_cachedMouse.Y);
             int indicatorY = GetInsertIndicatorY(insertIdx);
             renderer.DrawRect(spriteBatch,
                 new Rectangle(_bounds.X + 4, indicatorY - 1, _bounds.Width - 8, 2),
@@ -194,7 +198,7 @@ public class PanelDock
 
             // Ghost header
             var dragPanel = _panels[_dragIndex];
-            int ghostY = Mouse.GetState().Y - (_dragMouseStartY - _dragStartBoundsY);
+            int ghostY = _cachedMouse.Y - (_dragMouseStartY - _dragStartBoundsY);
             var savedBounds = dragPanel.HeaderBounds;
             dragPanel.HeaderBounds = new Rectangle(savedBounds.X, ghostY, savedBounds.Width, Panel.HeaderHeight);
             dragPanel.DrawHeader(spriteBatch, font, renderer);
@@ -202,11 +206,10 @@ public class PanelDock
         }
 
         // Resize indicator at right edge
-        var ms = Mouse.GetState();
         int grabZone = LayoutConstants.PanelDockResizeGrabSize;
-        bool nearEdge = ms.X >= _bounds.Right - grabZone
-            && ms.X <= _bounds.Right + grabZone
-            && ms.Y >= _bounds.Y && ms.Y <= _bounds.Bottom;
+        bool nearEdge = _cachedMouse.X >= _bounds.Right - grabZone
+            && _cachedMouse.X <= _bounds.Right + grabZone
+            && _cachedMouse.Y >= _bounds.Y && _cachedMouse.Y <= _bounds.Bottom;
         if (nearEdge || _isResizeDragging)
         {
             renderer.DrawRect(spriteBatch,
