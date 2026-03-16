@@ -115,32 +115,48 @@ public class TextInputField
         if (IsFocused && cursorX > visibleWidth)
             scrollOffset = cursorX - visibleWidth;
 
-        var gd = spriteBatch.GraphicsDevice;
-        var prevScissor = gd.ScissorRectangle;
-        // Check if caller was already using scissor clipping so we restore the correct state.
-        // gd.RasterizerState may be stale from a prior SpriteBatch flush, so we check the flag
-        // and use a known-good rasterizer object for restoration.
-        bool callerUsedScissor = gd.RasterizerState?.ScissorTestEnable == true;
-        spriteBatch.End();
-        spriteBatch.Begin(samplerState: SamplerState.PointClamp, rasterizerState: _scissorRasterizer);
-        var fieldClip = new Rectangle(bounds.X + pad, bounds.Y, (int)visibleWidth, bounds.Height);
-        gd.ScissorRectangle = Rectangle.Intersect(prevScissor, fieldClip);
+        float textWidth = font.MeasureString(_text).X;
+        bool needsClipping = textWidth > visibleWidth || scrollOffset > 0;
 
-        var textPos = new Vector2(bounds.X + pad - scrollOffset, textY);
-        spriteBatch.DrawString(font, _text, textPos, TextColor);
-
-        if (IsFocused && _cursorVisible)
+        if (needsClipping)
         {
-            float cursorScreenX = bounds.X + pad + cursorX - scrollOffset;
-            float cursorY = bounds.Y + 4;
-            float cursorH = bounds.Height - 8;
-            renderer.DrawRect(spriteBatch, new Rectangle((int)cursorScreenX, (int)cursorY, 1, (int)cursorH), CursorColor);
-        }
+            var gd = spriteBatch.GraphicsDevice;
+            var prevScissor = gd.ScissorRectangle;
+            bool callerUsedScissor = gd.RasterizerState?.ScissorTestEnable == true;
+            spriteBatch.End();
+            spriteBatch.Begin(samplerState: SamplerState.PointClamp, rasterizerState: _scissorRasterizer);
+            var fieldClip = new Rectangle(bounds.X + pad, bounds.Y, (int)visibleWidth, bounds.Height);
+            gd.ScissorRectangle = Rectangle.Intersect(prevScissor, fieldClip);
 
-        spriteBatch.End();
-        var restoreRasterizer = callerUsedScissor ? _scissorRasterizer : null;
-        spriteBatch.Begin(samplerState: SamplerState.PointClamp, rasterizerState: restoreRasterizer);
-        gd.ScissorRectangle = prevScissor;
+            var textPos = new Vector2(bounds.X + pad - scrollOffset, textY);
+            spriteBatch.DrawString(font, _text, textPos, TextColor);
+
+            if (IsFocused && _cursorVisible)
+            {
+                float cursorScreenX = bounds.X + pad + cursorX - scrollOffset;
+                float cursorY = bounds.Y + 4;
+                float cursorH = bounds.Height - 8;
+                renderer.DrawRect(spriteBatch, new Rectangle((int)cursorScreenX, (int)cursorY, 1, (int)cursorH), CursorColor);
+            }
+
+            spriteBatch.End();
+            var restoreRasterizer = callerUsedScissor ? _scissorRasterizer : null;
+            spriteBatch.Begin(samplerState: SamplerState.PointClamp, rasterizerState: restoreRasterizer);
+            gd.ScissorRectangle = prevScissor;
+        }
+        else
+        {
+            var textPos = new Vector2(bounds.X + pad, textY);
+            spriteBatch.DrawString(font, _text, textPos, TextColor);
+
+            if (IsFocused && _cursorVisible)
+            {
+                float cursorScreenX = bounds.X + pad + cursorX;
+                float cursorY = bounds.Y + 4;
+                float cursorH = bounds.Height - 8;
+                renderer.DrawRect(spriteBatch, new Rectangle((int)cursorScreenX, (int)cursorY, 1, (int)cursorH), CursorColor);
+            }
+        }
     }
 
     /// <summary>
