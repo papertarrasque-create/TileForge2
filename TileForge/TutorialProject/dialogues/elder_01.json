@@ -1,5 +1,24 @@
 {
   "id": "elder_01",
+  "routes": [
+    {
+      "startNode": "node_5",
+      "conditions": [
+        {
+          "type": "has_flag",
+          "flag": "quest_caves_accepted"
+        },
+        {
+          "type": "quest_active",
+          "value": "cave_investigation"
+        }
+      ]
+    },
+    {
+      "startNode": "start"
+    },
+    {}
+  ],
   "nodes": [
     {
       "id": "start",
@@ -15,8 +34,8 @@
           "nextNodeId": "decline"
         }
       ],
-      "editorX": 56,
-      "editorY": -174
+      "editorX": 87,
+      "editorY": -388
     },
     {
       "id": "explain",
@@ -26,37 +45,72 @@
         {
           "text": "I will help!",
           "nextNodeId": "quest_accept",
-          "setsFlag": "quest_caves_accepted"
+          "actions": [
+            {
+              "type": "set_flag",
+              "value": "quest_accepted_cave"
+            }
+          ]
         },
         {
           "text": "That sounds dangerous...",
           "nextNodeId": "quest_decline"
         }
       ],
-      "editorX": 398,
-      "editorY": -71
+      "editorX": 432,
+      "editorY": -361
     },
     {
       "id": "decline",
       "speaker": "Village Elder",
       "text": "Safe travels then. Return if you change your mind.",
-      "editorX": 233,
-      "editorY": 302
+      "editorX": 272,
+      "editorY": -217
     },
     {
       "id": "quest_accept",
       "speaker": "Village Elder",
       "text": "Thank you! Take this healing potion. The cave entrance is to the north.",
-      "setsFlag": "received_potion",
-      "editorX": 758,
-      "editorY": -150
+      "actions": [
+        {
+          "type": "set_flag",
+          "value": "received_potion"
+        },
+        {
+          "type": "start_quest",
+          "value": "cave_investigation"
+        },
+        {
+          "type": "set_flag",
+          "value": "quest_accept_flag"
+        }
+      ],
+      "editorX": 772,
+      "editorY": -322
     },
     {
       "id": "quest_decline",
       "speaker": "Village Elder",
       "text": "I understand. But please, reconsider. We have little time.",
-      "editorX": 626,
-      "editorY": 161
+      "editorX": 695,
+      "editorY": -186
+    },
+    {
+      "id": "node_5",
+      "speaker": "elder",
+      "text": "Back so soon?",
+      "conditions": [
+        {
+          "type": "has_flag",
+          "flag": "quest_accepted_cave"
+        },
+        {
+          "type": "quest_active",
+          "value": "cave_investigation"
+        }
+      ],
+      "editorX": 158,
+      "editorY": -26
     }
   ]
 }
