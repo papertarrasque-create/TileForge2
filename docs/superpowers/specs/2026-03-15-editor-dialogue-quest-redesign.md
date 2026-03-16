@@ -57,6 +57,15 @@ IWorkspace interface:
   OnExit()
 ```
 
+### Workspace Lifecycle
+
+All four workspaces are **pre-instantiated** at startup and live for the editor session. They are not created/destroyed on mode switch.
+
+- `OnEnter()` is called when switching TO this workspace (before the first `Update()` in the new mode). Use for refreshing data (e.g., DialogueWorkspace reloads dialogue list, QuestWorkspace rebuilds cross-references).
+- `OnExit()` is called when switching AWAY from this workspace (after the last `Draw()` in the old mode). Use for saving unsaved edits, releasing transient state.
+- `Update()` and `Draw()` are only called on the active workspace.
+- Only one workspace is active at a time. `EditorState.ActiveWorkspace` is the single source of truth.
+
 ### Implementation Details
 
 - `EditorState` gets `ActiveWorkspace` property with `WorkspaceChanged` event
@@ -165,8 +174,9 @@ class QuestDefinition
     string Id;
     string Name;
     string Description;
-    string StartFlag;               // auto: quest_started:{id}
-    string CompletionFlag;          // auto: quest_complete:{id}
+    // StartFlag and CompletionFlag become computed properties:
+    string StartFlag => QuestConstants.StartedFlag(Id);       // quest_started:{id}
+    string CompletionFlag => QuestConstants.CompleteFlag(Id);  // quest_complete:{id}
     List<QuestObjective> Objectives;
     List<DialogueAction> Rewards;   // same type as dialogue node actions
 }
@@ -182,7 +192,6 @@ class QuestState
     string QuestId;
     QuestStatus Status;                    // NotStarted, Active, Complete
     HashSet<string> CompletedObjectives;
-    int StartedAtTurn;                     // game turn when started
 }
 
 enum QuestStatus { NotStarted, Active, Complete }
@@ -208,7 +217,7 @@ public static class QuestConstants
 }
 ```
 
-Referenced everywhere instead of hardcoded strings.
+Referenced everywhere instead of hardcoded strings. This includes updating `ConditionEvaluator` and `ActionExecutor` in `DialogueRuntime.cs`, which currently hardcode these prefixes as inline string literals.
 
 ### Cross-References
 
@@ -219,6 +228,7 @@ Quest detail view shows a "Referenced by" section listing dialogues with `start_
 Existing `quests.json` with old `QuestRewards { SetFlags, SetVariables }` auto-converts to `List<DialogueAction>` on load:
 - Each `SetFlags` entry becomes `{ Type: "set_flag", Value: flagName }`
 - Each `SetVariables` entry becomes `{ Type: "set_variable", Key: varName, Value: varValue }`
+- Existing `StartFlag`/`CompletionFlag` string values in JSON are ignored after migration (they become computed properties). Add `[JsonIgnore]` to prevent serialization; old values harmlessly ignored on deserialization.
 
 ---
 
@@ -248,20 +258,25 @@ enum TriggerSource { Interaction, Pickup, StepOn, Proximity, SkillCheck, Timer }
 
 class TriggerResult
 {
-    TriggerResultType Type;                 // Dialogue, MapTransition, Combat, Custom
-    DialogueData? Dialogue;
-    string? StartNodeId;                    // resolved from routes
+    DialogueData Dialogue;
+    string StartNodeId;                     // resolved from routes
 }
 
-enum TriggerResultType { Dialogue, MapTransition, Combat, Custom }
 ```
+
+### Scope
+
+TriggerManager handles **dialogue resolution only**: reading `dialogue_id`/`dialogue` from properties, loading the dialogue, checking oneShot, evaluating routes, and resolving the start node. It returns a `TriggerResult` containing the resolved dialogue and start node, or null if no dialogue applies.
+
+Non-dialogue behaviors (map transitions, combat, item collection) remain in GameplayScreen. TriggerManager does not handle those -- they are entity-type-specific side effects, not trigger resolution. The `TriggerSource` enum exists so TriggerManager can distinguish context (e.g., a Pickup trigger checks `on_pickup_dialogue` while an Interaction trigger checks `dialogue_id`), not to handle all event types.
 
 ### Flow
 
 1. GameplayScreen detects event (interact, step-on, pickup, etc.)
 2. Wraps in `TriggerEvent` with source type and entity/tile properties
 3. `TriggerManager.Fire()` reads `dialogue_id`/`dialogue` from properties, loads dialogue, checks oneShot, evaluates routes, resolves start node
-4. Returns `TriggerResult` -- GameplayScreen dispatches to appropriate screen based on dialogue type
+4. Returns `TriggerResult` (or null) -- GameplayScreen dispatches to appropriate screen based on dialogue type
+5. GameplayScreen then handles non-dialogue side effects (collect item, trigger transition, etc.) as before
 
 ### What This Replaces
 - Per-entity-type dialogue wiring in `CheckEntityInteractionAt()` collapses to one `TriggerManager.Fire()` call
@@ -294,7 +309,8 @@ enum TriggerResultType { Dialogue, MapTransition, Combat, Custom }
 - Renders text bubble at entity world position (translated through camera)
 - Fades out after duration (default 2s)
 - Supports random node selection via `"random"` tag
-- No input blocking -- player can keep moving
+- No input blocking -- player can keep moving. BarkOverlay is drawn by GameplayScreen directly (not pushed onto ScreenManager stack) to avoid blocking input to the gameplay layer
+- Actions on bark nodes fire immediately on display (before player can move away)
 - Routes and conditions still apply (barks change based on game state)
 
 ### InspectOverlay
@@ -393,6 +409,23 @@ Exit Play Mode (keep):
   GameWorldView --> PlayModeController.ApplyToEditor() --> EditorState
   Reverse mapping writes runtime changes back to editor
 ```
+
+### ApplyToEditor() Reverse Mapping (Keep Changes)
+
+When the player exits play mode and chooses "keep changes," runtime state must map back to the editor. The mapping is **entity positions only** -- the runtime does not create/delete entities or modify group definitions.
+
+Fields mapped back from `GameWorldView` to `EditorState`:
+- `EntityView.X`, `EntityView.Y` -- entity positions (player may have moved entities via push mechanics or scripts)
+- `EntityView.Properties` -- runtime may have modified properties (e.g., `dialogue_id` changed by an action)
+
+Fields **not** mapped back (runtime-only state):
+- `GameStateManager` flags/variables/inventory -- these are game save state, not editor state
+- `QuestState` -- runtime progress, not editor data
+- Tile changes -- the runtime does not modify tile layers
+
+Entity creation/deletion during play mode is not supported. The entity list in `GameWorldView` is immutable (same IDs as editor). If future features need runtime entity spawning, they would use a separate `RuntimeEntities` list that is discarded on exit.
+
+Round-trip test: `BuildWorldView()` then `ApplyToEditor()` with no play-mode changes must produce identical `EditorState`.
 
 ### What This Fixes
 - `GameplayScreen` no longer imports or references `EditorState`
