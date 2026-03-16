@@ -50,21 +50,19 @@ public class ProjectContextTests
             new()
             {
                 Id = "q1",
-                StartFlag = "quest_started",
-                CompletionFlag = "quest_done",
                 Objectives = new List<QuestObjective>
                 {
                     new() { Type = "flag", Flag = "killed_boss" }
                 },
-                Rewards = new QuestRewards
+                Rewards = new List<DialogueAction>
                 {
-                    SetFlags = new List<string> { "reward_flag" }
+                    new() { Type = "set_flag", Value = "reward_flag" }
                 }
             }
         };
         var flags = ctx.GetKnownFlags(quests, null);
-        Assert.Contains("quest_started", flags);
-        Assert.Contains("quest_done", flags);
+        Assert.Contains("quest_started:q1", flags);
+        Assert.Contains("quest_complete:q1", flags);
         Assert.Contains("killed_boss", flags);
         Assert.Contains("reward_flag", flags);
     }
@@ -96,11 +94,13 @@ public class ProjectContextTests
         var ctx = new ProjectContext(() => null);
         var quests = new List<QuestDefinition>
         {
-            new() { Id = "q1", StartFlag = "shared_flag", CompletionFlag = "shared_flag" }
+            new() { Id = "q1" }
         };
         var flags = ctx.GetKnownFlags(quests, null);
-        Assert.Single(flags);
-        Assert.Equal("shared_flag", flags[0]);
+        // Computed StartFlag and CompletionFlag are different, so 2 flags
+        Assert.Equal(2, flags.Length);
+        Assert.Contains("quest_started:q1", flags);
+        Assert.Contains("quest_complete:q1", flags);
     }
 
     [Fact]
@@ -124,9 +124,9 @@ public class ProjectContextTests
                 {
                     new() { Type = "var>=", Variable = "kill_count" }
                 },
-                Rewards = new QuestRewards
+                Rewards = new List<DialogueAction>
                 {
-                    SetVariables = new Dictionary<string, string> { { "gold", "100" } }
+                    new() { Type = "set_variable", Key = "gold", Value = "100" }
                 }
             }
         };
@@ -158,9 +158,10 @@ public class ProjectContextTests
     public void GetKnownFlags_SkipsEmptyValues()
     {
         var ctx = new ProjectContext(() => null);
+        // Quest with null Id has null computed flags, which should be skipped
         var quests = new List<QuestDefinition>
         {
-            new() { Id = "q1", StartFlag = "", CompletionFlag = "  " }
+            new() { Id = null }
         };
         var flags = ctx.GetKnownFlags(quests, null);
         Assert.Empty(flags);

@@ -24,7 +24,7 @@ public class QuestFileManagerTests
     }
 
     [Fact]
-    public void ToJson_SingleQuest_UsesSnakeCaseKeys()
+    public void ToJson_SingleQuest_DoesNotSerializeComputedFlags()
     {
         var quests = new List<QuestDefinition>
         {
@@ -32,16 +32,15 @@ public class QuestFileManagerTests
             {
                 Id = "test_quest",
                 Name = "Test",
-                StartFlag = "quest_started",
-                CompletionFlag = "quest_done",
                 Objectives = new List<QuestObjective>(),
             }
         };
 
         string json = QuestFileManager.ToJson(quests);
 
-        Assert.Contains("\"start_flag\"", json);
-        Assert.Contains("\"completion_flag\"", json);
+        // StartFlag and CompletionFlag are [JsonIgnore] and should not appear in output
+        Assert.DoesNotContain("\"start_flag\"", json);
+        Assert.DoesNotContain("\"completion_flag\"", json);
         Assert.DoesNotContain("\"StartFlag\"", json);
         Assert.DoesNotContain("\"CompletionFlag\"", json);
     }
@@ -82,20 +81,21 @@ public class QuestFileManagerTests
                 Id = "q1",
                 Name = "Quest",
                 Objectives = new List<QuestObjective>(),
-                Rewards = new QuestRewards
+                Rewards = new List<DialogueAction>
                 {
-                    SetFlags = new List<string> { "flag_a", "flag_b" },
-                    SetVariables = new Dictionary<string, string> { { "gold", "100" } }
+                    new() { Type = "set_flag", Value = "flag_a" },
+                    new() { Type = "set_flag", Value = "flag_b" },
+                    new() { Type = "set_variable", Key = "gold", Value = "100" },
                 }
             }
         };
 
         string json = QuestFileManager.ToJson(quests);
 
-        Assert.Contains("\"set_flags\"", json);
+        Assert.Contains("\"set_flag\"", json);
         Assert.Contains("\"flag_a\"", json);
         Assert.Contains("\"flag_b\"", json);
-        Assert.Contains("\"set_variables\"", json);
+        Assert.Contains("\"set_variable\"", json);
         Assert.Contains("\"gold\"", json);
         Assert.Contains("\"100\"", json);
     }
@@ -110,18 +110,16 @@ public class QuestFileManagerTests
                 Id = "round_trip",
                 Name = "Round Trip Quest",
                 Description = "Test round trip",
-                StartFlag = "start_rt",
-                CompletionFlag = "complete_rt",
                 Objectives = new List<QuestObjective>
                 {
                     new() { Description = "Flag check", Type = "flag", Flag = "visited_cave" },
                     new() { Description = "Kill count", Type = "variable_gte", Variable = "kills", Value = 3 },
                     new() { Description = "Exact match", Type = "variable_eq", Variable = "score", Value = 10 },
                 },
-                Rewards = new QuestRewards
+                Rewards = new List<DialogueAction>
                 {
-                    SetFlags = new List<string> { "quest_done" },
-                    SetVariables = new Dictionary<string, string> { { "rep", "5" } }
+                    new() { Type = "set_flag", Value = "quest_done" },
+                    new() { Type = "set_variable", Key = "rep", Value = "5" },
                 }
             }
         };
@@ -134,8 +132,9 @@ public class QuestFileManagerTests
         Assert.Equal("round_trip", q.Id);
         Assert.Equal("Round Trip Quest", q.Name);
         Assert.Equal("Test round trip", q.Description);
-        Assert.Equal("start_rt", q.StartFlag);
-        Assert.Equal("complete_rt", q.CompletionFlag);
+        // Computed flags from Id
+        Assert.Equal("quest_started:round_trip", q.StartFlag);
+        Assert.Equal("quest_complete:round_trip", q.CompletionFlag);
 
         Assert.Equal(3, q.Objectives.Count);
         Assert.Equal("flag", q.Objectives[0].Type);
@@ -147,8 +146,12 @@ public class QuestFileManagerTests
         Assert.Equal(10, q.Objectives[2].Value);
 
         Assert.NotNull(q.Rewards);
-        Assert.Contains("quest_done", q.Rewards.SetFlags);
-        Assert.Equal("5", q.Rewards.SetVariables["rep"]);
+        Assert.Equal(2, q.Rewards.Count);
+        Assert.Equal("set_flag", q.Rewards[0].Type);
+        Assert.Equal("quest_done", q.Rewards[0].Value);
+        Assert.Equal("set_variable", q.Rewards[1].Type);
+        Assert.Equal("rep", q.Rewards[1].Key);
+        Assert.Equal("5", q.Rewards[1].Value);
     }
 
     [Fact]

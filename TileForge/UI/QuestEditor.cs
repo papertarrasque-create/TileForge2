@@ -531,19 +531,19 @@ public class QuestEditor
 
     private QuestDefinition BuildResult()
     {
+        var rewards = new List<DialogueAction>();
+        foreach (var flag in ParseRewardFlags(_rewardFlagsField.Text))
+            rewards.Add(new DialogueAction { Type = "set_flag", Value = flag });
+        foreach (var kvp in ParseRewardVariables(_rewardVariablesField.Text))
+            rewards.Add(new DialogueAction { Type = "set_variable", Key = kvp.Key, Value = kvp.Value });
+
         var quest = new QuestDefinition
         {
             Id = _idField.Text.Trim(),
             Name = _nameField.Text.Trim(),
             Description = _descriptionField.Text.Trim(),
-            StartFlag = _startFlagField.Text.Trim(),
-            CompletionFlag = _completionFlagField.Text.Trim(),
             Objectives = new List<QuestObjective>(),
-            Rewards = new QuestRewards
-            {
-                SetFlags = ParseRewardFlags(_rewardFlagsField.Text),
-                SetVariables = ParseRewardVariables(_rewardVariablesField.Text),
-            },
+            Rewards = rewards,
         };
 
         foreach (var obj in _objectives)
@@ -568,8 +568,6 @@ public class QuestEditor
         }
 
         if (string.IsNullOrEmpty(quest.Description)) quest.Description = null;
-        if (string.IsNullOrEmpty(quest.StartFlag)) quest.StartFlag = null;
-        if (string.IsNullOrEmpty(quest.CompletionFlag)) quest.CompletionFlag = null;
 
         return quest;
     }
@@ -622,16 +620,18 @@ public class QuestEditor
 
     // ---- Static helpers for reward text parsing (public for testability) ----
 
-    public static string FormatRewardFlags(QuestRewards rewards)
+    public static string FormatRewardFlags(List<DialogueAction> rewards)
     {
-        if (rewards?.SetFlags == null || rewards.SetFlags.Count == 0) return "";
-        return string.Join(", ", rewards.SetFlags);
+        if (rewards == null || rewards.Count == 0) return "";
+        var flags = rewards.Where(r => r.Type == "set_flag").Select(r => r.Value).ToList();
+        return flags.Count == 0 ? "" : string.Join(", ", flags);
     }
 
-    public static string FormatRewardVariables(QuestRewards rewards)
+    public static string FormatRewardVariables(List<DialogueAction> rewards)
     {
-        if (rewards?.SetVariables == null || rewards.SetVariables.Count == 0) return "";
-        return string.Join(", ", rewards.SetVariables.Select(kv => $"{kv.Key}={kv.Value}"));
+        if (rewards == null || rewards.Count == 0) return "";
+        var vars = rewards.Where(r => r.Type == "set_variable").Select(r => $"{r.Key}={r.Value}").ToList();
+        return vars.Count == 0 ? "" : string.Join(", ", vars);
     }
 
     public static List<string> ParseRewardFlags(string text)

@@ -103,9 +103,11 @@ public class QuestEditorTests
     [Fact]
     public void FormatRewardFlags_ListToCommaSeparated()
     {
-        var rewards = new QuestRewards
+        var rewards = new List<DialogueAction>
         {
-            SetFlags = new List<string> { "a", "b", "c" }
+            new() { Type = "set_flag", Value = "a" },
+            new() { Type = "set_flag", Value = "b" },
+            new() { Type = "set_flag", Value = "c" },
         };
         Assert.Equal("a, b, c", QuestEditor.FormatRewardFlags(rewards));
     }
@@ -113,7 +115,7 @@ public class QuestEditorTests
     [Fact]
     public void FormatRewardFlags_Empty_ReturnsEmptyString()
     {
-        var rewards = new QuestRewards();
+        var rewards = new List<DialogueAction>();
         Assert.Equal("", QuestEditor.FormatRewardFlags(rewards));
     }
 
@@ -128,9 +130,9 @@ public class QuestEditorTests
     [Fact]
     public void FormatRewardVariables_DictToKeyValueString()
     {
-        var rewards = new QuestRewards
+        var rewards = new List<DialogueAction>
         {
-            SetVariables = new Dictionary<string, string> { { "gold", "100" } }
+            new() { Type = "set_variable", Key = "gold", Value = "100" },
         };
         Assert.Equal("gold=100", QuestEditor.FormatRewardVariables(rewards));
     }
@@ -138,7 +140,7 @@ public class QuestEditorTests
     [Fact]
     public void FormatRewardVariables_Empty_ReturnsEmptyString()
     {
-        var rewards = new QuestRewards();
+        var rewards = new List<DialogueAction>();
         Assert.Equal("", QuestEditor.FormatRewardVariables(rewards));
     }
 
@@ -153,35 +155,35 @@ public class QuestEditorTests
     [Fact]
     public void FormatAndParseFlags_RoundTrip()
     {
-        var original = new QuestRewards
+        var original = new List<DialogueAction>
         {
-            SetFlags = new List<string> { "flag1", "flag2", "flag3" }
+            new() { Type = "set_flag", Value = "flag1" },
+            new() { Type = "set_flag", Value = "flag2" },
+            new() { Type = "set_flag", Value = "flag3" },
         };
         string text = QuestEditor.FormatRewardFlags(original);
         var parsed = QuestEditor.ParseRewardFlags(text);
 
-        Assert.Equal(original.SetFlags.Count, parsed.Count);
-        for (int i = 0; i < original.SetFlags.Count; i++)
-            Assert.Equal(original.SetFlags[i], parsed[i]);
+        Assert.Equal(3, parsed.Count);
+        Assert.Equal("flag1", parsed[0]);
+        Assert.Equal("flag2", parsed[1]);
+        Assert.Equal("flag3", parsed[2]);
     }
 
     [Fact]
     public void FormatAndParseVariables_RoundTrip()
     {
-        var original = new QuestRewards
+        var original = new List<DialogueAction>
         {
-            SetVariables = new Dictionary<string, string>
-            {
-                { "gold", "100" },
-                { "rep", "5" }
-            }
+            new() { Type = "set_variable", Key = "gold", Value = "100" },
+            new() { Type = "set_variable", Key = "rep", Value = "5" },
         };
         string text = QuestEditor.FormatRewardVariables(original);
         var parsed = QuestEditor.ParseRewardVariables(text);
 
-        Assert.Equal(original.SetVariables.Count, parsed.Count);
-        foreach (var kv in original.SetVariables)
-            Assert.Equal(kv.Value, parsed[kv.Key]);
+        Assert.Equal(2, parsed.Count);
+        Assert.Equal("100", parsed["gold"]);
+        Assert.Equal("5", parsed["rep"]);
     }
 
     // ---- Factory methods ----

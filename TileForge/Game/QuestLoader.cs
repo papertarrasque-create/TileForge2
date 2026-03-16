@@ -130,8 +130,10 @@ public static class QuestLoader
                     case "id":          quest.Id = reader.GetString(); break;
                     case "name":        quest.Name = reader.GetString(); break;
                     case "description": quest.Description = reader.GetString(); break;
-                    case "startflag":   quest.StartFlag = reader.GetString(); break;
-                    case "completionflag": quest.CompletionFlag = reader.GetString(); break;
+                    case "startflag":
+                    case "completionflag":
+                        reader.Skip(); // computed from Id, ignored on read
+                        break;
                     case "objectives":
                         if (reader.TokenType == JsonTokenType.StartArray)
                         {
@@ -144,7 +146,19 @@ public static class QuestLoader
                         break;
                     case "rewards":
                         if (reader.TokenType == JsonTokenType.StartObject)
-                            quest.Rewards = ReadQuestRewards(ref reader);
+                        {
+                            // Old format: { "set_flags": [...], "set_variables": {...} }
+                            quest.Rewards = MigrateOldRewards(ref reader);
+                        }
+                        else if (reader.TokenType == JsonTokenType.StartArray)
+                        {
+                            // New format: [{ "type": "set_flag", ... }]
+                            quest.Rewards = ReadActionList(ref reader);
+                        }
+                        else
+                        {
+                            reader.Skip();
+                        }
                         break;
                     default:
                         reader.Skip();
@@ -182,9 +196,11 @@ public static class QuestLoader
             return obj;
         }
 
-        private static QuestRewards ReadQuestRewards(ref Utf8JsonReader reader)
+        private static List<DialogueAction> MigrateOldRewards(ref Utf8JsonReader reader)
         {
-            var rewards = new QuestRewards();
+            var actions = new List<DialogueAction>();
+            var setFlags = new List<string>();
+            var setVariables = new Dictionary<string, string>();
 
             while (reader.Read())
             {
@@ -199,10 +215,8 @@ public static class QuestLoader
                 {
                     case "setflags":
                         if (reader.TokenType == JsonTokenType.StartArray)
-                        {
                             while (reader.Read() && reader.TokenType != JsonTokenType.EndArray)
-                                rewards.SetFlags.Add(reader.GetString());
-                        }
+                                setFlags.Add(reader.GetString());
                         break;
                     case "setvariables":
                         if (reader.TokenType == JsonTokenType.StartObject)
@@ -212,7 +226,7 @@ public static class QuestLoader
                                 if (reader.TokenType != JsonTokenType.PropertyName) continue;
                                 string key = reader.GetString();
                                 reader.Read();
-                                rewards.SetVariables[key] = reader.GetString();
+                                setVariables[key] = reader.GetString();
                             }
                         }
                         break;
@@ -222,7 +236,46 @@ public static class QuestLoader
                 }
             }
 
-            return rewards;
+            foreach (var flag in setFlags)
+                actions.Add(new DialogueAction { Type = "set_flag", Value = flag });
+            foreach (var (key, value) in setVariables)
+                actions.Add(new DialogueAction { Type = "set_variable", Key = key, Value = value });
+
+            return actions;
+        }
+
+        private static List<DialogueAction> ReadActionList(ref Utf8JsonReader reader)
+        {
+            var actions = new List<DialogueAction>();
+
+            while (reader.Read() && reader.TokenType != JsonTokenType.EndArray)
+            {
+                if (reader.TokenType != JsonTokenType.StartObject) continue;
+
+                var action = new DialogueAction();
+                while (reader.Read())
+                {
+                    if (reader.TokenType == JsonTokenType.EndObject) break;
+                    if (reader.TokenType != JsonTokenType.PropertyName) continue;
+
+                    string propName = reader.GetString();
+                    reader.Read();
+                    string norm = Normalize(propName);
+
+                    switch (norm)
+                    {
+                        case "type":  action.Type = reader.GetString(); break;
+                        case "value": action.Value = reader.GetString(); break;
+                        case "key":   action.Key = reader.GetString(); break;
+                        case "color": action.Color = reader.GetString(); break;
+                        case "text":  action.Text = reader.GetString(); break;
+                        default:      reader.Skip(); break;
+                    }
+                }
+                actions.Add(action);
+            }
+
+            return actions;
         }
     }
 }

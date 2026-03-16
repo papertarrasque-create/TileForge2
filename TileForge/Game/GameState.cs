@@ -11,4 +11,5 @@ public class GameState
     public HashSet<string> Flags { get; set; } = new();
     public Dictionary<string, string> Variables { get; set; } = new();
     public Dictionary<string, Dictionary<string, string>> ItemPropertyCache { get; set; } = new();
+    public Dictionary<string, QuestState> QuestStates { get; set; } = new();
 }

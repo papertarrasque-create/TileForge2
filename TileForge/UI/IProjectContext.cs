@@ -116,12 +116,12 @@ public class ProjectContext : IProjectContext
                             flags.Add(obj.Flag);
                     }
                 }
-                if (quest.Rewards?.SetFlags != null)
+                if (quest.Rewards != null)
                 {
-                    foreach (var f in quest.Rewards.SetFlags)
+                    foreach (var r in quest.Rewards)
                     {
-                        if (!string.IsNullOrWhiteSpace(f))
-                            flags.Add(f);
+                        if (r.Type == "set_flag" && !string.IsNullOrWhiteSpace(r.Value))
+                            flags.Add(r.Value);
                     }
                 }
             }
@@ -159,12 +159,12 @@ public class ProjectContext : IProjectContext
                             vars.Add(obj.Variable);
                     }
                 }
-                if (quest.Rewards?.SetVariables != null)
+                if (quest.Rewards != null)
                 {
-                    foreach (var key in quest.Rewards.SetVariables.Keys)
+                    foreach (var r in quest.Rewards)
                     {
-                        if (!string.IsNullOrWhiteSpace(key))
-                            vars.Add(key);
+                        if (r.Type == "set_variable" && !string.IsNullOrWhiteSpace(r.Key))
+                            vars.Add(r.Key);
                     }
                 }
             }

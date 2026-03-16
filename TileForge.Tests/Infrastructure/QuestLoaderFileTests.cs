@@ -86,8 +86,9 @@ public class QuestLoaderFileTests
         var quests = QuestLoader.Load(path, _fs);
 
         Assert.Single(quests);
-        Assert.Equal("quest_started", quests[0].StartFlag);
-        Assert.Equal("quest_done", quests[0].CompletionFlag);
+        // StartFlag and CompletionFlag are now computed from Id
+        Assert.Equal("quest_started:q1", quests[0].StartFlag);
+        Assert.Equal("quest_complete:q1", quests[0].CompletionFlag);
         Assert.Single(quests[0].Objectives);
         Assert.Equal("sword_found", quests[0].Objectives[0].Flag);
     }

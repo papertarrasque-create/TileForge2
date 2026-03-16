@@ -27,17 +27,15 @@ public class QuestManagerTests
         return manager;
     }
 
-    private static QuestDefinition MakeQuest(string id, string startFlag, string completionFlag,
-        List<QuestObjective> objectives = null, QuestRewards rewards = null)
+    private static QuestDefinition MakeQuest(string id,
+        List<QuestObjective> objectives = null, List<DialogueAction> rewards = null)
     {
         return new QuestDefinition
         {
             Id = id,
             Name = $"Quest: {id}",
-            StartFlag = startFlag,
-            CompletionFlag = completionFlag,
             Objectives = objectives ?? new List<QuestObjective>(),
-            Rewards = rewards,
+            Rewards = rewards ?? new List<DialogueAction>(),
         };
     }
 
@@ -58,7 +56,7 @@ public class QuestManagerTests
     public void Quest_NotStarted_WhenStartFlagMissing()
     {
         var gsm = CreateManager();
-        var quest = MakeQuest("q1", startFlag: "quest_started:q1", completionFlag: "quest_done:q1",
+        var quest = MakeQuest("q1",
             objectives: new List<QuestObjective> { FlagObjective("Do thing", "did_thing") });
         var manager = new QuestManager(new List<QuestDefinition> { quest });
 
@@ -76,7 +74,7 @@ public class QuestManagerTests
     {
         var gsm = CreateManager();
         gsm.SetFlag("quest_started:q1");
-        var quest = MakeQuest("q1", startFlag: "quest_started:q1", completionFlag: "quest_done:q1",
+        var quest = MakeQuest("q1",
             objectives: new List<QuestObjective> { FlagObjective("Do thing", "did_thing") });
         var manager = new QuestManager(new List<QuestDefinition> { quest });
 
@@ -94,7 +92,7 @@ public class QuestManagerTests
     {
         var gsm = CreateManager();
         gsm.SetFlag("quest_started:q1");
-        var quest = MakeQuest("q1", startFlag: "quest_started:q1", completionFlag: "quest_done:q1",
+        var quest = MakeQuest("q1",
             objectives: new List<QuestObjective> { FlagObjective("Do thing", "did_thing") });
         var manager = new QuestManager(new List<QuestDefinition> { quest });
 
@@ -258,7 +256,7 @@ public class QuestManagerTests
         var gsm = CreateManager();
         gsm.SetFlag("quest_started:q1");
         gsm.SetFlag("did_thing");
-        var quest = MakeQuest("q1", startFlag: "quest_started:q1", completionFlag: "quest_done:q1",
+        var quest = MakeQuest("q1",
             objectives: new List<QuestObjective> { FlagObjective("Do thing", "did_thing") });
         var manager = new QuestManager(new List<QuestDefinition> { quest });
 
@@ -277,13 +275,13 @@ public class QuestManagerTests
         var gsm = CreateManager();
         gsm.SetFlag("quest_started:q1");
         gsm.SetFlag("did_thing");
-        var quest = MakeQuest("q1", startFlag: "quest_started:q1", completionFlag: "quest_done:q1",
+        var quest = MakeQuest("q1",
             objectives: new List<QuestObjective> { FlagObjective("Do thing", "did_thing") });
         var manager = new QuestManager(new List<QuestDefinition> { quest });
 
         manager.CheckForUpdates(gsm);
 
-        Assert.True(gsm.HasFlag("quest_done:q1"));
+        Assert.True(gsm.HasFlag("quest_complete:q1"));
     }
 
     // =========================================================================
@@ -296,11 +294,12 @@ public class QuestManagerTests
         var gsm = CreateManager();
         gsm.SetFlag("quest_started:q1");
         gsm.SetFlag("did_thing");
-        var rewards = new QuestRewards
+        var rewards = new List<DialogueAction>
         {
-            SetFlags = new List<string> { "reward_unlocked", "npc_friendly" },
+            new() { Type = "set_flag", Value = "reward_unlocked" },
+            new() { Type = "set_flag", Value = "npc_friendly" },
         };
-        var quest = MakeQuest("q1", startFlag: "quest_started:q1", completionFlag: "quest_done:q1",
+        var quest = MakeQuest("q1",
             objectives: new List<QuestObjective> { FlagObjective("Do thing", "did_thing") },
             rewards: rewards);
         var manager = new QuestManager(new List<QuestDefinition> { quest });
@@ -321,11 +320,12 @@ public class QuestManagerTests
         var gsm = CreateManager();
         gsm.SetFlag("quest_started:q1");
         gsm.SetFlag("did_thing");
-        var rewards = new QuestRewards
+        var rewards = new List<DialogueAction>
         {
-            SetVariables = new Dictionary<string, string> { ["gold"] = "100", ["rep"] = "5" },
+            new() { Type = "set_variable", Key = "gold", Value = "100" },
+            new() { Type = "set_variable", Key = "rep", Value = "5" },
         };
-        var quest = MakeQuest("q1", startFlag: "quest_started:q1", completionFlag: "quest_done:q1",
+        var quest = MakeQuest("q1",
             objectives: new List<QuestObjective> { FlagObjective("Do thing", "did_thing") },
             rewards: rewards);
         var manager = new QuestManager(new List<QuestDefinition> { quest });
@@ -345,8 +345,8 @@ public class QuestManagerTests
     {
         var gsm = CreateManager();
         gsm.SetFlag("quest_started:q1");
-        gsm.SetFlag("quest_done:q1"); // already completed
-        var quest = MakeQuest("q1", startFlag: "quest_started:q1", completionFlag: "quest_done:q1",
+        gsm.SetFlag("quest_complete:q1"); // already completed
+        var quest = MakeQuest("q1",
             objectives: new List<QuestObjective> { FlagObjective("Do thing", "did_thing") });
         var manager = new QuestManager(new List<QuestDefinition> { quest });
 
@@ -365,7 +365,7 @@ public class QuestManagerTests
         var gsm = CreateManager();
         gsm.SetFlag("quest_started:q1");
         // Objective requires two things; only one is met so quest won't complete
-        var quest = MakeQuest("q1", startFlag: "quest_started:q1", completionFlag: "quest_done:q1",
+        var quest = MakeQuest("q1",
             objectives: new List<QuestObjective>
             {
                 FlagObjective("Do thing A", "did_a"),
@@ -395,14 +395,14 @@ public class QuestManagerTests
         var gsm = CreateManager();
         gsm.SetFlag("quest_started:q1");
         // Quest has no objectives — the allComplete branch requires Objectives.Count > 0
-        var quest = MakeQuest("q1", startFlag: "quest_started:q1", completionFlag: "quest_done:q1",
+        var quest = MakeQuest("q1",
             objectives: new List<QuestObjective>());
         var manager = new QuestManager(new List<QuestDefinition> { quest });
 
         var events = manager.CheckForUpdates(gsm);
 
         Assert.DoesNotContain(events, e => e.Type == QuestEventType.QuestCompleted);
-        Assert.False(gsm.HasFlag("quest_done:q1"));
+        Assert.False(gsm.HasFlag("quest_complete:q1"));
     }
 
     // =========================================================================
@@ -414,7 +414,7 @@ public class QuestManagerTests
     {
         var gsm = CreateManager();
         // start flag NOT set
-        var quest = MakeQuest("q1", startFlag: "quest_started:q1", completionFlag: "quest_done:q1");
+        var quest = MakeQuest("q1");
         var manager = new QuestManager(new List<QuestDefinition> { quest });
 
         var status = manager.GetQuestStatus(quest, gsm);
@@ -432,7 +432,7 @@ public class QuestManagerTests
         var gsm = CreateManager();
         gsm.SetFlag("quest_started:q1");
         // completion flag NOT set
-        var quest = MakeQuest("q1", startFlag: "quest_started:q1", completionFlag: "quest_done:q1");
+        var quest = MakeQuest("q1");
         var manager = new QuestManager(new List<QuestDefinition> { quest });
 
         var status = manager.GetQuestStatus(quest, gsm);
@@ -449,8 +449,8 @@ public class QuestManagerTests
     {
         var gsm = CreateManager();
         gsm.SetFlag("quest_started:q1");
-        gsm.SetFlag("quest_done:q1");
-        var quest = MakeQuest("q1", startFlag: "quest_started:q1", completionFlag: "quest_done:q1");
+        gsm.SetFlag("quest_complete:q1");
+        var quest = MakeQuest("q1");
         var manager = new QuestManager(new List<QuestDefinition> { quest });
 
         var status = manager.GetQuestStatus(quest, gsm);
@@ -470,9 +470,9 @@ public class QuestManagerTests
         gsm.SetFlag("quest_started:q1");
         gsm.SetFlag("did_q1_thing");
 
-        var quest1 = MakeQuest("q1", startFlag: "quest_started:q1", completionFlag: "quest_done:q1",
+        var quest1 = MakeQuest("q1",
             objectives: new List<QuestObjective> { FlagObjective("Do q1 thing", "did_q1_thing") });
-        var quest2 = MakeQuest("q2", startFlag: "quest_started:q2", completionFlag: "quest_done:q2",
+        var quest2 = MakeQuest("q2",
             objectives: new List<QuestObjective> { FlagObjective("Do q2 thing", "did_q2_thing") });
         var manager = new QuestManager(new List<QuestDefinition> { quest1, quest2 });
 
@@ -486,8 +486,8 @@ public class QuestManagerTests
         // q2 should produce no events
         Assert.DoesNotContain(events, e => e.QuestId == "q2");
 
-        Assert.True(gsm.HasFlag("quest_done:q1"));
-        Assert.False(gsm.HasFlag("quest_done:q2"));
+        Assert.True(gsm.HasFlag("quest_complete:q1"));
+        Assert.False(gsm.HasFlag("quest_complete:q2"));
     }
 
     // =========================================================================
@@ -505,7 +505,7 @@ public class QuestManagerTests
         gsm.SetVariable("kills", "5");
         // "stage" variable not set → variable_eq vs. 3 will be 0 == 3 → false
 
-        var quest = MakeQuest("q1", startFlag: "quest_started:q1", completionFlag: "quest_done:q1",
+        var quest = MakeQuest("q1",
             objectives: new List<QuestObjective>
             {
                 FlagObjective("Find the key", "has_key"),
@@ -522,7 +522,7 @@ public class QuestManagerTests
 
         // Quest should NOT be completed
         Assert.DoesNotContain(events, e => e.Type == QuestEventType.QuestCompleted);
-        Assert.False(gsm.HasFlag("quest_done:q1"));
+        Assert.False(gsm.HasFlag("quest_complete:q1"));
 
         // Now satisfy the remaining objective and call again
         gsm.SetVariable("stage", "3");
@@ -535,6 +535,6 @@ public class QuestManagerTests
 
         // Quest should now complete
         Assert.Contains(secondEvents, e => e.Type == QuestEventType.QuestCompleted);
-        Assert.True(gsm.HasFlag("quest_done:q1"));
+        Assert.True(gsm.HasFlag("quest_complete:q1"));
     }
 }

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
 
 namespace TileForge.Game;
 
@@ -22,19 +23,21 @@ public class QuestDefinition
 
     /// <summary>
     /// Flag that must be set for this quest to become active.
-    /// Typically set by dialogue (e.g., "quest_started:rescue_villager").
+    /// Computed from Id (e.g., "quest_started:rescue_villager").
     /// </summary>
-    public string StartFlag { get; set; }
+    [JsonIgnore]
+    public string StartFlag => Id != null ? QuestConstants.StartedFlag(Id) : null;
 
     public List<QuestObjective> Objectives { get; set; } = new();
 
     /// <summary>
     /// Flag set automatically when all objectives are met.
-    /// Also used to determine if quest is already complete.
+    /// Computed from Id (e.g., "quest_complete:rescue_villager").
     /// </summary>
-    public string CompletionFlag { get; set; }
+    [JsonIgnore]
+    public string CompletionFlag => Id != null ? QuestConstants.CompleteFlag(Id) : null;
 
-    public QuestRewards Rewards { get; set; }
+    public List<DialogueAction> Rewards { get; set; } = new();
 }
 
 /// <summary>

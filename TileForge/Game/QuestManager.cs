@@ -2,13 +2,6 @@ using System.Collections.Generic;
 
 namespace TileForge.Game;
 
-public enum QuestStatus
-{
-    NotStarted,
-    Active,
-    Completed,
-}
-
 /// <summary>
 /// Evaluates quest definitions against the current GameState to detect
 /// quest starts, objective completions, and quest completions.
@@ -141,13 +134,7 @@ public class QuestManager
         if (!string.IsNullOrEmpty(quest.CompletionFlag))
             gsm.SetFlag(quest.CompletionFlag);
 
-        if (quest.Rewards != null)
-        {
-            foreach (var flag in quest.Rewards.SetFlags)
-                gsm.SetFlag(flag);
-            foreach (var kvp in quest.Rewards.SetVariables)
-                gsm.SetVariable(kvp.Key, kvp.Value);
-        }
+        ActionExecutor.ExecuteAll(quest.Rewards, gsm);
     }
 
     private static int ParseVariable(string value)

@@ -26,7 +26,7 @@ public class QuestLogScreenTests
         return new QuestManager(quests ?? new List<QuestDefinition>());
     }
 
-    private static QuestDefinition MakeQuest(string id, string startFlag, string completionFlag,
+    private static QuestDefinition MakeQuest(string id,
         List<QuestObjective> objectives = null)
     {
         return new QuestDefinition
@@ -34,8 +34,6 @@ public class QuestLogScreenTests
             Id = id,
             Name = $"Quest: {id}",
             Description = $"Description for {id}",
-            StartFlag = startFlag,
-            CompletionFlag = completionFlag,
             Objectives = objectives ?? new List<QuestObjective>(),
         };
     }
@@ -113,7 +111,7 @@ public class QuestLogScreenTests
     public void QuestManager_ActiveQuest_VisibleInScreen()
     {
         var gsm = CreateGameStateManager();
-        var quest = MakeQuest("q1", "quest_started:q1", "quest_complete:q1",
+        var quest = MakeQuest("q1",
             new List<QuestObjective>
             {
                 new() { Description = "Find key", Type = "flag", Flag = "has_key" },
@@ -129,7 +127,7 @@ public class QuestLogScreenTests
     public void QuestManager_CompletedQuest_StatusIsCompleted()
     {
         var gsm = CreateGameStateManager();
-        var quest = MakeQuest("q1", "quest_started:q1", "quest_complete:q1");
+        var quest = MakeQuest("q1");
         var qm = CreateQuestManager(new List<QuestDefinition> { quest });
 
         gsm.SetFlag("quest_started:q1");
@@ -142,7 +140,7 @@ public class QuestLogScreenTests
     public void QuestManager_NotStartedQuest_StatusIsNotStarted()
     {
         var gsm = CreateGameStateManager();
-        var quest = MakeQuest("q1", "quest_started:q1", "quest_complete:q1");
+        var quest = MakeQuest("q1");
         var qm = CreateQuestManager(new List<QuestDefinition> { quest });
 
         Assert.Equal(QuestStatus.NotStarted, qm.GetQuestStatus(quest, gsm));
