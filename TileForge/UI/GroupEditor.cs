@@ -104,7 +104,7 @@ public class GroupEditor
     private static readonly Dictionary<EntityType, string[]> Presets = new()
     {
         { EntityType.NPC, new[] { "dialogue_id", "dialogue", "health", "attack", "defense", "poise", "behavior", "speed", "default_facing", "hostile", "hostile_flag", "friendly_flag", "aggro_range", "on_kill_set_flag", "on_kill_increment" } },
-        { EntityType.Item, new[] { "dialogue_id", "heal", "equip_slot", "equip_attack", "equip_defense", "equip_ap", "equip_poise", "on_collect_set_flag", "on_collect_increment" } },
+        { EntityType.Item, new[] { "dialogue_id", "on_pickup_dialogue", "heal", "equip_slot", "equip_attack", "equip_defense", "equip_ap", "equip_poise", "on_collect_set_flag", "on_collect_increment" } },
         { EntityType.Trap, new[] { "dialogue_id", "damage", "health", "on_kill_set_flag", "on_kill_increment" } },
         { EntityType.Trigger, new[] { "dialogue_id", "target_map", "target_x", "target_y" } },
         { EntityType.Interactable, new[] { "dialogue_id", "dialogue" } },
