@@ -56,12 +56,12 @@ Key layout decisions:
 
 | Group | Type | EntityType | Sprite (col,row) | Key Properties |
 |-------|------|------------|-------------------|----------------|
-| Hero | Entity | NPC (isPlayer) | 5,34 | health:20, attack:5, defense:2, behavior:idle |
+| Hero | Entity | NPC (isPlayer) | 5,34 | behavior:idle (health/attack/defense from PlayerState defaults: 100hp, 5atk, 2def) |
 | Sage | Entity | NPC | 17,34 | dialogue_id:sage_01, hostile:false, behavior:idle, health:1 |
 | Guard | Entity | NPC | 8,33 | dialogue_id:guard_01, hostile:false, behavior:idle, health:1 |
 | Sign | Entity | Interactable | 41,21 | dialogue_id:cellar_sign |
 | Rat | Entity | NPC | 5,31 | hostile:true, behavior:chase, health:5, attack:2, aggro_range:5, on_kill_increment:rats_killed |
-| Amulet | Entity | Item | 12,35 | dialogue_id:found_amulet |
+| Amulet | Entity | Item | 12,35 | on_pickup_dialogue:found_amulet |
 
 ### Entity Placements
 
@@ -89,15 +89,17 @@ Four routes evaluated top-to-bottom. First matching route determines entry point
 - Terminal (no choices, no nextNodeId)
 
 **Route 2 — Has the amulet, quest active:**
-- Conditions: `quest_active: lost_amulet` AND `has_item: amulet`
+- Conditions: `quest_active: lost_amulet` AND `has_item: Amulet`
 - Start node: `return_amulet`
 - Node text: "You found it! I can feel its power from here."
 - Choice: "Here, take it back."
   - Next: `amulet_returned`
-  - Actions: `remove_item amulet`, `complete_objective return_amulet`, `set_flag amulet_returned`
+  - Actions: `remove_item Amulet`, `complete_objective return_amulet`, `set_flag amulet_returned`
 - Node `amulet_returned`: "Thank you! Let me mend your wounds as thanks."
-  - Actions: `heal`, `set_variable reputation 10`, `log "The Sage restored your health."`
+  - Actions: `heal 20`, `set_variable reputation 10`, `log "The Sage restored your health."`
   - Terminal
+
+Note: `has_item`/`remove_item` use `Amulet` (capital A) to match the entity group's DefinitionName, which is what `CollectItem` adds to inventory. The `complete_objective return_amulet` sets `objective_complete:return_amulet` which the quest objective checks directly. The `set_flag amulet_returned` is kept as a secondary demonstration of flag-based state.
 
 **Route 3 — Quest active, no amulet yet:**
 - Conditions: `quest_active: lost_amulet`
@@ -121,16 +123,23 @@ Four routes evaluated top-to-bottom. First matching route determines entry point
 
 ### guard_01.json — Guard
 
-Two routes.
+Three routes.
 
-**Route 1 — Quest active:**
+**Route 1 — Quest complete:**
+- Conditions: `quest_complete: lost_amulet`
+- Start node: `post_quest`
+- Node text: "The Sage looks much happier now. Well done."
+- Terminal
+
+**Route 2 — Quest active:**
 - Conditions: `quest_active: lost_amulet`
 - Start node: `let_pass`
 - Node text: "The Sage sent you? Good luck in there. Watch out for the rats -- they bite."
 - Actions: `set_flag guard_approved`
 - Terminal
 
-**Route 2 — Default:**
+**Route 3 — Default:**
+- Conditions: `not_flag: sage_asked_help` (demonstrates `not_flag` condition type)
 - Start node: `no_entry`
 - Node text: "The cellar is off-limits. Too dangerous. Talk to the Sage if you have business here."
 - Terminal
@@ -148,7 +157,8 @@ OneShot: true. Single node.
 Single node, triggered on item pickup.
 
 - Node text: "You found the Sage's amulet! It pulses with a faint protective glow."
-- Actions: `give_item amulet`, `set_flag found_amulet`
+- Actions: `set_flag found_amulet`
+- Note: `CollectItem` already adds `Amulet` to inventory via the entity group name; no `give_item` needed here.
 - Terminal
 
 ## Quest Definition
@@ -182,7 +192,7 @@ File: `quests.json`
         {
           "description": "Return the Amulet to the Sage",
           "type": "flag",
-          "flag": "amulet_returned"
+          "flag": "objective_complete:return_amulet"
         }
       ],
       "rewards": {
@@ -201,7 +211,7 @@ File: `quests.json`
 | Speak with Guard | Dialogue action `set_flag guard_approved` | No — resolves on conversation |
 | Defeat the rats | Entity property `on_kill_increment: rats_killed` | No — resolves on kill |
 | Find the Amulet | Item pickup dialogue action `set_flag found_amulet` | No — resolves on pickup |
-| Return the Amulet | Dialogue action in Sage route 2 | Yes — must talk to Sage |
+| Return the Amulet | `complete_objective return_amulet` in Sage route 2 (sets `objective_complete:return_amulet`) | Yes — must talk to Sage |
 
 This demonstrates both "auto-resolving" objectives (guard, rats, amulet) and "return trip" objectives (returning to the Sage).
 
@@ -209,20 +219,20 @@ This demonstrates both "auto-resolving" objectives (guard, rats, amulet) and "re
 
 | Feature | Where Exercised | Notes |
 |---------|----------------|-------|
-| Routes (conditional entry) | sage_01 (4 routes), guard_01 (2 routes) | First-match-wins evaluation |
-| Condition: quest_active | sage routes 2-3, guard route 1 | Checks start flag set + complete flag not set |
-| Condition: quest_complete | sage route 1 | Post-quest dialogue |
-| Condition: has_item | sage route 2 | Checks player inventory |
+| Routes (conditional entry) | sage_01 (4 routes), guard_01 (3 routes) | First-match-wins evaluation |
+| Condition: quest_active | sage routes 2-3, guard route 2 | Checks start flag set + complete flag not set |
+| Condition: quest_complete | sage route 1, guard route 1 | Post-quest dialogue |
+| Condition: has_item | sage route 2 | Checks player inventory (uses DefinitionName `Amulet`) |
+| Condition: not_flag | guard route 3 | Inverse flag check |
 | Action: start_quest | sage default route | Sets quest start flag |
-| Action: complete_objective | sage route 2 | Sets objective flag |
+| Action: complete_objective | sage route 2 | Sets `objective_complete:return_amulet` flag |
 | Action: set_flag | sage, guard, amulet | General state tracking |
 | Action: set_variable | sage reward | Sets reputation |
-| Action: give_item | amulet pickup | Adds to inventory |
-| Action: remove_item | sage route 2 | Takes amulet from inventory |
-| Action: heal | sage reward | Restores player health |
+| Action: remove_item | sage route 2 | Takes Amulet from inventory |
+| Action: heal | sage reward | Heals player by 20 (requires integer value) |
 | Action: log | sign, sage | Game log messages |
 | OneShot dialogue | cellar_sign | Auto-sets dialogue_shown flag |
-| Item pickup dialogue | found_amulet | Triggered on item collection |
+| Item pickup dialogue (on_pickup_dialogue) | found_amulet | Triggered on item collection (not dialogue_id) |
 | on_kill_increment | rat entities | Combat-driven variable tracking |
 | Multi-objective quest | lost_amulet (4 objectives) | Mixed flag + variable_gte types |
 | Quest rewards | lost_amulet | set_flags + set_variables |
@@ -243,7 +253,7 @@ string defaultProject = Path.GetFullPath(Path.Combine(
 | File | Content |
 |------|---------|
 | `TileForge/TutorialProject/QuestTestMap.tileforge` | Project with map, groups, entity placements |
-| `TileForge/TutorialProject/dialogues/sage_01.json` | Sage dialogue (overwrite existing) |
+| `TileForge/TutorialProject/dialogues/sage_01.json` | Sage dialogue (new file) |
 | `TileForge/TutorialProject/dialogues/guard_01.json` | Guard dialogue |
 | `TileForge/TutorialProject/dialogues/cellar_sign.json` | Sign dialogue |
 | `TileForge/TutorialProject/dialogues/found_amulet.json` | Amulet pickup dialogue |
