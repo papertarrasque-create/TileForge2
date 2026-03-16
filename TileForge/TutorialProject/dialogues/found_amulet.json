@@ -1,0 +1,15 @@
+{
+  "id": "found_amulet",
+  "nodes": [
+    {
+      "id": "pickup",
+      "speaker": "Amulet",
+      "text": "You found the Sage's amulet! It pulses with a faint protective glow.",
+      "actions": [
+        { "type": "set_flag", "value": "found_amulet" }
+      ],
+      "editorX": 50,
+      "editorY": 0
+    }
+  ]
+}

@@ -1,0 +1,111 @@
+{
+  "id": "sage_01",
+  "routes": [
+    {
+      "startNode": "post_quest",
+      "conditions": [
+        { "type": "quest_complete", "value": "lost_amulet" }
+      ]
+    },
+    {
+      "startNode": "return_amulet",
+      "conditions": [
+        { "type": "quest_active", "value": "lost_amulet" },
+        { "type": "has_item", "item": "Amulet" }
+      ]
+    },
+    {
+      "startNode": "in_progress",
+      "conditions": [
+        { "type": "quest_active", "value": "lost_amulet" }
+      ]
+    },
+    {
+      "startNode": "start"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "post_quest",
+      "speaker": "Village Sage",
+      "text": "The village is safe again, thanks to you. You are always welcome here.",
+      "actions": [
+        { "type": "log", "value": "The Sage smiles warmly." }
+      ],
+      "editorX": 50,
+      "editorY": -500
+    },
+    {
+      "id": "return_amulet",
+      "speaker": "Village Sage",
+      "text": "You found it! I can feel its power from here.",
+      "choices": [
+        {
+          "text": "Here, take it back.",
+          "nextNodeId": "amulet_returned",
+          "actions": [
+            { "type": "remove_item", "value": "Amulet" },
+            { "type": "complete_objective", "value": "return_amulet" },
+            { "type": "set_flag", "value": "amulet_returned" }
+          ]
+        }
+      ],
+      "editorX": 50,
+      "editorY": -350
+    },
+    {
+      "id": "amulet_returned",
+      "speaker": "Village Sage",
+      "text": "Thank you! Let me mend your wounds as thanks.",
+      "actions": [
+        { "type": "heal", "value": "20" },
+        { "type": "set_variable", "key": "reputation", "value": "10" },
+        { "type": "log", "value": "The Sage restored your health." }
+      ],
+      "editorX": 400,
+      "editorY": -350
+    },
+    {
+      "id": "in_progress",
+      "speaker": "Village Sage",
+      "text": "Please hurry! The rats grow bolder by the hour. The cellar is through the gap to the east.",
+      "editorX": 50,
+      "editorY": -200
+    },
+    {
+      "id": "start",
+      "speaker": "Village Sage",
+      "text": "Dark times, traveler. Rats stole my amulet of protection and dragged it into the old cellar to the east.",
+      "choices": [
+        {
+          "text": "I'll get it back for you.",
+          "nextNodeId": "quest_accept",
+          "actions": [
+            { "type": "start_quest", "value": "lost_amulet" },
+            { "type": "set_flag", "value": "sage_asked_help" }
+          ]
+        },
+        {
+          "text": "Not my problem.",
+          "nextNodeId": "decline"
+        }
+      ],
+      "editorX": 50,
+      "editorY": -50
+    },
+    {
+      "id": "quest_accept",
+      "speaker": "Village Sage",
+      "text": "Bless you! Speak with the guard by the cellar entrance -- he will let you through. Clear those rats and bring back my amulet.",
+      "editorX": 400,
+      "editorY": -100
+    },
+    {
+      "id": "decline",
+      "speaker": "Village Sage",
+      "text": "I understand. But without the amulet, the village is defenseless...",
+      "editorX": 400,
+      "editorY": 50
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "id": "guard_01",
+  "routes": [
+    {
+      "startNode": "post_quest",
+      "conditions": [
+        { "type": "quest_complete", "value": "lost_amulet" }
+      ]
+    },
+    {
+      "startNode": "let_pass",
+      "conditions": [
+        { "type": "quest_active", "value": "lost_amulet" }
+      ]
+    },
+    {
+      "startNode": "no_entry",
+      "conditions": [
+        { "type": "not_flag", "flag": "sage_asked_help" }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "post_quest",
+      "speaker": "Guard",
+      "text": "The Sage looks much happier now. Well done.",
+      "editorX": 50,
+      "editorY": -300
+    },
+    {
+      "id": "let_pass",
+      "speaker": "Guard",
+      "text": "The Sage sent you? Good luck in there. Watch out for the rats -- they bite.",
+      "actions": [
+        { "type": "set_flag", "value": "guard_approved" }
+      ],
+      "editorX": 50,
+      "editorY": -150
+    },
+    {
+      "id": "no_entry",
+      "speaker": "Guard",
+      "text": "The cellar is off-limits. Too dangerous. Talk to the Sage if you have business here.",
+      "editorX": 50,
+      "editorY": 0
+    }
+  ]
+}

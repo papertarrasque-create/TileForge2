@@ -213,7 +213,7 @@ public class TileForgeGame : Microsoft.Xna.Framework.Game
             DebugLog.Log("LoadContent: all managers created");
 
             string defaultProject = Path.GetFullPath(Path.Combine(
-                AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "TutorialProject", "TestCavernDungeon.tileforge"));
+                AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "TutorialProject", "QuestTestMap.tileforge"));
             DebugLog.Log($"LoadContent: default project path = {defaultProject}, exists = {File.Exists(defaultProject)}");
             if (File.Exists(defaultProject))
             {

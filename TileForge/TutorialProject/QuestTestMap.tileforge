@@ -1,0 +1,159 @@
+{
+  "version": 2,
+  "spritesheet": {
+    "path": "The Roguelike 1-15-16.png",
+    "tileWidth": 16,
+    "tileHeight": 16,
+    "padding": 0
+  },
+  "groups": [
+    {
+      "name": "grass",
+      "type": "Tile",
+      "sprites": [{ "col": 4, "row": 6 }],
+      "layer": "Ground"
+    },
+    {
+      "name": "tree",
+      "type": "Tile",
+      "sprites": [{ "col": 4, "row": 4 }],
+      "isSolid": true,
+      "layer": "Ground"
+    },
+    {
+      "name": "Hero",
+      "type": "Entity",
+      "sprites": [{ "col": 5, "row": 34 }],
+      "isSolid": true,
+      "isPlayer": true,
+      "layer": "Entities",
+      "entityType": "NPC",
+      "defaultProperties": {
+        "dialogue_id": "0",
+        "health": "1",
+        "attack": "0",
+        "defense": "0",
+        "behavior": "idle",
+        "default_facing": "right",
+        "hostile": "false",
+        "aggro_range": "1"
+      }
+    },
+    {
+      "name": "Sage",
+      "type": "Entity",
+      "sprites": [{ "col": 17, "row": 34 }],
+      "isSolid": true,
+      "layer": "Entities",
+      "entityType": "NPC",
+      "defaultProperties": {
+        "dialogue_id": "sage_01",
+        "health": "1",
+        "attack": "0",
+        "defense": "0",
+        "behavior": "idle",
+        "default_facing": "right",
+        "hostile": "false",
+        "aggro_range": "1"
+      }
+    },
+    {
+      "name": "Guard",
+      "type": "Entity",
+      "sprites": [{ "col": 8, "row": 33 }],
+      "isSolid": true,
+      "layer": "Entities",
+      "entityType": "NPC",
+      "defaultProperties": {
+        "dialogue_id": "guard_01",
+        "health": "1",
+        "attack": "0",
+        "defense": "0",
+        "behavior": "idle",
+        "default_facing": "left",
+        "hostile": "false",
+        "aggro_range": "1"
+      }
+    },
+    {
+      "name": "Sign",
+      "type": "Entity",
+      "sprites": [{ "col": 41, "row": 21 }],
+      "layer": "Entities",
+      "entityType": "Interactable",
+      "defaultProperties": {
+        "dialogue_id": "cellar_sign"
+      }
+    },
+    {
+      "name": "Rat",
+      "type": "Entity",
+      "sprites": [{ "col": 5, "row": 31 }],
+      "isSolid": true,
+      "layer": "Entities",
+      "entityType": "NPC",
+      "defaultProperties": {
+        "health": "5",
+        "attack": "2",
+        "defense": "0",
+        "behavior": "chase",
+        "default_facing": "left",
+        "hostile": "true",
+        "aggro_range": "5",
+        "on_kill_increment": "rats_killed"
+      }
+    },
+    {
+      "name": "Amulet",
+      "type": "Entity",
+      "sprites": [{ "col": 12, "row": 35 }],
+      "layer": "Entities",
+      "entityType": "Item",
+      "defaultProperties": {
+        "on_pickup_dialogue": "found_amulet"
+      }
+    }
+  ],
+  "maps": [
+    {
+      "name": "main",
+      "map": {
+        "width": 15,
+        "height": 15,
+        "entityRenderOrder": 0,
+        "layers": [
+          {
+            "name": "Ground",
+            "visible": true,
+            "cells": [
+              "tree", "tree", "tree", "tree", "tree", "tree", "tree", "tree", "tree", "tree", "tree", "tree", "tree", "tree", "tree",
+              "tree", "grass", "grass", "grass", "grass", "grass", "grass", "tree", "grass", "grass", "grass", "grass", "grass", "grass", "tree",
+              "tree", "grass", "grass", "grass", "grass", "grass", "grass", "tree", "grass", "grass", "grass", "grass", "grass", "grass", "tree",
+              "tree", "grass", "grass", "grass", "grass", "grass", "grass", "tree", "grass", "grass", "grass", "grass", "grass", "grass", "tree",
+              "tree", "grass", "grass", "grass", "grass", "grass", "grass", "tree", "grass", "grass", "grass", "grass", "grass", "grass", "tree",
+              "tree", "grass", "grass", "grass", "grass", "grass", "grass", "grass", "grass", "grass", "grass", "grass", "grass", "grass", "tree",
+              "tree", "grass", "grass", "grass", "grass", "grass", "grass", "tree", "grass", "grass", "grass", "grass", "grass", "grass", "tree",
+              "tree", "grass", "grass", "grass", "grass", "grass", "grass", "grass", "grass", "grass", "grass", "grass", "grass", "grass", "tree",
+              "tree", "grass", "grass", "grass", "grass", "grass", "grass", "tree", "grass", "grass", "grass", "grass", "grass", "grass", "tree",
+              "tree", "grass", "grass", "grass", "grass", "grass", "grass", "tree", "grass", "grass", "grass", "grass", "grass", "grass", "tree",
+              "tree", "grass", "grass", "grass", "grass", "grass", "grass", "tree", "grass", "grass", "grass", "grass", "grass", "grass", "tree",
+              "tree", "grass", "grass", "grass", "grass", "grass", "grass", "tree", "grass", "grass", "grass", "grass", "grass", "grass", "tree",
+              "tree", "grass", "grass", "grass", "grass", "grass", "grass", "tree", "grass", "grass", "grass", "grass", "grass", "grass", "tree",
+              "tree", "grass", "grass", "grass", "grass", "grass", "grass", "tree", "grass", "grass", "grass", "grass", "grass", "grass", "tree",
+              "tree", "tree", "tree", "tree", "tree", "tree", "tree", "tree", "tree", "tree", "tree", "tree", "tree", "tree", "tree"
+            ]
+          }
+        ],
+        "entities": [
+          { "id": "a0000001", "groupName": "Hero", "x": 3, "y": 5 },
+          { "id": "a0000002", "groupName": "Sage", "x": 3, "y": 3 },
+          { "id": "a0000003", "groupName": "Guard", "x": 5, "y": 7 },
+          { "id": "a0000004", "groupName": "Sign", "x": 6, "y": 7 },
+          { "id": "a0000005", "groupName": "Rat", "x": 11, "y": 4 },
+          { "id": "a0000006", "groupName": "Rat", "x": 10, "y": 9 },
+          { "id": "a0000007", "groupName": "Amulet", "x": 10, "y": 11 }
+        ]
+      }
+    }
+  ]
+}

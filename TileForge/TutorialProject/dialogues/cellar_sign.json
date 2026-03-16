@@ -1,0 +1,16 @@
+{
+  "id": "cellar_sign",
+  "oneShot": true,
+  "nodes": [
+    {
+      "id": "warning",
+      "speaker": "Sign",
+      "text": "DANGER: Rats beyond this point. Enter at your own risk.",
+      "actions": [
+        { "type": "log", "value": "You read the warning sign." }
+      ],
+      "editorX": 50,
+      "editorY": 0
+    }
+  ]
+}
