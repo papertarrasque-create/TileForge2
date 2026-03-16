@@ -5,6 +5,7 @@ using TileForge.Data;
 using TileForge.Editor.Tools;
 using TileForge.Game;
 using TileForge.Play;
+using TileForge.UI;
 using DojoUI;
 
 namespace TileForge.Editor;
@@ -221,6 +222,22 @@ public class EditorState
     {
         DialoguesChanged?.Invoke();
         MarkDirty();
+    }
+
+    // --- Workspace ---
+
+    private WorkspaceMode _activeWorkspace = WorkspaceMode.Map;
+    public event Action<WorkspaceMode> WorkspaceChanged;
+
+    public WorkspaceMode ActiveWorkspace
+    {
+        get => _activeWorkspace;
+        set
+        {
+            if (_activeWorkspace == value) return;
+            _activeWorkspace = value;
+            WorkspaceChanged?.Invoke(_activeWorkspace);
+        }
     }
 
     // --- Selection & Clipboard ---

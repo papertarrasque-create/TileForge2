@@ -44,6 +44,19 @@ public static class LayoutConstants
     public const int ToolbarRibbonHeight = 32;
 
     // ---------------------------------------------------------------
+    //  Workspace Toolbar Buttons
+    // ---------------------------------------------------------------
+    public const int WorkspaceButtonWidth = 90;
+    public const int WorkspaceButtonHeight = 22;
+    public const int WorkspaceButtonSpacing = 4;
+    public static readonly Color WorkspaceButtonColor = new Color(58, 58, 94);
+    public static readonly Color WorkspaceButtonActiveColor = new Color(74, 74, 126);
+    public static readonly Color WorkspaceButtonActiveBorder = new Color(138, 170, 255);
+    public static readonly Color WorkspaceDialogueColor = new Color(138, 170, 255);
+    public static readonly Color WorkspaceQuestColor = new Color(200, 132, 64);
+    public static readonly Color WorkspaceWorldMapColor = new Color(106, 170, 106);
+
+    // ---------------------------------------------------------------
     //  Map tab bar
     // ---------------------------------------------------------------
     public const int MapTabBarHeight = 24;
@@ -315,36 +328,39 @@ public static class LayoutConstants
     public static readonly Color DialogueEditorNodeSeparator = new(60, 60, 60);
 
     // ---------------------------------------------------------------
-    //  Dialogue tree editor (visual node graph)
+    //  Dialogue tree editor (tree visualizer)
     // ---------------------------------------------------------------
     public const int DialogueTreeMaxWidth = 1100;
     public const int DialogueTreeMaxHeight = 700;
     public const int DialogueTreeHeaderHeight = 32;
     public const int DialogueTreeHintHeight = 22;
-    public const float DialogueTreeCanvasSplit = 0.6f;
+    public const float DialogueTreeCanvasSplit = 0.55f;
+
+    // Tree view
+    public const int DialogueTreeRowHeight = 22;
+    public const int DialogueTreeIndent = 20;
+    public const int DialogueTreeIconWidth = 16;
 
     public static readonly Color DialogueTreeOverlay = new(0, 0, 0, 180);
     public static readonly Color DialogueTreePanelBg = new(35, 35, 35);
     public static readonly Color DialogueTreeHeaderBg = new(45, 45, 45);
     public static readonly Color DialogueTreeCanvasBg = new(28, 28, 32);
-    public static readonly Color DialogueTreeGridDotColor = new(50, 50, 55);
     public static readonly Color DialogueTreeDividerColor = new(60, 60, 60);
     public static readonly Color DialogueTreeHintColor = new(120, 120, 120);
     public static readonly Color DialogueTreePropsBg = new(38, 38, 38);
     public static readonly Color DialogueTreePropsSectionColor = new(140, 180, 220);
-
-    public static readonly Color DialogueNodeBg = new(50, 55, 60);
-    public static readonly Color DialogueNodeHeaderBg = new(70, 90, 130);
-    public static readonly Color DialogueNodeSelectedHeaderBg = new(80, 110, 160);
-    public static readonly Color DialogueNodeBorder = new(80, 80, 80);
-    public static readonly Color DialogueNodeSelectedBorder = new(100, 180, 255);
-    public static readonly Color DialogueNodeTextColor = new(200, 200, 200);
-    public static readonly Color DialogueNodeDimTextColor = new(140, 140, 140);
-    public static readonly Color DialogueNodePortColor = new(160, 160, 160);
-    public static readonly Color DialogueNodePortHoverColor = new(100, 180, 255);
-    public static readonly Color DialogueConnectionColor = new(140, 140, 140);
-    public static readonly Color DialogueConnectionActiveColor = new(100, 180, 255);
-    public static readonly Color DialogueConnectionDragColor = new(100, 180, 255, 180);
+    public static readonly Color DialogueTreeRowHoverBg = new(45, 50, 58);
+    public static readonly Color DialogueTreeRowSelectedBg = new(55, 70, 95);
+    public static readonly Color DialogueTreeSectionHeaderBg = new(40, 42, 48);
+    public static readonly Color DialogueTreeSectionHeaderColor = new(160, 180, 220);
+    public static readonly Color DialogueTreeNodeIdColor = new(200, 200, 200);
+    public static readonly Color DialogueTreeNodeTextColor = new(140, 140, 140);
+    public static readonly Color DialogueTreeChoiceColor = new(180, 200, 140);
+    public static readonly Color DialogueTreeLineColor = new(60, 65, 75);
+    public static readonly Color DialogueTreeOrphanColor = new(180, 120, 100);
+    public static readonly Color DialogueTreeCycleColor = new(200, 80, 80);
+    public static readonly Color DialogueTreeExpandColor = new(140, 140, 140);
+    public static readonly Color DialogueTreeRouteColor = new(140, 180, 160);
 
     // ---------------------------------------------------------------
     //  Form layout defaults (shared across modal editors)
