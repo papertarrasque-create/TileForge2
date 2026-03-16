@@ -9,7 +9,7 @@ namespace TileForge.Game.Screens;
 /// <summary>
 /// Overlay screen that displays a branching dialogue conversation. Shows the
 /// speaker name, text (with typewriter reveal), and choice options. Evaluates
-/// flag conditions and sets flags/variables via GameStateManager.
+/// conditions and executes actions via ConditionEvaluator/ActionExecutor.
 /// </summary>
 public class DialogueScreen : GameScreen
 {
@@ -38,14 +38,35 @@ public class DialogueScreen : GameScreen
 
     public override void OnEnter()
     {
-        AdvanceToNode(_dialogue.Nodes.FirstOrDefault()?.Id);
+        // Use route evaluation to find the starting node
+        string startNodeId = ResolveStartNode();
+        AdvanceToNode(startNodeId);
+    }
+
+    /// <summary>
+    /// Evaluates routes top-to-bottom, returning the first matching startNode.
+    /// Falls back to first node ID if no routes defined.
+    /// </summary>
+    private string ResolveStartNode()
+    {
+        if (_dialogue.Routes != null)
+        {
+            foreach (var route in _dialogue.Routes)
+            {
+                if (ConditionEvaluator.EvaluateAll(route.Conditions, _gameStateManager))
+                    return route.StartNode;
+            }
+        }
+        return _dialogue.Nodes.FirstOrDefault()?.Id;
     }
 
     public override void Update(GameTime gameTime, GameInputManager input)
     {
         if (_currentNode == null)
         {
-            // Dialogue ended
+            // Dialogue ended — handle oneShot
+            if (_dialogue.OneShot == true && !string.IsNullOrEmpty(_dialogue.Id))
+                _gameStateManager.SetFlag($"dialogue_shown:{_dialogue.Id}");
             ScreenManager.Pop();
             return;
         }
@@ -64,7 +85,7 @@ public class DialogueScreen : GameScreen
                     _revealedChars = _currentNode.Text?.Length ?? 0;
             }
 
-            // Interact during reveal → skip to full text
+            // Interact during reveal -> skip to full text
             if (input.IsActionJustPressed(GameAction.Interact))
             {
                 _revealedChars = _currentNode.Text?.Length ?? 0;
@@ -73,7 +94,7 @@ public class DialogueScreen : GameScreen
         }
         else
         {
-            // Text fully revealed — handle input
+            // Text fully revealed -- handle input
             if (_visibleChoices != null && _visibleChoices.Count > 0)
             {
                 // Branching: navigate choices
@@ -90,8 +111,8 @@ public class DialogueScreen : GameScreen
                 if (input.IsActionJustPressed(GameAction.Interact))
                 {
                     var choice = _visibleChoices[_selectedChoiceIndex];
-                    if (!string.IsNullOrEmpty(choice.SetsFlag))
-                        _gameStateManager.SetFlag(choice.SetsFlag);
+                    // Execute choice actions
+                    ActionExecutor.ExecuteAll(choice.Actions, _gameStateManager, _gameLog);
                     AdvanceToNode(choice.NextNodeId);
                 }
             }
@@ -127,10 +148,9 @@ public class DialogueScreen : GameScreen
             return;
         }
 
-        // Check RequiresFlag — skip node if flag not set
-        if (!string.IsNullOrEmpty(node.RequiresFlag) && !_gameStateManager.HasFlag(node.RequiresFlag))
+        // Check conditions — skip node if conditions not met
+        if (!ConditionEvaluator.EvaluateAll(node.Conditions, _gameStateManager))
         {
-            // Skip to NextNodeId (fall through conditional node)
             AdvanceToNode(node.NextNodeId);
             return;
         }
@@ -147,26 +167,14 @@ public class DialogueScreen : GameScreen
             _gameLog.Add($"{speaker}: {node.Text}", new Color(140, 200, 220));
         }
 
-        // Apply side effects
-        if (!string.IsNullOrEmpty(node.SetsFlag))
-            _gameStateManager.SetFlag(node.SetsFlag);
+        // Execute actions
+        ActionExecutor.ExecuteAll(node.Actions, _gameStateManager, _gameLog);
 
-        if (!string.IsNullOrEmpty(node.SetsVariable))
-        {
-            var eqIndex = node.SetsVariable.IndexOf('=');
-            if (eqIndex > 0)
-            {
-                var key = node.SetsVariable.Substring(0, eqIndex);
-                var value = node.SetsVariable.Substring(eqIndex + 1);
-                _gameStateManager.SetVariable(key, value);
-            }
-        }
-
-        // Filter visible choices by RequiresFlag
+        // Filter visible choices by conditions
         if (node.Choices != null && node.Choices.Count > 0)
         {
             _visibleChoices = node.Choices
-                .Where(c => string.IsNullOrEmpty(c.RequiresFlag) || _gameStateManager.HasFlag(c.RequiresFlag))
+                .Where(c => ConditionEvaluator.EvaluateAll(c.Conditions, _gameStateManager))
                 .ToList();
         }
         else

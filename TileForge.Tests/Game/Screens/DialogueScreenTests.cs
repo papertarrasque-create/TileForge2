@@ -62,7 +62,7 @@ public class DialogueScreenTests
                     Text = "Will you help?",
                     Choices = new List<DialogueChoice>
                     {
-                        new() { Text = "Yes", NextNodeId = "yes_node", SetsFlag = "accepted_quest" },
+                        new() { Text = "Yes", NextNodeId = "yes_node", Actions = new() { new DialogueAction { Type = "set_flag", Value = "accepted_quest" } } },
                         new() { Text = "No", NextNodeId = "no_node" },
                     }
                 },
@@ -280,7 +280,7 @@ public class DialogueScreenTests
     }
 
     // =========================================================================
-    // Flag-setting node
+    // Node actions (set_flag)
     // =========================================================================
 
     [Fact]
@@ -291,7 +291,7 @@ public class DialogueScreenTests
             Id = "flag_test",
             Nodes = new List<DialogueNode>
             {
-                new() { Id = "n1", Text = "Hello", SetsFlag = "spoke_to_elder", NextNodeId = "n2" },
+                new() { Id = "n1", Text = "Hello", Actions = new() { new DialogueAction { Type = "set_flag", Value = "spoke_to_elder" } }, NextNodeId = "n2" },
                 new() { Id = "n2", Text = "Bye" },
             }
         };
@@ -305,7 +305,7 @@ public class DialogueScreenTests
     }
 
     // =========================================================================
-    // Variable-setting node
+    // Node actions (set_variable)
     // =========================================================================
 
     [Fact]
@@ -316,7 +316,7 @@ public class DialogueScreenTests
             Id = "var_test",
             Nodes = new List<DialogueNode>
             {
-                new() { Id = "n1", Text = "Quest begun", SetsVariable = "quest_stage=2" },
+                new() { Id = "n1", Text = "Quest begun", Actions = new() { new DialogueAction { Type = "set_variable", Key = "quest_stage", Value = "2" } } },
             }
         };
         var gsm = CreateGameStateManager();
@@ -328,7 +328,7 @@ public class DialogueScreenTests
     }
 
     // =========================================================================
-    // Conditional node (RequiresFlag)
+    // Conditional node (Conditions)
     // =========================================================================
 
     [Fact]
@@ -340,7 +340,7 @@ public class DialogueScreenTests
             Nodes = new List<DialogueNode>
             {
                 new() { Id = "n1", Text = "Start", NextNodeId = "n2" },
-                new() { Id = "n2", Text = "Secret!", RequiresFlag = "secret_flag", NextNodeId = "n3" },
+                new() { Id = "n2", Text = "Secret!", Conditions = new() { new Condition { Type = "has_flag", Flag = "secret_flag" } }, NextNodeId = "n3" },
                 new() { Id = "n3", Text = "End" },
             }
         };
@@ -373,7 +373,7 @@ public class DialogueScreenTests
             Nodes = new List<DialogueNode>
             {
                 new() { Id = "n1", Text = "Start", NextNodeId = "n2" },
-                new() { Id = "n2", Text = "Secret!", RequiresFlag = "secret_flag", NextNodeId = "n3" },
+                new() { Id = "n2", Text = "Secret!", Conditions = new() { new Condition { Type = "has_flag", Flag = "secret_flag" } }, NextNodeId = "n3" },
                 new() { Id = "n3", Text = "End" },
             }
         };
@@ -395,7 +395,7 @@ public class DialogueScreenTests
     }
 
     // =========================================================================
-    // Conditional choices (RequiresFlag on choice)
+    // Conditional choices (Conditions on choice)
     // =========================================================================
 
     [Fact]
@@ -412,7 +412,7 @@ public class DialogueScreenTests
                     Choices = new List<DialogueChoice>
                     {
                         new() { Text = "Always visible", NextNodeId = "a" },
-                        new() { Text = "Secret option", NextNodeId = "b", RequiresFlag = "secret_flag" },
+                        new() { Text = "Secret option", NextNodeId = "b", Conditions = new() { new Condition { Type = "has_flag", Flag = "secret_flag" } } },
                     }
                 },
                 new() { Id = "a", Text = "You chose A" },
@@ -420,7 +420,7 @@ public class DialogueScreenTests
             }
         };
         var gsm = CreateGameStateManager();
-        // secret_flag NOT set → only "Always visible" should appear
+        // secret_flag NOT set -- only "Always visible" should appear
         var screen = new DialogueScreen(dialogue, gsm);
         var manager = new ScreenManager();
         manager.Push(screen);
@@ -450,7 +450,7 @@ public class DialogueScreenTests
                     Choices = new List<DialogueChoice>
                     {
                         new() { Text = "Always visible", NextNodeId = "a" },
-                        new() { Text = "Secret option", NextNodeId = "b", RequiresFlag = "secret_flag" },
+                        new() { Text = "Secret option", NextNodeId = "b", Conditions = new() { new Condition { Type = "has_flag", Flag = "secret_flag" } } },
                     }
                 },
                 new() { Id = "a", Text = "You chose A" },
