@@ -193,7 +193,7 @@ public class APCombatTests
         var startTime = new GameTime(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(0.01));
         controller.Update(startTime, current);
 
-        var finishTime = new GameTime(TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(PlayState.MoveDuration + 0.01f));
+        var finishTime = new GameTime(TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(EntityAnimator.DefaultHopDuration + 0.01f));
         controller.Update(finishTime, new KeyboardState());
     }
 

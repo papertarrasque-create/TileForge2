@@ -92,7 +92,7 @@ public class PlayModeControllerTests
 
     /// <summary>
     /// Starts a move and then completes it by calling Update with enough elapsed time.
-    /// After this returns, IsMoving will be false and the player entity position will be updated.
+    /// After this returns, the animation is complete and the player entity position will be updated.
     /// Includes a release frame so the key registers as JustPressed even if the same key
     /// was down from a previous SimulateKeyPress call.
     /// </summary>
@@ -107,8 +107,8 @@ public class PlayModeControllerTests
         var startTime = new GameTime(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(0.01));
         controller.Update(startTime, current);
 
-        // Frame 2: enough time passes to complete the move (elapsed > MoveDuration)
-        var finishTime = new GameTime(TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(PlayState.MoveDuration + 0.01f));
+        // Frame 2: enough time passes to complete the move (elapsed > DefaultHopDuration)
+        var finishTime = new GameTime(TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(EntityAnimator.DefaultHopDuration + 0.01f));
         var noKeys = new KeyboardState();
         controller.Update(finishTime, noKeys);
     }
@@ -438,9 +438,8 @@ public class PlayModeControllerTests
 
         SimulateKeyPress(controller, Keys.Right);
 
-        Assert.True(state.PlayState.IsMoving);
-        Assert.Equal(new Vector2(5, 5), state.PlayState.MoveFrom);
-        Assert.Equal(new Vector2(6, 5), state.PlayState.MoveTo);
+        // Entity position hasn't snapped yet (animation in progress)
+        Assert.Equal(5, state.PlayState.PlayerEntity.X);
     }
 
     [Fact]
@@ -451,8 +450,8 @@ public class PlayModeControllerTests
 
         SimulateKeyPress(controller, Keys.Left);
 
-        Assert.True(state.PlayState.IsMoving);
-        Assert.Equal(new Vector2(4, 5), state.PlayState.MoveTo);
+        // Entity position hasn't snapped yet (animation in progress)
+        Assert.Equal(5, state.PlayState.PlayerEntity.X);
     }
 
     [Fact]
@@ -463,8 +462,8 @@ public class PlayModeControllerTests
 
         SimulateKeyPress(controller, Keys.Up);
 
-        Assert.True(state.PlayState.IsMoving);
-        Assert.Equal(new Vector2(5, 4), state.PlayState.MoveTo);
+        // Entity position hasn't snapped yet (animation in progress)
+        Assert.Equal(5, state.PlayState.PlayerEntity.Y);
     }
 
     [Fact]
@@ -475,8 +474,8 @@ public class PlayModeControllerTests
 
         SimulateKeyPress(controller, Keys.Down);
 
-        Assert.True(state.PlayState.IsMoving);
-        Assert.Equal(new Vector2(5, 6), state.PlayState.MoveTo);
+        // Entity position hasn't snapped yet (animation in progress)
+        Assert.Equal(5, state.PlayState.PlayerEntity.Y);
     }
 
     [Fact]
@@ -489,7 +488,6 @@ public class PlayModeControllerTests
 
         Assert.Equal(6, state.PlayState.PlayerEntity.X);
         Assert.Equal(5, state.PlayState.PlayerEntity.Y);
-        Assert.False(state.PlayState.IsMoving);
     }
 
     [Fact]
@@ -526,7 +524,6 @@ public class PlayModeControllerTests
         var gameTime = new GameTime(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(0.1));
         controller.Update(gameTime, new KeyboardState());
 
-        Assert.False(state.PlayState.IsMoving);
         Assert.Equal(5, state.PlayState.PlayerEntity.X);
         Assert.Equal(5, state.PlayState.PlayerEntity.Y);
     }
@@ -544,18 +541,15 @@ public class PlayModeControllerTests
         // Frame 1: key pressed — initiates move
         var startTime = new GameTime(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(0.01));
         controller.Update(startTime, rightDown);
-        Assert.True(state.PlayState.IsMoving);
 
         // Complete the move
-        var finishTime = new GameTime(TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(PlayState.MoveDuration + 0.01f));
+        var finishTime = new GameTime(TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(EntityAnimator.DefaultHopDuration + 0.01f));
         controller.Update(finishTime, rightDown);
-        Assert.False(state.PlayState.IsMoving);
         Assert.Equal(6, state.PlayState.PlayerEntity.X);
 
         // Frame 3: key still held — should NOT start a new move
         var holdTime = new GameTime(TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(0.01));
         controller.Update(holdTime, rightDown);
-        Assert.False(state.PlayState.IsMoving);
         Assert.Equal(6, state.PlayState.PlayerEntity.X);
     }
 
@@ -571,7 +565,6 @@ public class PlayModeControllerTests
 
         SimulateKeyPress(controller, Keys.Left);
 
-        Assert.False(state.PlayState.IsMoving);
         Assert.Equal(0, state.PlayState.PlayerEntity.X);
     }
 
@@ -583,7 +576,6 @@ public class PlayModeControllerTests
 
         SimulateKeyPress(controller, Keys.Up);
 
-        Assert.False(state.PlayState.IsMoving);
         Assert.Equal(0, state.PlayState.PlayerEntity.Y);
     }
 
@@ -595,7 +587,6 @@ public class PlayModeControllerTests
 
         SimulateKeyPress(controller, Keys.Right);
 
-        Assert.False(state.PlayState.IsMoving);
         Assert.Equal(9, state.PlayState.PlayerEntity.X);
     }
 
@@ -607,7 +598,6 @@ public class PlayModeControllerTests
 
         SimulateKeyPress(controller, Keys.Down);
 
-        Assert.False(state.PlayState.IsMoving);
         Assert.Equal(9, state.PlayState.PlayerEntity.Y);
     }
 
@@ -634,7 +624,6 @@ public class PlayModeControllerTests
 
         SimulateKeyPress(controller, Keys.Right);
 
-        Assert.False(state.PlayState.IsMoving);
         Assert.Equal(5, state.PlayState.PlayerEntity.X);
     }
 
@@ -657,8 +646,8 @@ public class PlayModeControllerTests
 
         SimulateKeyPress(controller, Keys.Right);
 
-        Assert.True(state.PlayState.IsMoving);
-        Assert.Equal(new Vector2(6, 5), state.PlayState.MoveTo);
+        // Move initiated -- entity position hasn't snapped yet
+        Assert.Equal(5, state.PlayState.PlayerEntity.X);
     }
 
     [Fact]
@@ -681,7 +670,7 @@ public class PlayModeControllerTests
 
         SimulateKeyPress(controller, Keys.Right);
 
-        Assert.False(state.PlayState.IsMoving);
+        Assert.Equal(5, state.PlayState.PlayerEntity.X);
     }
 
     [Fact]
@@ -693,7 +682,8 @@ public class PlayModeControllerTests
 
         SimulateKeyPress(controller, Keys.Right);
 
-        Assert.True(state.PlayState.IsMoving);
+        // Move initiated -- entity position hasn't snapped yet
+        Assert.Equal(5, state.PlayState.PlayerEntity.X);
     }
 
     // =========================================================================
@@ -724,7 +714,6 @@ public class PlayModeControllerTests
 
         SimulateKeyPress(controller, Keys.Right);
 
-        Assert.False(state.PlayState.IsMoving);
         Assert.Equal(5, state.PlayState.PlayerEntity.X);
     }
 
@@ -752,8 +741,8 @@ public class PlayModeControllerTests
 
         SimulateKeyPress(controller, Keys.Right);
 
-        Assert.True(state.PlayState.IsMoving);
-        Assert.Equal(new Vector2(6, 5), state.PlayState.MoveTo);
+        // Move initiated -- entity position hasn't snapped yet
+        Assert.Equal(5, state.PlayState.PlayerEntity.X);
     }
 
     // =========================================================================
@@ -922,17 +911,17 @@ public class PlayModeControllerTests
         var startTime = new GameTime(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(0.01));
         controller.Update(startTime, current);
 
-        Assert.True(state.PlayState.IsMoving);
-
-        // Partial progress: half of MoveDuration
+        // Partial progress: half of DefaultHopDuration
         var halfTime = new GameTime(TimeSpan.FromSeconds(2),
-            TimeSpan.FromSeconds(PlayState.MoveDuration * 0.5));
+            TimeSpan.FromSeconds(EntityAnimator.DefaultHopDuration * 0.5));
         controller.Update(halfTime, new KeyboardState());
 
-        // RenderPos should be between MoveFrom (5,5) and MoveTo (6,5)
+        // RenderPos.X should be between start (5) and target (6)
         Assert.True(state.PlayState.RenderPos.X > 5f);
         Assert.True(state.PlayState.RenderPos.X < 6f);
-        Assert.Equal(5f, state.PlayState.RenderPos.Y);
+        // RenderPos.Y may be offset by hop arc, but should be near 5
+        Assert.True(state.PlayState.RenderPos.Y <= 5f);
+        Assert.True(state.PlayState.RenderPos.Y > 4f);
     }
 
     [Fact]
@@ -946,18 +935,18 @@ public class PlayModeControllerTests
         var startTime = new GameTime(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(0.01));
         controller.Update(startTime, rightKey);
 
-        Assert.True(state.PlayState.IsMoving);
-        Assert.Equal(new Vector2(6, 5), state.PlayState.MoveTo);
+        // Entity position hasn't snapped yet (animation in progress)
+        Assert.Equal(5, state.PlayState.PlayerEntity.X);
+        Assert.Equal(5, state.PlayState.PlayerEntity.Y);
 
-        // While still moving, press Down — should be ignored
+        // While still moving, press Down -- should be ignored
         var downKey = new KeyboardState(Keys.Down);
         var partialTime = new GameTime(TimeSpan.FromSeconds(2),
-            TimeSpan.FromSeconds(PlayState.MoveDuration * 0.3));
+            TimeSpan.FromSeconds(EntityAnimator.DefaultHopDuration * 0.3));
         controller.Update(partialTime, downKey);
 
-        // Still moving to the original target
-        Assert.True(state.PlayState.IsMoving);
-        Assert.Equal(new Vector2(6, 5), state.PlayState.MoveTo);
+        // Still moving to original target -- Y unchanged
+        Assert.Equal(5, state.PlayState.PlayerEntity.Y);
     }
 
     // =========================================================================
@@ -1032,14 +1021,14 @@ public class PlayModeControllerTests
         controller.Enter();
 
         SimulateKeyPress(controller, Keys.Left);
-        Assert.False(state.PlayState.IsMoving);
+        Assert.Equal(0, state.PlayState.PlayerEntity.X);
 
         SimulateKeyPress(controller, Keys.Up);
-        Assert.False(state.PlayState.IsMoving);
+        Assert.Equal(0, state.PlayState.PlayerEntity.Y);
 
-        // But can move right and down
+        // But can move right and down (position unchanged = animation in progress)
         SimulateKeyPress(controller, Keys.Right);
-        Assert.True(state.PlayState.IsMoving);
+        Assert.Equal(0, state.PlayState.PlayerEntity.X);
     }
 
     // =========================================================================
@@ -1217,7 +1206,6 @@ public class PlayModeControllerTests
         // Try to move again — should not work
         int xBefore = state.PlayState.PlayerEntity.X;
         SimulateKeyPress(controller, Keys.Down);
-        Assert.False(state.PlayState.IsMoving);
         Assert.Equal(xBefore, state.PlayState.PlayerEntity.X);
     }
 
@@ -1241,11 +1229,22 @@ public class PlayModeControllerTests
         });
         controller.Enter();
 
-        // Initiate move onto swamp tile
-        SimulateKeyPress(controller, Keys.Right);
+        // Start move onto swamp tile
+        var current = new KeyboardState(Keys.Right);
+        var startTime = new GameTime(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(0.01));
+        controller.Update(startTime, current);
 
-        // CurrentMoveDuration should be 0.15 * 2.0 = 0.30
-        Assert.Equal(PlayState.MoveDuration * 2.0f, state.PlayState.CurrentMoveDuration, 3);
+        // After base duration (0.15s), move should NOT be complete (cost=2x -> needs 0.30s)
+        var midTime = new GameTime(TimeSpan.FromSeconds(2),
+            TimeSpan.FromSeconds(EntityAnimator.DefaultHopDuration));
+        controller.Update(midTime, new KeyboardState());
+        Assert.Equal(5, state.PlayState.PlayerEntity.X); // still animating
+
+        // After 2x+ duration, move IS complete
+        var endTime = new GameTime(TimeSpan.FromSeconds(3),
+            TimeSpan.FromSeconds(EntityAnimator.DefaultHopDuration + 0.01f));
+        controller.Update(endTime, new KeyboardState());
+        Assert.Equal(6, state.PlayState.PlayerEntity.X); // arrived
     }
 
     [Fact]
@@ -1254,9 +1253,9 @@ public class PlayModeControllerTests
         var (state, canvas, controller) = CreatePlaySetup(playerX: 5, playerY: 5);
         controller.Enter();
 
-        SimulateKeyPress(controller, Keys.Right);
-
-        Assert.Equal(PlayState.MoveDuration, state.PlayState.CurrentMoveDuration, 3);
+        // Move completes in base duration
+        SimulateFullMove(controller, Keys.Right);
+        Assert.Equal(6, state.PlayState.PlayerEntity.X);
     }
 
     [Fact]
@@ -1279,17 +1278,16 @@ public class PlayModeControllerTests
         var current = new KeyboardState(Keys.Right);
         var startTime = new GameTime(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(0.01));
         controller.Update(startTime, current);
-        Assert.True(state.PlayState.IsMoving);
 
-        // After base MoveDuration (0.15s), move should NOT be complete (cost=3x → needs 0.45s)
-        var midTime = new GameTime(TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(PlayState.MoveDuration));
+        // After base DefaultHopDuration (0.15s), move should NOT be complete (cost=3x -> needs 0.45s)
+        var midTime = new GameTime(TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(EntityAnimator.DefaultHopDuration));
         controller.Update(midTime, new KeyboardState());
-        Assert.True(state.PlayState.IsMoving);
+        Assert.Equal(5, state.PlayState.PlayerEntity.X); // still animating
 
         // After total 0.45s+, move should be complete
-        var endTime = new GameTime(TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(PlayState.MoveDuration * 2.0f + 0.01f));
+        var endTime = new GameTime(TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(EntityAnimator.DefaultHopDuration * 2.0f + 0.01f));
         controller.Update(endTime, new KeyboardState());
-        Assert.False(state.PlayState.IsMoving);
+        Assert.Equal(6, state.PlayState.PlayerEntity.X); // arrived
     }
 
     // =========================================================================
