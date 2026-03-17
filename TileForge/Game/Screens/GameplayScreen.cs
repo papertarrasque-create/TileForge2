@@ -371,7 +371,7 @@ public class GameplayScreen : GameScreen
     public override void Draw(SpriteBatch spriteBatch, SpriteFont font,
         Renderer renderer, Rectangle canvasBounds)
     {
-        _canvas.Draw(spriteBatch, _state, renderer, canvasBounds);
+        _canvas.Draw(spriteBatch, _state, renderer, canvasBounds, _animator);
 
         // Floating messages (world-space, drift upward + fade)
         var play = _state.PlayState;

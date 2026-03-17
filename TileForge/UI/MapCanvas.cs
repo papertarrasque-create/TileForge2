@@ -184,7 +184,7 @@ public class MapCanvas
         input.TryConsumeClick(bounds);
     }
 
-    public void Draw(SpriteBatch spriteBatch, EditorState state, Renderer renderer, Rectangle bounds)
+    public void Draw(SpriteBatch spriteBatch, EditorState state, Renderer renderer, Rectangle bounds, EntityAnimator animator = null)
     {
         // Background
         renderer.DrawRect(spriteBatch, bounds, BackgroundColor);
@@ -244,7 +244,7 @@ public class MapCanvas
             if (!entitiesDrawn && layerIdx == state.Map.EntityRenderOrder)
             {
                 DrawEntities(spriteBatch, state, renderer, tileW, tileH, cellW, cellH,
-                             startCol, startRow, endCol, endRow);
+                             startCol, startRow, endCol, endRow, animator);
                 entitiesDrawn = true;
             }
         }
@@ -253,7 +253,7 @@ public class MapCanvas
         if (!entitiesDrawn)
         {
             DrawEntities(spriteBatch, state, renderer, tileW, tileH, cellW, cellH,
-                         startCol, startRow, endCol, endRow);
+                         startCol, startRow, endCol, endRow, animator);
         }
 
         // Grid overlay (editor mode only)
@@ -330,26 +330,43 @@ public class MapCanvas
 
     private void DrawEntities(SpriteBatch spriteBatch, EditorState state, Renderer renderer,
                               int tileW, int tileH, int cellW, int cellH,
-                              int startCol, int startRow, int endCol, int endRow)
+                              int startCol, int startRow, int endCol, int endRow,
+                              EntityAnimator animator = null)
     {
         foreach (var entity in state.Map.Entities)
         {
             if (!state.GroupsByName.TryGetValue(entity.GroupName, out var group)) continue;
             if (group.Sprites.Count == 0) continue;
 
-            // In play mode, render player entity at lerp position
             float drawX, drawY;
             if (state.IsPlayMode && state.PlayState != null && entity == state.PlayState.PlayerEntity)
             {
+                // Player uses RenderPos (write-through from animator)
                 drawX = state.PlayState.RenderPos.X;
                 drawY = state.PlayState.RenderPos.Y;
+            }
+            else if (state.IsPlayMode && animator != null)
+            {
+                // Check for active animation (e.g. knockback slide)
+                var animPos = animator.GetRenderPos(entity.Id);
+                if (animPos.HasValue)
+                {
+                    drawX = animPos.Value.X;
+                    drawY = animPos.Value.Y;
+                    // Skip culling for animated entities
+                }
+                else
+                {
+                    drawX = entity.X;
+                    drawY = entity.Y;
+                    if (entity.X < startCol || entity.X > endCol || entity.Y < startRow || entity.Y > endRow)
+                        continue;
+                }
             }
             else
             {
                 drawX = entity.X;
                 drawY = entity.Y;
-
-                // Cull non-player entities outside visible range
                 if (entity.X < startCol || entity.X > endCol || entity.Y < startRow || entity.Y > endRow)
                     continue;
             }
