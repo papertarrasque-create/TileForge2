@@ -302,11 +302,11 @@ public class GameStateManager
         DeactivateEntity(entity);
 
         // Process entity collect event hooks for quest tracking
-        if (entity.Properties.TryGetValue("on_collect_set_flag", out var collectFlag)
-            && !string.IsNullOrEmpty(collectFlag))
+        var collectFlag = PropertyAccess.GetString(entity.Properties, PropertyKeys.OnCollectSetFlag);
+        if (!string.IsNullOrEmpty(collectFlag))
             SetFlag(collectFlag);
-        if (entity.Properties.TryGetValue("on_collect_increment", out var collectVar)
-            && !string.IsNullOrEmpty(collectVar))
+        var collectVar = PropertyAccess.GetString(entity.Properties, PropertyKeys.OnCollectIncrement);
+        if (!string.IsNullOrEmpty(collectVar))
             IncrementVariable(collectVar);
     }
 
@@ -367,7 +367,7 @@ public class GameStateManager
     public EquipmentSlot? GetItemEquipSlot(string itemName)
     {
         if (State.ItemPropertyCache.TryGetValue(itemName, out var props)
-            && props.TryGetValue("equip_slot", out var slotStr)
+            && props.TryGetValue(PropertyKeys.EquipSlot, out var slotStr)
             && Enum.TryParse<EquipmentSlot>(slotStr, ignoreCase: true, out var slot))
             return slot;
         return null;
@@ -378,7 +378,7 @@ public class GameStateManager
     /// </summary>
     public int GetEffectiveAttack()
     {
-        return State.Player.Attack + GetEquipmentBonus("equip_attack");
+        return State.Player.Attack + GetEquipmentBonus(PropertyKeys.EquipAttack);
     }
 
     /// <summary>
@@ -386,7 +386,7 @@ public class GameStateManager
     /// </summary>
     public int GetEffectiveDefense()
     {
-        return State.Player.Defense + GetEquipmentBonus("equip_defense");
+        return State.Player.Defense + GetEquipmentBonus(PropertyKeys.EquipDefense);
     }
 
     /// <summary>
@@ -394,7 +394,7 @@ public class GameStateManager
     /// </summary>
     public int GetEffectiveMaxAP()
     {
-        return State.Player.MaxAP + GetEquipmentBonus("equip_ap");
+        return State.Player.MaxAP + GetEquipmentBonus(PropertyKeys.EquipAp);
     }
 
     /// <summary>
@@ -402,7 +402,7 @@ public class GameStateManager
     /// </summary>
     public int GetEffectiveMaxPoise()
     {
-        return State.Player.MaxPoise + GetEquipmentBonus("equip_poise");
+        return State.Player.MaxPoise + GetEquipmentBonus(PropertyKeys.EquipPoise);
     }
 
     /// <summary>
@@ -425,10 +425,8 @@ public class GameStateManager
         int total = 0;
         foreach (var kvp in State.Player.Equipment)
         {
-            if (State.ItemPropertyCache.TryGetValue(kvp.Value, out var props)
-                && props.TryGetValue(propertyKey, out var val)
-                && int.TryParse(val, out var bonus))
-                total += bonus;
+            if (State.ItemPropertyCache.TryGetValue(kvp.Value, out var props))
+                total += PropertyAccess.GetInt(props, propertyKey);
         }
         return total;
     }
@@ -453,13 +451,13 @@ public class GameStateManager
     /// </summary>
     public bool IsEntityHostile(EntityInstance entity)
     {
-        if (entity.Properties.TryGetValue("friendly_flag", out var ff)
-            && !string.IsNullOrEmpty(ff) && State.Flags.Contains(ff))
+        var ff = PropertyAccess.GetString(entity.Properties, PropertyKeys.FriendlyFlag);
+        if (!string.IsNullOrEmpty(ff) && State.Flags.Contains(ff))
             return false;
-        if (entity.Properties.TryGetValue("hostile_flag", out var hf)
-            && !string.IsNullOrEmpty(hf) && State.Flags.Contains(hf))
+        var hf = PropertyAccess.GetString(entity.Properties, PropertyKeys.HostileFlag);
+        if (!string.IsNullOrEmpty(hf) && State.Flags.Contains(hf))
             return true;
-        if (entity.Properties.TryGetValue("hostile", out var h))
+        if (entity.Properties.TryGetValue(PropertyKeys.Hostile, out var h))
             return !string.Equals(h, "false", StringComparison.OrdinalIgnoreCase);
         return true;
     }
@@ -473,7 +471,7 @@ public class GameStateManager
         if (!entity.IsActive) return false;
         if (!IsEntityHostile(entity)) return false;
 
-        int health = GetEntityIntProperty(entity, "health", 0);
+        int health = PropertyAccess.GetInt(entity.Properties, PropertyKeys.Health);
         if (health <= 0) return false;
 
         if (!groupsByName.TryGetValue(entity.DefinitionName, out var group))
@@ -487,10 +485,10 @@ public class GameStateManager
     /// </summary>
     public AttackResult AttackEntity(EntityInstance entity, int attackerAttack, int terrainBonus, float positionMultiplier)
     {
-        int defense = GetEntityIntProperty(entity, "defense", 0);
+        int defense = PropertyAccess.GetInt(entity.Properties, PropertyKeys.Defense);
 
         // Entity poise: absorb damage through poise first
-        int entityPoise = GetEntityIntProperty(entity, "poise", 0);
+        int entityPoise = PropertyAccess.GetInt(entity.Properties, PropertyKeys.Poise);
         int rawDamage = CombatHelper.CalculateDamage(attackerAttack, defense, terrainBonus, positionMultiplier);
 
         int damage = rawDamage;
@@ -499,31 +497,31 @@ public class GameStateManager
             int absorbed = Math.Min(entityPoise, damage);
             entityPoise -= absorbed;
             damage -= absorbed;
-            SetEntityIntProperty(entity, "poise", entityPoise);
+            PropertyAccess.SetInt(entity.Properties, PropertyKeys.Poise, entityPoise);
         }
 
-        int currentHealth = GetEntityIntProperty(entity, "health", 0);
+        int currentHealth = PropertyAccess.GetInt(entity.Properties, PropertyKeys.Health);
         int newHealth = Math.Max(0, currentHealth - damage);
-        SetEntityIntProperty(entity, "health", newHealth);
+        PropertyAccess.SetInt(entity.Properties, PropertyKeys.Health, newHealth);
 
         bool killed = newHealth <= 0;
         if (killed)
         {
             DeactivateEntity(entity);
 
-            if (entity.Properties.TryGetValue("on_kill_set_flag", out var killFlag)
-                && !string.IsNullOrEmpty(killFlag))
+            var killFlag = PropertyAccess.GetString(entity.Properties, PropertyKeys.OnKillSetFlag);
+            if (!string.IsNullOrEmpty(killFlag))
                 SetFlag(killFlag);
-            if (entity.Properties.TryGetValue("on_kill_increment", out var killVar)
-                && !string.IsNullOrEmpty(killVar))
+            var killVar = PropertyAccess.GetString(entity.Properties, PropertyKeys.OnKillIncrement);
+            if (!string.IsNullOrEmpty(killVar))
                 IncrementVariable(killVar);
         }
 
-        int maxHealth = GetEntityIntProperty(entity, "max_health", currentHealth);
+        int maxHealth = PropertyAccess.GetInt(entity.Properties, PropertyKeys.MaxHealth, currentHealth);
         string xpStr = "";
         if (killed)
         {
-            int xp = GetEntityIntProperty(entity, "xp", 0);
+            int xp = PropertyAccess.GetInt(entity.Properties, PropertyKeys.Xp);
             xpStr = xp > 0 ? $" (+{xp} XP)" : "";
         }
 
@@ -547,12 +545,12 @@ public class GameStateManager
     /// </summary>
     public AttackResult AttackEntity(EntityInstance entity, int attackerAttack)
     {
-        int defense = GetEntityIntProperty(entity, "defense", 0);
+        int defense = PropertyAccess.GetInt(entity.Properties, PropertyKeys.Defense);
         int damage = CombatHelper.CalculateDamage(attackerAttack, defense);
 
-        int currentHealth = GetEntityIntProperty(entity, "health", 0);
+        int currentHealth = PropertyAccess.GetInt(entity.Properties, PropertyKeys.Health);
         int newHealth = Math.Max(0, currentHealth - damage);
-        SetEntityIntProperty(entity, "health", newHealth);
+        PropertyAccess.SetInt(entity.Properties, PropertyKeys.Health, newHealth);
 
         bool killed = newHealth <= 0;
         if (killed)
@@ -560,19 +558,19 @@ public class GameStateManager
             DeactivateEntity(entity);
 
             // Process entity kill event hooks for quest tracking
-            if (entity.Properties.TryGetValue("on_kill_set_flag", out var killFlag)
-                && !string.IsNullOrEmpty(killFlag))
+            var killFlag = PropertyAccess.GetString(entity.Properties, PropertyKeys.OnKillSetFlag);
+            if (!string.IsNullOrEmpty(killFlag))
                 SetFlag(killFlag);
-            if (entity.Properties.TryGetValue("on_kill_increment", out var killVar)
-                && !string.IsNullOrEmpty(killVar))
+            var killVar = PropertyAccess.GetString(entity.Properties, PropertyKeys.OnKillIncrement);
+            if (!string.IsNullOrEmpty(killVar))
                 IncrementVariable(killVar);
         }
 
-        int maxHealth = GetEntityIntProperty(entity, "max_health", currentHealth);
+        int maxHealth = PropertyAccess.GetInt(entity.Properties, PropertyKeys.MaxHealth, currentHealth);
         string xpStr = "";
         if (killed)
         {
-            int xp = GetEntityIntProperty(entity, "xp", 0);
+            int xp = PropertyAccess.GetInt(entity.Properties, PropertyKeys.Xp);
             xpStr = xp > 0 ? $" (+{xp} XP)" : "";
         }
 
