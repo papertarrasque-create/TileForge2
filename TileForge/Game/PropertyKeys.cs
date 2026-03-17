@@ -10,6 +10,7 @@ public static class PropertyKeys
     public const string Poise = "poise";
     public const string Damage = "damage";
     public const string Xp = "xp";
+    public const string Weight = "weight";
 
     // AI & Behavior
     public const string Behavior = "behavior";
@@ -34,6 +35,7 @@ public static class PropertyKeys
     public const string EquipDefense = "equip_defense";
     public const string EquipAp = "equip_ap";
     public const string EquipPoise = "equip_poise";
+    public const string EquipWeight = "equip_weight";
     public const string OnCollectSetFlag = "on_collect_set_flag";
     public const string OnCollectIncrement = "on_collect_increment";
 

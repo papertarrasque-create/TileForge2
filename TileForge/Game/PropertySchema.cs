@@ -15,6 +15,7 @@ public static class PropertySchema
         new(PropertyKeys.Poise, PropType.Int, new IntRange(0, 9999), EntityType.NPC),
         new(PropertyKeys.Damage, PropType.Int, new IntRange(1, 9999), EntityType.Trap),
         new(PropertyKeys.Xp, PropType.Int, new IntRange(0, 9999), EntityType.NPC, EntityType.Trap),
+        new(PropertyKeys.Weight, PropType.Int, new IntRange(1, 3), EntityType.NPC),
 
         // AI
         new(PropertyKeys.Behavior, PropType.Enum,
@@ -41,6 +42,7 @@ public static class PropertySchema
         new(PropertyKeys.EquipDefense, PropType.Int, new IntRange(0, 999), EntityType.Item),
         new(PropertyKeys.EquipAp, PropType.Int, new IntRange(0, 5), EntityType.Item),
         new(PropertyKeys.EquipPoise, PropType.Int, new IntRange(0, 999), EntityType.Item),
+        new(PropertyKeys.EquipWeight, PropType.Int, new IntRange(0, 5), EntityType.Item),
         new(PropertyKeys.OnCollectSetFlag, PropType.String, EntityType.Item),
         new(PropertyKeys.OnCollectIncrement, PropType.String, EntityType.Item),
 

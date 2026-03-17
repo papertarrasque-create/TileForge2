@@ -16,5 +16,6 @@ public class PlayerState
     public int MaxAP { get; set; } = 2;
     public int Poise { get; set; } = 20;
     public int MaxPoise { get; set; } = 20;
+    public int Weight { get; set; } = 1;
     public Dictionary<string, string> Equipment { get; set; } = new();
 }
