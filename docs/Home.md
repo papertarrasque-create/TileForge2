@@ -45,6 +45,7 @@ Welcome to the TileForge project wiki. This is the living documentation for the 
 |------|--------|
 | [[Property Reference]] | Complete entity property key reference with types and defaults |
 | [[File Formats]] | .tileforge project, dialogue JSON, quest JSON, save files, world layout |
+| [[Quest Templates]] | Copy-paste templates for Fetch, Kill/Clear, Talk-to, Investigation quests |
 | [[Controls]] | Editor and play mode keyboard/mouse controls |
 | [[Constants]] | Key numeric constants across all systems |
 
