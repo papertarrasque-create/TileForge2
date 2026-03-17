@@ -482,6 +482,52 @@ public class GameplayScreen : GameScreen
         return true;
     }
 
+    /// <summary>
+    /// Checks if a tile is walkable (not solid) and not occupied by any entity or the player.
+    /// Used for knockback destination validation.
+    /// excludeEntityId: skip this entity in occupancy check (the entity being knocked back).
+    /// Pass null when checking player knockback (player is excluded automatically).
+    /// </summary>
+    private bool IsTileWalkableAndUnoccupied(int x, int y, string excludeEntityId)
+    {
+        var map = _state.Map;
+        if (!map.InBounds(x, y)) return false;
+
+        // Check all layers for solid tiles (same logic as CanMoveTo)
+        foreach (var layer in map.Layers)
+        {
+            string groupName = layer.GetCell(x, y, map.Width);
+            if (groupName != null
+                && _state.GroupsByName.TryGetValue(groupName, out var group)
+                && group.IsSolid)
+            {
+                return false;
+            }
+        }
+
+        // Check no solid entity occupies the tile (matches CanMoveTo entity check)
+        foreach (var e in _gameStateManager.State.ActiveEntities)
+        {
+            if (!e.IsActive) continue;
+            if (excludeEntityId != null && e.Id == excludeEntityId) continue;
+            if (e.X == x && e.Y == y
+                && _state.GroupsByName.TryGetValue(e.DefinitionName, out var eGroup)
+                && eGroup.IsSolid)
+            {
+                return false;
+            }
+        }
+
+        // Don't check player collision when player is the knockback target (excludeEntityId == null)
+        if (excludeEntityId != null)
+        {
+            if (_state.PlayState.PlayerEntity.X == x && _state.PlayState.PlayerEntity.Y == y)
+                return false;
+        }
+
+        return true;
+    }
+
     private void CheckEntityInteractionAt(PlayState play, int x, int y)
     {
         foreach (var instance in _gameStateManager.State.ActiveEntities)
@@ -770,6 +816,32 @@ public class GameplayScreen : GameScreen
 
                 LogAndFloat(play,result.Message, Color.Gold, instance.X, instance.Y);
                 TriggerEntityFlash(instance.Id);
+
+                // Knockback: skip if kill, otherwise resolve
+                if (!result.Killed)
+                {
+                    // Track hits for stagger
+                    if (!play.HitsThisTurn.ContainsKey(instance.Id))
+                        play.HitsThisTurn[instance.Id] = 0;
+                    play.HitsThisTurn[instance.Id]++;
+
+                    int weight = PropertyAccess.GetInt(instance.Properties, PropertyKeys.Weight, 1);
+                    var kb = KnockbackResolver.Resolve(
+                        play.PlayerEntity.X, play.PlayerEntity.Y,
+                        instance.X, instance.Y,
+                        weight,
+                        play.HitsThisTurn[instance.Id],
+                        (tx, ty) => IsTileWalkableAndUnoccupied(tx, ty, instance.Id));
+
+                    if (kb.KnockedBack)
+                    {
+                        instance.X = kb.NewX;
+                        instance.Y = kb.NewY;
+                        SyncEntityRenderState();
+                        LogAndFloat(play, "Knocked back!", Color.White, kb.NewX, kb.NewY);
+                    }
+                }
+
                 return true;
             }
         }
@@ -807,6 +879,7 @@ public class GameplayScreen : GameScreen
     private void BeginPlayerTurn(PlayState play)
     {
         play.PlayerAP = _gameStateManager.GetEffectiveMaxAP();
+        play.HitsThisTurn.Clear();
         play.IsPlayerTurn = true;
 
         // Poise regeneration when no hostiles nearby
