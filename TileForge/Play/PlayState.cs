@@ -14,14 +14,6 @@ public class PlayState
     /// </summary>
     public Vector2 RenderPos { get; set; }
 
-    // Movement lerp
-    public bool IsMoving { get; set; }
-    public Vector2 MoveFrom { get; set; }
-    public Vector2 MoveTo { get; set; }
-    public float MoveProgress { get; set; }
-    public const float MoveDuration = 0.15f;
-    public float CurrentMoveDuration { get; set; } = MoveDuration;
-
     // Floating messages (universal — combat, items, quests, traps, etc.)
     public List<FloatingMessage> FloatingMessages { get; set; } = new();
 
