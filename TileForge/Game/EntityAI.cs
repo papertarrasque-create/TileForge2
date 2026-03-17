@@ -10,7 +10,8 @@ public static class EntityAI
         IPathfinder pathfinder,
         bool isHostile = true)
     {
-        if (!entity.Properties.TryGetValue("behavior", out var behavior))
+        var behavior = PropertyAccess.GetString(entity.Properties, PropertyKeys.Behavior);
+        if (string.IsNullOrEmpty(behavior))
             return EntityAction.Idle();
 
         if (!isHostile)
@@ -36,13 +37,10 @@ public static class EntityAI
 
     private static EntityAction DecideChase(EntityInstance entity, GameState state, IPathfinder pathfinder)
     {
-        int aggroRange = 5;
-        if (entity.Properties.TryGetValue("aggro_range", out var rangeStr) && int.TryParse(rangeStr, out var r))
-            aggroRange = r;
+        int aggroRange = PropertyAccess.GetInt(entity.Properties, PropertyKeys.AggroRange, 5);
 
         // Alert doubles effective aggro range
-        if (entity.Properties.TryGetValue("alert_turns", out var alertStr)
-            && int.TryParse(alertStr, out var alertTurns) && alertTurns > 0)
+        if (PropertyAccess.GetInt(entity.Properties, PropertyKeys.AlertTurns, 0) > 0)
             aggroRange *= 2;
 
         int dx = state.Player.X - entity.X;
@@ -65,32 +63,30 @@ public static class EntityAI
     private static EntityAction DecidePatrol(EntityInstance entity, GameState state, IPathfinder pathfinder)
     {
         // Read patrol config from properties
-        bool isXAxis = true;  // default patrol along X
-        if (entity.Properties.TryGetValue("patrol_axis", out var axis))
-            isXAxis = axis != "y";
+        var axis = PropertyAccess.GetString(entity.Properties, PropertyKeys.PatrolAxis);
+        bool isXAxis = axis != "y";  // default patrol along X
 
-        int patrolRange = 3;
-        if (entity.Properties.TryGetValue("patrol_range", out var prStr) && int.TryParse(prStr, out var pr))
-            patrolRange = pr;
+        int patrolRange = PropertyAccess.GetInt(entity.Properties, PropertyKeys.PatrolRange, 3);
 
         // Read or initialize patrol origin (set once on first decision)
         int origin;
-        if (entity.Properties.TryGetValue("patrol_origin", out var originStr) && int.TryParse(originStr, out var o))
+        if (entity.Properties.TryGetValue(PropertyKeys.PatrolOrigin, out var originStr) && int.TryParse(originStr, out var o))
         {
             origin = o;
         }
         else
         {
             origin = isXAxis ? entity.X : entity.Y;
-            entity.Properties["patrol_origin"] = origin.ToString();
+            PropertyAccess.SetInt(entity.Properties, PropertyKeys.PatrolOrigin, origin);
         }
 
         // Read or initialize patrol direction
-        int dir = 1;
-        if (entity.Properties.TryGetValue("patrol_dir", out var dirStr) && int.TryParse(dirStr, out var d))
-            dir = d;
-        else
-            entity.Properties["patrol_dir"] = "1";
+        int dir = PropertyAccess.GetInt(entity.Properties, PropertyKeys.PatrolDir, 0);
+        if (dir == 0)
+        {
+            dir = 1;
+            PropertyAccess.SetInt(entity.Properties, PropertyKeys.PatrolDir, dir);
+        }
 
         // Calculate next position
         int nextX = entity.X;
@@ -108,7 +104,7 @@ public static class EntityAI
         {
             // Reverse direction
             dir = -dir;
-            entity.Properties["patrol_dir"] = dir.ToString();
+            PropertyAccess.SetInt(entity.Properties, PropertyKeys.PatrolDir, dir);
 
             nextX = entity.X;
             nextY = entity.Y;
@@ -128,13 +124,10 @@ public static class EntityAI
 
     private static EntityAction DecideChasePatrol(EntityInstance entity, GameState state, IPathfinder pathfinder)
     {
-        int aggroRange = 5;
-        if (entity.Properties.TryGetValue("aggro_range", out var rangeStr) && int.TryParse(rangeStr, out var r))
-            aggroRange = r;
+        int aggroRange = PropertyAccess.GetInt(entity.Properties, PropertyKeys.AggroRange, 5);
 
         // Alert doubles effective aggro range
-        if (entity.Properties.TryGetValue("alert_turns", out var alertStr)
-            && int.TryParse(alertStr, out var alertTurns) && alertTurns > 0)
+        if (PropertyAccess.GetInt(entity.Properties, PropertyKeys.AlertTurns, 0) > 0)
             aggroRange *= 2;
 
         int dx = state.Player.X - entity.X;
