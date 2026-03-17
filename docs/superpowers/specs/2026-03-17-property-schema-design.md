@@ -357,9 +357,9 @@ if (def != null)
 {
     return def.Type switch
     {
-        PropType.Int => CreateNumericField(key, value, def.Constraint),
+        PropType.Int => CreateNumericField(key, value, def.Range),
         PropType.Bool => CreateDropdown(key, value, new[] { "true", "false" }),
-        PropType.Enum => CreateDropdown(key, value, (string[])def.Constraint),
+        PropType.Enum => CreateDropdown(key, value, def.AllowedValues),
         PropType.MapRef => CreateMapDropdown(key, value),
         PropType.DialogueRef => CreateDialogueDropdown(key, value),
         _ => CreateTextField(key, value),
