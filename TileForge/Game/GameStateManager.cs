@@ -431,19 +431,6 @@ public class GameStateManager
         return total;
     }
 
-    // Entity property helpers
-    public int GetEntityIntProperty(EntityInstance entity, string key, int defaultValue = 0)
-    {
-        if (entity.Properties.TryGetValue(key, out var value) && int.TryParse(value, out var result))
-            return result;
-        return defaultValue;
-    }
-
-    public void SetEntityIntProperty(EntityInstance entity, string key, int value)
-    {
-        entity.Properties[key] = value.ToString();
-    }
-
     /// <summary>
     /// Returns true if the entity is currently hostile. Checks flag overrides first
     /// (friendly_flag makes non-hostile, hostile_flag makes hostile), then falls back

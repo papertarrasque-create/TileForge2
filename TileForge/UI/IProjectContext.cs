@@ -132,7 +132,7 @@ public class ProjectContext : IProjectContext
             foreach (var group in groups)
             {
                 if (group.DefaultProperties == null) continue;
-                foreach (var key in new[] { "on_kill_set_flag", "on_collect_set_flag" })
+                foreach (var key in new[] { PropertyKeys.OnKillSetFlag, PropertyKeys.OnCollectSetFlag })
                 {
                     if (group.DefaultProperties.TryGetValue(key, out var val) && !string.IsNullOrWhiteSpace(val))
                         flags.Add(val);
@@ -175,7 +175,7 @@ public class ProjectContext : IProjectContext
             foreach (var group in groups)
             {
                 if (group.DefaultProperties == null) continue;
-                foreach (var key in new[] { "on_kill_increment", "on_collect_increment" })
+                foreach (var key in new[] { PropertyKeys.OnKillIncrement, PropertyKeys.OnCollectIncrement })
                 {
                     if (group.DefaultProperties.TryGetValue(key, out var val) && !string.IsNullOrWhiteSpace(val))
                         vars.Add(val);

@@ -48,7 +48,7 @@ public class EntityTurnTests
             if (!entity.IsActive) continue;
             if (!entity.Properties.ContainsKey("behavior")) continue;
 
-            int entityAP = Math.Clamp(gsm.GetEntityIntProperty(entity, "speed", 1), 1, 3);
+            int entityAP = Math.Clamp(PropertyAccess.GetInt(entity.Properties, PropertyKeys.Speed, 1), 1, 3);
 
             while (entityAP > 0)
             {
@@ -67,7 +67,7 @@ public class EntityTurnTests
                     case EntityActionType.Attack:
                         if (action.AttackTargetX == null)
                         {
-                            var atk = gsm.GetEntityIntProperty(entity, "attack", 3);
+                            var atk = PropertyAccess.GetInt(entity.Properties, PropertyKeys.Attack, 3);
                             var damage = CombatHelper.CalculateDamage(atk, gsm.State.Player.Defense);
                             gsm.DamagePlayer(damage);
                             messages.Add($"{entity.DefinitionName} hit you for {damage} damage!");

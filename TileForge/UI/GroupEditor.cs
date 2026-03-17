@@ -320,8 +320,8 @@ public class GroupEditor
                 {
                     if (pf.DD.SelectedItem == ProjectContext.CreateNewItem)
                     {
-                        if (pf.Key == "target_map") WantsCreateMap = true;
-                        else if (pf.Key is "dialogue" or "dialogue_id") WantsCreateDialogue = true;
+                        if (pf.Key == PropertyKeys.TargetMap) WantsCreateMap = true;
+                        else if (pf.Key == PropertyKeys.Dialogue || pf.Key == PropertyKeys.DialogueId) WantsCreateDialogue = true;
                     }
                 }
             }
@@ -688,8 +688,8 @@ public class GroupEditor
     private string[] GetDropdownItems(string key)
     {
         if (_projectContext == null) return new[] { ProjectContext.CreateNewItem };
-        if (key == "target_map") return _projectContext.GetAvailableMaps();
-        if (key is "dialogue" or "dialogue_id" or "on_pickup_dialogue") return _projectContext.GetAvailableDialogues();
+        if (key == PropertyKeys.TargetMap) return _projectContext.GetAvailableMaps();
+        if (key == PropertyKeys.Dialogue || key == PropertyKeys.DialogueId || key == PropertyKeys.OnPickupDialogue) return _projectContext.GetAvailableDialogues();
         return Array.Empty<string>();
     }
 

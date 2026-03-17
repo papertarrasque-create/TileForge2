@@ -33,63 +33,58 @@ public class CombatHelperTests
         Assert.Equal(990, CombatHelper.CalculateDamage(1000, 10));
     }
 
-    // GetEntityIntProperty tests
+    // PropertyAccess.GetInt tests
 
     [Fact]
-    public void GetEntityIntProperty_KeyExists_ReturnsIntValue()
+    public void GetInt_KeyExists_ReturnsIntValue()
     {
-        var manager = new GameStateManager();
-        var entity = new EntityInstance { Properties = new Dictionary<string, string> { ["hp"] = "42" } };
+        var props = new Dictionary<string, string> { ["hp"] = "42" };
 
-        var result = manager.GetEntityIntProperty(entity, "hp");
+        var result = PropertyAccess.GetInt(props, "hp");
 
         Assert.Equal(42, result);
     }
 
     [Fact]
-    public void GetEntityIntProperty_KeyMissing_ReturnsDefault()
+    public void GetInt_KeyMissing_ReturnsDefault()
     {
-        var manager = new GameStateManager();
-        var entity = new EntityInstance { Properties = new Dictionary<string, string>() };
+        var props = new Dictionary<string, string>();
 
-        var result = manager.GetEntityIntProperty(entity, "missing", 7);
+        var result = PropertyAccess.GetInt(props, "missing", 7);
 
         Assert.Equal(7, result);
     }
 
     [Fact]
-    public void GetEntityIntProperty_ValueNotParseable_ReturnsDefault()
+    public void GetInt_ValueNotParseable_ReturnsDefault()
     {
-        var manager = new GameStateManager();
-        var entity = new EntityInstance { Properties = new Dictionary<string, string> { ["hp"] = "not_a_number" } };
+        var props = new Dictionary<string, string> { ["hp"] = "not_a_number" };
 
-        var result = manager.GetEntityIntProperty(entity, "hp", 99);
+        var result = PropertyAccess.GetInt(props, "hp", 99);
 
         Assert.Equal(99, result);
     }
 
-    // SetEntityIntProperty tests
+    // PropertyAccess.SetInt tests
 
     [Fact]
-    public void SetEntityIntProperty_SetsValueCorrectly()
+    public void SetInt_SetsValueCorrectly()
     {
-        var manager = new GameStateManager();
-        var entity = new EntityInstance { Properties = new Dictionary<string, string>() };
+        var props = new Dictionary<string, string>();
 
-        manager.SetEntityIntProperty(entity, "hp", 50);
+        PropertyAccess.SetInt(props, "hp", 50);
 
-        Assert.Equal("50", entity.Properties["hp"]);
+        Assert.Equal("50", props["hp"]);
     }
 
     [Fact]
-    public void SetEntityIntProperty_OverwritesExistingValue()
+    public void SetInt_OverwritesExistingValue()
     {
-        var manager = new GameStateManager();
-        var entity = new EntityInstance { Properties = new Dictionary<string, string> { ["hp"] = "10" } };
+        var props = new Dictionary<string, string> { ["hp"] = "10" };
 
-        manager.SetEntityIntProperty(entity, "hp", 75);
+        PropertyAccess.SetInt(props, "hp", 75);
 
-        Assert.Equal("75", entity.Properties["hp"]);
+        Assert.Equal("75", props["hp"]);
     }
 
     // PlayerState Attack/Defense default tests

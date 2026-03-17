@@ -104,20 +104,19 @@ public class NoiseAlertTests
     }
 
     [Fact]
-    public void AlertTurns_Decremented_BySetEntityIntProperty()
+    public void AlertTurns_Decremented_ByPropertyAccess()
     {
-        var mgr = new GameStateManager();
         var entity = new EntityInstance
         {
             Id = "e1", DefinitionName = "guard", X = 0, Y = 0, IsActive = true,
-            Properties = new Dictionary<string, string> { ["alert_turns"] = "3" }
+            Properties = new Dictionary<string, string> { [PropertyKeys.AlertTurns] = "3" }
         };
 
-        int alertTurns = mgr.GetEntityIntProperty(entity, "alert_turns", 0);
+        int alertTurns = PropertyAccess.GetInt(entity.Properties, PropertyKeys.AlertTurns, 0);
         Assert.Equal(3, alertTurns);
 
-        mgr.SetEntityIntProperty(entity, "alert_turns", alertTurns - 1);
-        Assert.Equal(2, mgr.GetEntityIntProperty(entity, "alert_turns", 0));
+        PropertyAccess.SetInt(entity.Properties, PropertyKeys.AlertTurns, alertTurns - 1);
+        Assert.Equal(2, PropertyAccess.GetInt(entity.Properties, PropertyKeys.AlertTurns, 0));
     }
 
     [Fact]
