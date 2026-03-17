@@ -406,6 +406,14 @@ public class GameStateManager
     }
 
     /// <summary>
+    /// Returns effective weight: base player weight + sum of equip_weight bonuses from all equipped items.
+    /// </summary>
+    public int GetEffectiveWeight()
+    {
+        return State.Player.Weight + GetEquipmentBonus(PropertyKeys.EquipWeight);
+    }
+
+    /// <summary>
     /// Regenerates poise by max(1, effectiveMaxPoise / 4), capped at effective max.
     /// Returns the amount regenerated (0 if already full).
     /// </summary>

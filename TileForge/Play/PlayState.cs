@@ -42,6 +42,9 @@ public class PlayState
     public int PlayerAP { get; set; }
     public bool IsPlayerTurn { get; set; } = true;
 
+    // Knockback stagger tracking: counts hits per target this turn
+    public Dictionary<string, int> HitsThisTurn { get; set; } = new();
+
     public (int x, int y) GetFacingTile()
     {
         int px = PlayerEntity?.X ?? 0;
