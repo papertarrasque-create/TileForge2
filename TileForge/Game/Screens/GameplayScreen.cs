@@ -939,6 +939,7 @@ public class GameplayScreen : GameScreen
 
             int entityAP = Math.Clamp(PropertyAccess.GetInt(entity.Properties, PropertyKeys.Speed, 1), 1, 3);
             bool hostile = _gameStateManager.IsEntityHostile(entity);
+            play.HitsThisTurn.Clear();
 
             while (entityAP > 0)
             {
@@ -986,6 +987,29 @@ public class GameplayScreen : GameScreen
 
                             if (_gameStateManager.LastDamageBrokePoise)
                                 LogAndFloat(play,"POISE BROKEN!", Color.OrangeRed, play.PlayerEntity.X, play.PlayerEntity.Y);
+
+                            // Knockback: push player away from attacker
+                            if (!play.HitsThisTurn.ContainsKey("player"))
+                                play.HitsThisTurn["player"] = 0;
+                            play.HitsThisTurn["player"]++;
+
+                            int playerWeight = _gameStateManager.GetEffectiveWeight();
+                            var kb = KnockbackResolver.Resolve(
+                                entity.X, entity.Y,
+                                play.PlayerEntity.X, play.PlayerEntity.Y,
+                                playerWeight,
+                                play.HitsThisTurn["player"],
+                                (tx, ty) => IsTileWalkableAndUnoccupied(tx, ty, null));
+
+                            if (kb.KnockedBack)
+                            {
+                                play.PlayerEntity.X = kb.NewX;
+                                play.PlayerEntity.Y = kb.NewY;
+                                _gameStateManager.State.Player.X = kb.NewX;
+                                _gameStateManager.State.Player.Y = kb.NewY;
+                                play.RenderPos = new Vector2(kb.NewX, kb.NewY);
+                                LogAndFloat(play, "Knocked back!", Color.White, kb.NewX, kb.NewY);
+                            }
                         }
                         break;
                 }
