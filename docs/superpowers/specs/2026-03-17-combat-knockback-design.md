@@ -94,6 +94,8 @@ Authored in GroupEditor like all other combat properties. Sensible range: 1-3.
 | Orc, Knight | 2 | Requires cornering or AP bonus to knock back. |
 | Golem, Boss | 3 | Effectively immovable with base AP. |
 
+**Note on equal-weight matchups:** Only the *defender's* weight matters. The attacker's weight is never checked. If both combatants have weight 1, both get knocked back on every hit -- the attacker always wins the positioning exchange because they chose to close the gap.
+
 ### Player Weight
 
 - Base value: 1 (on PlayerState)
