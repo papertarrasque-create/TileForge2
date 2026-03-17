@@ -89,6 +89,8 @@ Defines a single property: its key, value type, constraints, and applicable enti
 
 ```csharp
 // TileForge/Game/PropertyDef.cs
+public record IntRange(int Min, int Max);
+
 public enum PropType
 {
     String,
@@ -105,15 +107,24 @@ public class PropertyDef
     public PropType Type { get; }
     public EntityType[] AppliesTo { get; }
 
-    // For Int: (min, max). For Enum: allowed values. Null for unconstrained.
-    public object Constraint { get; }
+    // Typed constraints (null = unconstrained)
+    public IntRange Range { get; }       // For PropType.Int
+    public string[] AllowedValues { get; } // For PropType.Enum
 
-    public PropertyDef(string key, PropType type, object constraint, params EntityType[] appliesTo)
+    public PropertyDef(string key, PropType type, IntRange range, params EntityType[] appliesTo)
     {
-        Key = key;
-        Type = type;
-        Constraint = constraint;
-        AppliesTo = appliesTo;
+        Key = key; Type = type; Range = range; AllowedValues = null; AppliesTo = appliesTo;
+    }
+
+    public PropertyDef(string key, PropType type, string[] allowedValues, params EntityType[] appliesTo)
+    {
+        Key = key; Type = type; Range = null; AllowedValues = allowedValues; AppliesTo = appliesTo;
+    }
+
+    // Overload for no constraint (Bool, String, refs)
+    public PropertyDef(string key, PropType type, params EntityType[] appliesTo)
+    {
+        Key = key; Type = type; Range = null; AllowedValues = null; AppliesTo = appliesTo;
     }
 
     public bool Validate(string value, out string reason)
@@ -129,9 +140,9 @@ public class PropertyDef
                     reason = $"Expected integer, got '{value}'";
                     return false;
                 }
-                if (Constraint is (int min, int max) && (intVal < min || intVal > max))
+                if (Range != null && (intVal < Range.Min || intVal > Range.Max))
                 {
-                    reason = $"Value {intVal} outside range [{min}, {max}]";
+                    reason = $"Value {intVal} outside range [{Range.Min}, {Range.Max}]";
                     return false;
                 }
                 return true;
@@ -146,9 +157,9 @@ public class PropertyDef
                 return true;
 
             case PropType.Enum:
-                if (Constraint is string[] allowed && !allowed.Contains(value))
+                if (AllowedValues != null && !AllowedValues.Contains(value))
                 {
-                    reason = $"Value '{value}' not in [{string.Join(", ", allowed)}]";
+                    reason = $"Value '{value}' not in [{string.Join(", ", AllowedValues)}]";
                     return false;
                 }
                 return true;
@@ -171,57 +182,57 @@ public static class PropertySchema
     public static readonly IReadOnlyList<PropertyDef> All = new PropertyDef[]
     {
         // Combat
-        new(PropertyKeys.Health, PropType.Int, (1, 9999), EntityType.NPC, EntityType.Trap),
-        new(PropertyKeys.MaxHealth, PropType.Int, (1, 9999), EntityType.NPC, EntityType.Trap),
-        new(PropertyKeys.Attack, PropType.Int, (0, 999), EntityType.NPC),
-        new(PropertyKeys.Defense, PropType.Int, (0, 999), EntityType.NPC),
-        new(PropertyKeys.Poise, PropType.Int, (0, 9999), EntityType.NPC),
-        new(PropertyKeys.Damage, PropType.Int, (1, 9999), EntityType.Trap),
-        new(PropertyKeys.Xp, PropType.Int, (0, 9999), EntityType.NPC, EntityType.Trap),
+        new(PropertyKeys.Health, PropType.Int, new IntRange(1, 9999), EntityType.NPC, EntityType.Trap),
+        new(PropertyKeys.MaxHealth, PropType.Int, new IntRange(1, 9999), EntityType.NPC, EntityType.Trap),
+        new(PropertyKeys.Attack, PropType.Int, new IntRange(0, 999), EntityType.NPC),
+        new(PropertyKeys.Defense, PropType.Int, new IntRange(0, 999), EntityType.NPC),
+        new(PropertyKeys.Poise, PropType.Int, new IntRange(0, 9999), EntityType.NPC),
+        new(PropertyKeys.Damage, PropType.Int, new IntRange(1, 9999), EntityType.Trap),
+        new(PropertyKeys.Xp, PropType.Int, new IntRange(0, 9999), EntityType.NPC, EntityType.Trap),
 
         // AI
         new(PropertyKeys.Behavior, PropType.Enum,
             new[] { "idle", "chase", "patrol", "chase_patrol" }, EntityType.NPC),
-        new(PropertyKeys.Speed, PropType.Int, (1, 3), EntityType.NPC),
+        new(PropertyKeys.Speed, PropType.Int, new IntRange(1, 3), EntityType.NPC),
         new(PropertyKeys.DefaultFacing, PropType.Enum, new[] { "right", "left" }, EntityType.NPC),
-        new(PropertyKeys.Hostile, PropType.Bool, null, EntityType.NPC),
-        new(PropertyKeys.HostileFlag, PropType.String, null, EntityType.NPC),
-        new(PropertyKeys.FriendlyFlag, PropType.String, null, EntityType.NPC),
-        new(PropertyKeys.AggroRange, PropType.Int, (1, 50), EntityType.NPC),
-        new(PropertyKeys.AlertTurns, PropType.Int, (1, 99), EntityType.NPC),
+        new(PropertyKeys.Hostile, PropType.Bool, EntityType.NPC),
+        new(PropertyKeys.HostileFlag, PropType.String, EntityType.NPC),
+        new(PropertyKeys.FriendlyFlag, PropType.String, EntityType.NPC),
+        new(PropertyKeys.AggroRange, PropType.Int, new IntRange(1, 50), EntityType.NPC),
+        new(PropertyKeys.AlertTurns, PropType.Int, new IntRange(1, 99), EntityType.NPC),
 
         // Patrol (runtime -- not in editor presets, but validated if present)
         new(PropertyKeys.PatrolAxis, PropType.Enum, new[] { "x", "y" }, EntityType.NPC),
-        new(PropertyKeys.PatrolRange, PropType.Int, (1, 99), EntityType.NPC),
-        new(PropertyKeys.PatrolOrigin, PropType.Int, null, EntityType.NPC),
-        new(PropertyKeys.PatrolDir, PropType.Int, null, EntityType.NPC),
+        new(PropertyKeys.PatrolRange, PropType.Int, new IntRange(1, 99), EntityType.NPC),
+        new(PropertyKeys.PatrolOrigin, PropType.Int, EntityType.NPC),
+        new(PropertyKeys.PatrolDir, PropType.Int, EntityType.NPC),
 
         // Items
-        new(PropertyKeys.Heal, PropType.Int, (1, 9999), EntityType.Item),
+        new(PropertyKeys.Heal, PropType.Int, new IntRange(1, 9999), EntityType.Item),
         new(PropertyKeys.EquipSlot, PropType.Enum,
             new[] { "", "weapon", "armor", "accessory" }, EntityType.Item),
-        new(PropertyKeys.EquipAttack, PropType.Int, (0, 999), EntityType.Item),
-        new(PropertyKeys.EquipDefense, PropType.Int, (0, 999), EntityType.Item),
-        new(PropertyKeys.EquipAp, PropType.Int, (0, 5), EntityType.Item),
-        new(PropertyKeys.EquipPoise, PropType.Int, (0, 999), EntityType.Item),
-        new(PropertyKeys.OnCollectSetFlag, PropType.String, null, EntityType.Item),
-        new(PropertyKeys.OnCollectIncrement, PropType.String, null, EntityType.Item),
+        new(PropertyKeys.EquipAttack, PropType.Int, new IntRange(0, 999), EntityType.Item),
+        new(PropertyKeys.EquipDefense, PropType.Int, new IntRange(0, 999), EntityType.Item),
+        new(PropertyKeys.EquipAp, PropType.Int, new IntRange(0, 5), EntityType.Item),
+        new(PropertyKeys.EquipPoise, PropType.Int, new IntRange(0, 999), EntityType.Item),
+        new(PropertyKeys.OnCollectSetFlag, PropType.String, EntityType.Item),
+        new(PropertyKeys.OnCollectIncrement, PropType.String, EntityType.Item),
 
         // Triggers
-        new(PropertyKeys.TargetMap, PropType.MapRef, null, EntityType.Trigger),
-        new(PropertyKeys.TargetX, PropType.Int, (0, 999), EntityType.Trigger),
-        new(PropertyKeys.TargetY, PropType.Int, (0, 999), EntityType.Trigger),
+        new(PropertyKeys.TargetMap, PropType.MapRef, EntityType.Trigger),
+        new(PropertyKeys.TargetX, PropType.Int, new IntRange(0, 999), EntityType.Trigger),
+        new(PropertyKeys.TargetY, PropType.Int, new IntRange(0, 999), EntityType.Trigger),
 
         // Dialogue (all entity types)
-        new(PropertyKeys.DialogueId, PropType.DialogueRef, null,
+        new(PropertyKeys.DialogueId, PropType.DialogueRef,
             EntityType.NPC, EntityType.Item, EntityType.Trap, EntityType.Trigger, EntityType.Interactable),
-        new(PropertyKeys.Dialogue, PropType.String, null,
+        new(PropertyKeys.Dialogue, PropType.String,
             EntityType.NPC, EntityType.Item, EntityType.Trap, EntityType.Trigger, EntityType.Interactable),
-        new(PropertyKeys.OnPickupDialogue, PropType.DialogueRef, null, EntityType.Item),
+        new(PropertyKeys.OnPickupDialogue, PropType.DialogueRef, EntityType.Item),
 
         // Kill hooks
-        new(PropertyKeys.OnKillSetFlag, PropType.String, null, EntityType.NPC, EntityType.Trap),
-        new(PropertyKeys.OnKillIncrement, PropType.String, null, EntityType.NPC, EntityType.Trap),
+        new(PropertyKeys.OnKillSetFlag, PropType.String, EntityType.NPC, EntityType.Trap),
+        new(PropertyKeys.OnKillIncrement, PropType.String, EntityType.NPC, EntityType.Trap),
     };
 
     // Lookup helpers
@@ -253,6 +264,9 @@ public static class PropertyAccess
         return defaultValue;
     }
 
+    // Note: Returns true for any non-"false" value when the key exists.
+    // This matches existing IsEntityHostile semantics ("hostile" defaults to true).
+    // PropertyValidator catches non-boolean values at load time.
     public static bool GetBool(Dictionary<string, string> props, string key, bool defaultValue = false)
     {
         if (props.TryGetValue(key, out var val))
@@ -301,7 +315,7 @@ public static class PropertyValidator
                 {
                     errors.Add(new PropertyError(
                         PropertyErrorLevel.Warning,
-                        entity.EntityId,
+                        entity.Id,
                         kvp.Key,
                         "Unknown property"));
                     continue;
@@ -311,7 +325,7 @@ public static class PropertyValidator
                 {
                     errors.Add(new PropertyError(
                         PropertyErrorLevel.Error,
-                        entity.EntityId,
+                        entity.Id,
                         kvp.Key,
                         reason));
                 }
@@ -325,12 +339,14 @@ public static class PropertyValidator
 
 **Integration point:** After `GameStateManager.Initialize()` in GameplayScreen, call `PropertyValidator.Validate(gameState.ActiveEntities)` and log results to the HUD message log.
 
+**Out of scope:** The validator does not check `AppliesTo` constraints (e.g., `equip_slot` on an NPC). EntityInstance does not carry EntityType at runtime, so this would require group lookups. This can be added later if needed; the editor UI already prevents most misapplication by only showing relevant presets per entity type.
+
 ### GroupEditor Changes
 
-GroupEditor's hardcoded `_entityPropertyPresets` and `NumericSpecs` are replaced by schema queries:
+GroupEditor's hardcoded `Presets` dictionary and `NumericSpecs` are replaced by schema queries:
 
 ```csharp
-// Replace _entityPropertyPresets
+// Replace Presets dictionary
 var presetKeys = PropertySchema.ForEntityType(entityType)
     .Select(d => d.Key)
     .ToArray();
@@ -378,14 +394,16 @@ Incremental. No big-bang refactor.
 - `TileForge/Game/PropertyAccess.cs`
 - `TileForge/Game/PropertyValidator.cs`
 
-### Modified Files (~8)
-- `TileForge/UI/GroupEditor.cs` -- Replace presets/NumericSpecs with schema
+### Modified Files (~7)
+- `TileForge/UI/GroupEditor.cs` -- Replace `Presets`/`NumericSpecs` with schema
 - `TileForge/Game/GameStateManager.cs` -- Use PropertyKeys + PropertyAccess, remove old helpers
 - `TileForge/Game/Screens/GameplayScreen.cs` -- Use PropertyKeys + PropertyAccess, wire validator
 - `TileForge/Game/EntityAI.cs` -- Use PropertyKeys + PropertyAccess
-- `TileForge/Game/Screens/InventoryScreen.cs` -- Use PropertyKeys + PropertyAccess
 - `TileForge/Game/TriggerManager.cs` -- Use PropertyKeys + PropertyAccess
-- `TileForge/UI/MapCanvas.cs` -- Use PropertyKeys + PropertyAccess
+- `TileForge/UI/MapCanvas.cs` -- Use PropertyKeys for `default_facing` (reads group DefaultProperties, not instance)
+- `TileForge/Game/Screens/InventoryScreen.cs` -- Use PropertyKeys for `ItemPropertyCache` lookups
+
+**Note:** The schema includes `max_health` and `xp` which are not in the current GroupEditor `Presets`. After migration, these will appear as editor fields for NPC/Trap entities. This is intentional -- they were previously only set at runtime and are useful to expose in the editor.
 
 ### Test Files
 - `PropertyAccessTests.cs` -- GetInt, GetBool, GetString edge cases
