@@ -84,6 +84,20 @@ public class GameplayScreen : GameScreen
     {
         _pathfinder = CreatePathfinder();
         CenterCameraOnPlayer();
+
+        // Validate entity properties at play mode start and log any issues
+        var play = _state.PlayState;
+        if (play != null)
+        {
+            var validationErrors = PropertyValidator.Validate(_gameStateManager.State.ActiveEntities);
+            foreach (var error in validationErrors)
+            {
+                var prefix = error.Level == PropertyErrorLevel.Error ? "ERROR" : "WARN";
+                LogAndFloat(play, $"[{prefix}] {error.EntityId}.{error.Key}: {error.Message}",
+                    error.Level == PropertyErrorLevel.Error ? Color.Red : Color.Yellow,
+                    play.PlayerEntity?.X ?? 0, play.PlayerEntity?.Y ?? 0);
+            }
+        }
     }
 
     internal void TriggerDamageFlash()
@@ -497,9 +511,7 @@ public class GameplayScreen : GameScreen
                     break;
 
                 case EntityType.Trap:
-                    int damage = 0;
-                    if (instance.Properties.TryGetValue("damage", out var dmgStr))
-                        int.TryParse(dmgStr, out damage);
+                    int damage = PropertyAccess.GetInt(instance.Properties, PropertyKeys.Damage);
                     if (damage > 0)
                     {
                         _gameStateManager.DamagePlayer(damage);
@@ -518,13 +530,11 @@ public class GameplayScreen : GameScreen
                     break;
 
                 case EntityType.Trigger:
-                    if (instance.Properties.TryGetValue("target_map", out var targetMap)
-                        && !string.IsNullOrEmpty(targetMap))
+                    var targetMap = PropertyAccess.GetString(instance.Properties, PropertyKeys.TargetMap);
+                    if (!string.IsNullOrEmpty(targetMap))
                     {
-                        instance.Properties.TryGetValue("target_x", out var txStr);
-                        instance.Properties.TryGetValue("target_y", out var tyStr);
-                        int.TryParse(txStr ?? "0", out var tx);
-                        int.TryParse(tyStr ?? "0", out var ty);
+                        int tx = PropertyAccess.GetInt(instance.Properties, PropertyKeys.TargetX);
+                        int ty = PropertyAccess.GetInt(instance.Properties, PropertyKeys.TargetY);
                         _gameStateManager.PendingTransition = new MapTransitionRequest
                         {
                             TargetMap = targetMap,
@@ -672,20 +682,20 @@ public class GameplayScreen : GameScreen
         foreach (var entity in _gameStateManager.State.ActiveEntities)
         {
             if (!entity.IsActive) continue;
-            if (!entity.Properties.ContainsKey("behavior")) continue;
+            if (!entity.Properties.ContainsKey(PropertyKeys.Behavior)) continue;
             if (!_gameStateManager.IsEntityHostile(entity)) continue;
 
-            int aggroRange = _gameStateManager.GetEntityIntProperty(entity, "aggro_range", 5);
+            int aggroRange = PropertyAccess.GetInt(entity.Properties, PropertyKeys.AggroRange, 5);
             int distance = Math.Abs(entity.X - player.X) + Math.Abs(entity.Y - player.Y);
 
             // Only alert entities outside their normal aggro range but within noise radius
             if (distance <= aggroRange || distance > noiseRadius) continue;
 
             // Already alerted entities don't get re-alerted
-            int existingAlert = _gameStateManager.GetEntityIntProperty(entity, "alert_turns", 0);
+            int existingAlert = PropertyAccess.GetInt(entity.Properties, PropertyKeys.AlertTurns, 0);
             if (existingAlert > 0) continue;
 
-            _gameStateManager.SetEntityIntProperty(entity, "alert_turns", 3);
+            PropertyAccess.SetInt(entity.Properties, PropertyKeys.AlertTurns, 3);
             LogAndFloat(play,"!", Color.Yellow, entity.X, entity.Y);
         }
     }
@@ -776,11 +786,11 @@ public class GameplayScreen : GameScreen
         foreach (var entity in _gameStateManager.State.ActiveEntities)
         {
             if (!entity.IsActive) continue;
-            if (!entity.Properties.ContainsKey("behavior")) continue;
+            if (!entity.Properties.ContainsKey(PropertyKeys.Behavior)) continue;
             if (!_gameStateManager.IsEntityHostile(entity)) continue;
 
-            int aggroRange = _gameStateManager.GetEntityIntProperty(entity, "aggro_range", 5);
-            int alertTurns = _gameStateManager.GetEntityIntProperty(entity, "alert_turns", 0);
+            int aggroRange = PropertyAccess.GetInt(entity.Properties, PropertyKeys.AggroRange, 5);
+            int alertTurns = PropertyAccess.GetInt(entity.Properties, PropertyKeys.AlertTurns, 0);
             if (alertTurns > 0)
                 aggroRange *= 2;
 
@@ -852,9 +862,9 @@ public class GameplayScreen : GameScreen
         foreach (var entity in _gameStateManager.State.ActiveEntities)
         {
             if (!entity.IsActive) continue;
-            if (!entity.Properties.ContainsKey("behavior")) continue;
+            if (!entity.Properties.ContainsKey(PropertyKeys.Behavior)) continue;
 
-            int entityAP = Math.Clamp(_gameStateManager.GetEntityIntProperty(entity, "speed", 1), 1, 3);
+            int entityAP = Math.Clamp(PropertyAccess.GetInt(entity.Properties, PropertyKeys.Speed, 1), 1, 3);
             bool hostile = _gameStateManager.IsEntityHostile(entity);
 
             while (entityAP > 0)
@@ -881,7 +891,7 @@ public class GameplayScreen : GameScreen
                     case EntityActionType.Attack:
                         if (action.AttackTargetX == null)
                         {
-                            var atk = _gameStateManager.GetEntityIntProperty(entity, "attack", 3);
+                            var atk = PropertyAccess.GetInt(entity.Properties, PropertyKeys.Attack, 3);
                             int terrainBonus = GetDefenseBonusAt(play.PlayerEntity.X, play.PlayerEntity.Y);
 
                             // Flanking: entity attacks player — check player facing
@@ -917,9 +927,9 @@ public class GameplayScreen : GameScreen
             }
 
             // Alert tick-down after each entity's turn
-            int alertTurns = _gameStateManager.GetEntityIntProperty(entity, "alert_turns", 0);
+            int alertTurns = PropertyAccess.GetInt(entity.Properties, PropertyKeys.AlertTurns, 0);
             if (alertTurns > 0)
-                _gameStateManager.SetEntityIntProperty(entity, "alert_turns", alertTurns - 1);
+                PropertyAccess.SetInt(entity.Properties, PropertyKeys.AlertTurns, alertTurns - 1);
         }
 
         // Check player death after all entities have acted
@@ -978,7 +988,7 @@ public class GameplayScreen : GameScreen
 
     private void TryShowPickupDialogue(EntityInstance instance, PlayState play)
     {
-        instance.Properties.TryGetValue("on_pickup_dialogue", out var pickupDialogue);
+        var pickupDialogue = PropertyAccess.GetString(instance.Properties, PropertyKeys.OnPickupDialogue);
         if (string.IsNullOrEmpty(pickupDialogue)) return;
 
         string flag = $"pickup_dialogue_shown:{instance.DefinitionName}";
@@ -987,8 +997,8 @@ public class GameplayScreen : GameScreen
 
         // Route through TriggerManager if it's a dialogue_id reference
         var props = new Dictionary<string, string>(instance.Properties);
-        if (!props.ContainsKey("dialogue_id") && !props.ContainsKey("dialogue"))
-            props["dialogue_id"] = pickupDialogue;
+        if (!props.ContainsKey(PropertyKeys.DialogueId) && !props.ContainsKey(PropertyKeys.Dialogue))
+            props[PropertyKeys.DialogueId] = pickupDialogue;
 
         var evt = new TriggerEvent
         {
@@ -1025,7 +1035,7 @@ public class GameplayScreen : GameScreen
         // Fallback: try loading dialogue if not in pre-loaded dictionary
         if (result == null)
         {
-            instance.Properties.TryGetValue("dialogue_id", out var dialogueId);
+            var dialogueId = PropertyAccess.GetString(instance.Properties, PropertyKeys.DialogueId);
             if (!string.IsNullOrEmpty(dialogueId) && !_dialogues.ContainsKey(dialogueId))
             {
                 var loaded = LoadDialogue(dialogueId);
