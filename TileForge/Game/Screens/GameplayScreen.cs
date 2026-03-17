@@ -33,6 +33,7 @@ public class GameplayScreen : GameScreen
     private readonly Dictionary<string, DialogueData> _dialogues;
     private IPathfinder _pathfinder;
     private BarkOverlay _activeBark;
+    private readonly EntityAnimator _animator = new();
 
     // --- Cached fields to avoid per-frame allocations and redundant computation ---
 
@@ -83,6 +84,7 @@ public class GameplayScreen : GameScreen
     public override void OnEnter()
     {
         _pathfinder = CreatePathfinder();
+        _animator.Clear();
         CenterCameraOnPlayer();
 
         // Validate entity properties at play mode start and log any issues
@@ -147,62 +149,14 @@ public class GameplayScreen : GameScreen
         if (play.EntityFlashTimer > 0)
             play.EntityFlashTimer -= dt;
 
-        if (play.IsMoving)
-        {
-            // Continue lerp — use per-move duration (affected by movement cost)
-            play.MoveProgress += dt / play.CurrentMoveDuration;
-            if (play.MoveProgress >= 1.0f)
-            {
-                play.MoveProgress = 1.0f;
-                play.RenderPos = play.MoveTo;
-                play.IsMoving = false;
+        _animator.Update(dt);
 
-                // Update entity grid position
-                play.PlayerEntity.X = (int)play.MoveTo.X;
-                play.PlayerEntity.Y = (int)play.MoveTo.Y;
+        // Write-through: keep PlayState.RenderPos in sync for Minimap/camera
+        var animPos = _animator.GetRenderPos("player");
+        if (animPos.HasValue)
+            play.RenderPos = animPos.Value;
 
-                // Sync to game state so EntityAI/pathfinder see current position
-                _gameStateManager.State.Player.X = play.PlayerEntity.X;
-                _gameStateManager.State.Player.Y = play.PlayerEntity.Y;
-
-                // Apply hazard damage at destination
-                CheckHazardAtPosition(play, play.PlayerEntity.X, play.PlayerEntity.Y);
-
-                // Propagate noise to nearby dormant entities
-                PropagateNoise(play, play.PlayerEntity.X, play.PlayerEntity.Y);
-
-                // Check for entity interaction at destination
-                CheckEntityInteractionAt(play, play.PlayerEntity.X, play.PlayerEntity.Y);
-
-                // Process lingering status effects after each step
-                if (_gameStateManager.IsPlayerAlive())
-                {
-                    var effectMessages = _gameStateManager.ProcessStatusEffects();
-                    foreach (var effectMsg in effectMessages)
-                        LogAndFloat(play,effectMsg, Color.Red, play.PlayerEntity.X, play.PlayerEntity.Y);
-                    if (effectMessages.Exists(m => m.Contains("damage")))
-                        TriggerDamageFlash();
-
-                    if (!_gameStateManager.IsPlayerAlive())
-                    {
-                        ScreenManager.Push(new GameOverScreen(_gameStateManager));
-                    }
-                }
-
-                // Deduct 1 AP for completed move and process turn if needed
-                if (_gameStateManager.IsPlayerAlive())
-                {
-                    play.PlayerAP--;
-                    AfterPlayerAction(play);
-                }
-            }
-            else
-            {
-                play.RenderPos = Vector2.Lerp(play.MoveFrom, play.MoveTo, play.MoveProgress);
-            }
-        }
-
-        if (!play.IsMoving && _gameStateManager.IsPlayerAlive())
+        if (!_animator.IsAnimating("player") && _gameStateManager.IsPlayerAlive())
         {
             // Overlay screens (0 AP cost — always available)
             if (input.IsActionJustPressed(GameAction.Pause))
@@ -283,12 +237,13 @@ public class GameplayScreen : GameScreen
 
                 if ((dx != 0 || dy != 0) && CanMoveTo(targetX, targetY))
                 {
-                    play.MoveFrom = new Vector2(play.PlayerEntity.X, play.PlayerEntity.Y);
-                    play.MoveTo = new Vector2(targetX, targetY);
-                    play.MoveProgress = 0f;
                     var (moveCost, slowGroupName) = GetMovementCostWithSource(targetX, targetY);
-                    play.CurrentMoveDuration = PlayState.MoveDuration * moveCost * _gameStateManager.GetEffectiveMovementMultiplier();
-                    play.IsMoving = true;
+                    float duration = EntityAnimator.DefaultHopDuration * moveCost * _gameStateManager.GetEffectiveMovementMultiplier();
+                    _animator.StartHop("player",
+                        new Vector2(play.PlayerEntity.X, play.PlayerEntity.Y),
+                        new Vector2(targetX, targetY),
+                        duration,
+                        () => OnPlayerMoveComplete(play, targetX, targetY));
 
                     if (moveCost > 1.0f && slowGroupName != null)
                         _gameLog?.Add($"Slowed by {slowGroupName} ({moveCost:0.#}x)", Color.Gray);
@@ -607,6 +562,51 @@ public class GameplayScreen : GameScreen
         }
     }
 
+    private void OnPlayerMoveComplete(PlayState play, int targetX, int targetY)
+    {
+        // Snap render pos to final grid position
+        play.RenderPos = new Vector2(targetX, targetY);
+
+        // Update entity grid position
+        play.PlayerEntity.X = targetX;
+        play.PlayerEntity.Y = targetY;
+
+        // Sync to game state so EntityAI/pathfinder see current position
+        _gameStateManager.State.Player.X = targetX;
+        _gameStateManager.State.Player.Y = targetY;
+
+        // Apply hazard damage at destination
+        CheckHazardAtPosition(play, targetX, targetY);
+
+        // Propagate noise to nearby dormant entities
+        PropagateNoise(play, targetX, targetY);
+
+        // Check for entity interaction at destination
+        CheckEntityInteractionAt(play, targetX, targetY);
+
+        // Process lingering status effects after each step
+        if (_gameStateManager.IsPlayerAlive())
+        {
+            var effectMessages = _gameStateManager.ProcessStatusEffects();
+            foreach (var effectMsg in effectMessages)
+                LogAndFloat(play, effectMsg, Color.Red, targetX, targetY);
+            if (effectMessages.Exists(m => m.Contains("damage")))
+                TriggerDamageFlash();
+
+            if (!_gameStateManager.IsPlayerAlive())
+            {
+                ScreenManager.Push(new GameOverScreen(_gameStateManager));
+            }
+        }
+
+        // Deduct 1 AP for completed move and process turn if needed
+        if (_gameStateManager.IsPlayerAlive())
+        {
+            play.PlayerAP--;
+            AfterPlayerAction(play);
+        }
+    }
+
     private void CheckHazardAtPosition(PlayState play, int x, int y)
     {
         foreach (var layer in _state.Map.Layers)
@@ -835,9 +835,10 @@ public class GameplayScreen : GameScreen
 
                     if (kb.KnockedBack)
                     {
+                        var kbFrom = new Vector2(instance.X, instance.Y);
                         instance.X = kb.NewX;
                         instance.Y = kb.NewY;
-                        SyncEntityRenderState();
+                        _animator.StartSlideBack(instance.Id, kbFrom, new Vector2(kb.NewX, kb.NewY));
                         LogAndFloat(play, "Knocked back!", Color.White, kb.NewX, kb.NewY);
                     }
                 }
@@ -1005,11 +1006,14 @@ public class GameplayScreen : GameScreen
 
                                 if (kb.KnockedBack)
                                 {
+                                    var kbFrom = new Vector2(play.PlayerEntity.X, play.PlayerEntity.Y);
                                     play.PlayerEntity.X = kb.NewX;
                                     play.PlayerEntity.Y = kb.NewY;
                                     _gameStateManager.State.Player.X = kb.NewX;
                                     _gameStateManager.State.Player.Y = kb.NewY;
-                                    play.RenderPos = new Vector2(kb.NewX, kb.NewY);
+                                    var kbTarget = new Vector2(kb.NewX, kb.NewY);
+                                    _animator.StartSlideBack("player", kbFrom, kbTarget,
+                                        () => play.RenderPos = kbTarget);
                                     LogAndFloat(play, "Knocked back!", Color.White, kb.NewX, kb.NewY);
                                 }
                             }
