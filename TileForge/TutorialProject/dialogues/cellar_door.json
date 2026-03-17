@@ -1,0 +1,90 @@
+{
+  "id": "cellar_door",
+  "routes": [
+    {
+      "startNode": "door_open",
+      "conditions": [
+        { "type": "has_flag", "flag": "dungeon_door_unlocked" }
+      ]
+    },
+    {
+      "startNode": "door_found",
+      "conditions": [
+        { "type": "quest_active", "value": "cellar_depths" }
+      ]
+    },
+    {
+      "startNode": "door_sealed"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "door_open",
+      "speaker": "Dungeon Door",
+      "text": "The ancient door stands open. A cold wind rises from the darkness below, carrying the smell of damp stone and something else -- something old.",
+      "choices": [
+        {
+          "text": "Descend into the dungeon.",
+          "nextNodeId": "enter_dungeon"
+        },
+        {
+          "text": "Not yet.",
+          "nextNodeId": "turn_back"
+        }
+      ],
+      "editorX": 50,
+      "editorY": -200
+    },
+    {
+      "id": "enter_dungeon",
+      "speaker": "Dungeon Door",
+      "text": "You steel yourself and step through the doorway. Stone stairs spiral downward into the dark...",
+      "actions": [
+        { "type": "set_flag", "value": "entered_dungeon_l1" },
+        { "type": "log", "value": "You descend into the dungeon beneath the cellar." }
+      ],
+      "editorX": 400,
+      "editorY": -250
+    },
+    {
+      "id": "turn_back",
+      "speaker": "Dungeon Door",
+      "text": "You step back from the threshold. The darkness below can wait -- for now.",
+      "editorX": 400,
+      "editorY": -150
+    },
+    {
+      "id": "door_found",
+      "speaker": "Dungeon Door",
+      "text": "Hidden behind the remains of the rat nests, a heavy stone door is set into the cellar wall. Strange markings are carved around the frame -- old writing, long faded. Cold air seeps through the cracks. The door is sealed tight.",
+      "choices": [
+        {
+          "text": "Examine the markings.",
+          "nextNodeId": "examine_markings",
+          "actions": [
+            { "type": "set_flag", "value": "found_cellar_door" }
+          ]
+        }
+      ],
+      "editorX": 50,
+      "editorY": -50
+    },
+    {
+      "id": "examine_markings",
+      "speaker": "Dungeon Door",
+      "text": "The carvings are a warning, written in an old tongue. You cannot read them, but the meaning is clear enough -- whatever is behind this door was meant to stay there. The Sage might know more.",
+      "actions": [
+        { "type": "log", "value": "You found a sealed door behind the rat nests. The Sage should know about this." }
+      ],
+      "editorX": 400,
+      "editorY": -50
+    },
+    {
+      "id": "door_sealed",
+      "speaker": "Dungeon Door",
+      "text": "A heavy stone door, firmly sealed. You see no way to open it.",
+      "editorX": 50,
+      "editorY": 100
+    }
+  ]
+}

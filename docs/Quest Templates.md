@@ -757,3 +757,96 @@ Repeat this template for each witness, replacing N with 1, 2, or 3.
   ]
 }
 ```
+
+---
+
+## Tutorial Quest: The Cellar Depths
+
+> After retrieving the amulet, the Sage suspects something drove the rats up from below. The player returns to the cellar to investigate and discovers a sealed dungeon entrance.
+
+**Prerequisite:** `lost_amulet` quest complete
+**NPCs:** Village Sage (sage_01, updated), Guard (guard_01, updated)
+**New entity:** Cellar Door (cellar_door dialogue)
+**Flags introduced:** `cellar_depths_accepted`, `entered_cellar_depths`, `found_cellar_door`, `dungeon_door_unlocked`, `entered_dungeon_l1`
+
+### Quest Flow
+
+1. After `lost_amulet` completes, speaking to the Sage triggers his suspicion about the rats' origin
+2. Player accepts the quest and returns to the cellar (Guard sets `entered_cellar_depths`)
+3. Player finds the sealed door behind the rat nests (sets `found_cellar_door`)
+4. Player reports back to the Sage, who explains the old dungeons and performs an unsealing rite
+5. Quest completes, setting `dungeon_door_unlocked` -- the door entity now allows passage
+
+### Quest Definition (in `quests.json`)
+
+```json
+{
+  "id": "cellar_depths",
+  "name": "The Cellar Depths",
+  "description": "The Sage suspects the rats were driven up from somewhere below the cellar. Investigate the source and report back.",
+  "objectives": [
+    {
+      "description": "Return to the cellar",
+      "type": "flag",
+      "flag": "entered_cellar_depths",
+      "value": 0
+    },
+    {
+      "description": "Find the source of the rats",
+      "type": "flag",
+      "flag": "found_cellar_door",
+      "value": 0
+    },
+    {
+      "description": "Report back to the Sage",
+      "type": "flag",
+      "flag": "objective_complete:cellar_depths_reported",
+      "value": 0
+    }
+  ],
+  "rewards": [
+    { "type": "set_flag", "value": "cellar_depths_done" },
+    { "type": "set_flag", "value": "dungeon_door_unlocked" }
+  ]
+}
+```
+
+### Sage Dialogue Updates (`dialogues/sage_01.json`)
+
+New routes added above the existing `post_quest` route (most-specific first):
+
+| Route | Conditions | Purpose |
+|-------|-----------|---------|
+| `depths_complete` | `quest_complete:cellar_depths` | Post-quest: confirms door is open |
+| `depths_found_door` | `quest_active:cellar_depths` + `has_flag:found_cellar_door` | Player found the door, Sage explains and unseals it |
+| `depths_in_progress` | `quest_active:cellar_depths` | Reminder to search the cellar |
+| `post_amulet` | `quest_complete:lost_amulet` | Replaces old `post_quest` -- now offers the new quest |
+
+Key nodes:
+- `post_amulet` -- Sage voices suspicion, offers quest
+- `depths_quest_offer` -- Explains what to look for
+- `depths_found_door` -> `depths_explain` -> `depths_reported` -- Three-node chain: player reports, Sage explains the old dungeons, performs unsealing rite (heals player to full, sets `dungeon_door_unlocked`)
+
+### Guard Dialogue Updates (`dialogues/guard_01.json`)
+
+New routes:
+
+| Route | Conditions | Purpose |
+|-------|-----------|---------|
+| `dungeon_open` | `has_flag:dungeon_door_unlocked` | Acknowledges the dungeon is open |
+| `depths_active` | `quest_active:cellar_depths` | Lets player through, sets `entered_cellar_depths` |
+
+### Cellar Door Dialogue (`dialogues/cellar_door.json`)
+
+New entity dialogue for the sealed door in the cellar.
+
+| Route | Conditions | Purpose |
+|-------|-----------|---------|
+| `door_open` | `has_flag:dungeon_door_unlocked` | Door is open, player can descend or turn back |
+| `door_found` | `quest_active:cellar_depths` | Player discovers the door, examines markings |
+| `door_sealed` | *(fallback)* | Door cannot be opened |
+
+**Setup notes:**
+- Place a new entity in the cellar map with `dialogue_id: cellar_door`
+- The `enter_dungeon` node sets `entered_dungeon_l1` -- wire this to a map transition trigger leading to Dungeon Level 1
+- The `door_sealed` fallback means players who stumble on the door before the quest just see "A heavy stone door, firmly sealed"

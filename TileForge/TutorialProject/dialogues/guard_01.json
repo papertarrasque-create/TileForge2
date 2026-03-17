@@ -2,6 +2,18 @@
   "id": "guard_01",
   "routes": [
     {
+      "startNode": "dungeon_open",
+      "conditions": [
+        { "type": "has_flag", "flag": "dungeon_door_unlocked" }
+      ]
+    },
+    {
+      "startNode": "depths_active",
+      "conditions": [
+        { "type": "quest_active", "value": "cellar_depths" }
+      ]
+    },
+    {
       "startNode": "post_quest",
       "conditions": [
         { "type": "quest_complete", "value": "lost_amulet" }
@@ -21,6 +33,27 @@
     }
   ],
   "nodes": [
+    {
+      "id": "dungeon_open",
+      "speaker": "Guard",
+      "text": "I heard the Sage opened that old door. Whatever is down there, give it hell. I will keep watch up here.",
+      "actions": [
+        { "type": "log", "value": "The Guard nods grimly." }
+      ],
+      "editorX": 50,
+      "editorY": -450
+    },
+    {
+      "id": "depths_active",
+      "speaker": "Guard",
+      "text": "Back again? The Sage sent word you would be coming. Go on through -- but I will tell you, something felt wrong down there even after the rats were cleared. A cold draft from somewhere deep.",
+      "actions": [
+        { "type": "set_flag", "value": "entered_cellar_depths" },
+        { "type": "log", "value": "The Guard lets you pass into the cellar." }
+      ],
+      "editorX": 50,
+      "editorY": -375
+    },
     {
       "id": "post_quest",
       "speaker": "Guard",

@@ -2,7 +2,26 @@
   "id": "sage_01",
   "routes": [
     {
-      "startNode": "post_quest",
+      "startNode": "depths_complete",
+      "conditions": [
+        { "type": "quest_complete", "value": "cellar_depths" }
+      ]
+    },
+    {
+      "startNode": "depths_found_door",
+      "conditions": [
+        { "type": "quest_active", "value": "cellar_depths" },
+        { "type": "has_flag", "flag": "found_cellar_door" }
+      ]
+    },
+    {
+      "startNode": "depths_in_progress",
+      "conditions": [
+        { "type": "quest_active", "value": "cellar_depths" }
+      ]
+    },
+    {
+      "startNode": "post_amulet",
       "conditions": [
         { "type": "quest_complete", "value": "lost_amulet" }
       ]
@@ -26,14 +45,114 @@
   ],
   "nodes": [
     {
-      "id": "post_quest",
+      "id": "depths_complete",
       "speaker": "Village Sage",
-      "text": "The village is safe again, thanks to you. You are always welcome here.",
+      "text": "So the old dungeons are open again... I have unsealed the door for you. Whatever drove those rats to the surface, the answer lies below. Be careful down there.",
       "actions": [
-        { "type": "log", "value": "The Sage smiles warmly." }
+        { "type": "log", "value": "The dungeon door beneath the cellar is now open." }
+      ],
+      "editorX": 50,
+      "editorY": -800
+    },
+    {
+      "id": "depths_found_door",
+      "speaker": "Village Sage",
+      "text": "A sealed stone door with old markings, you say? That must be the entrance to the dungeons beneath the village.",
+      "choices": [
+        {
+          "text": "What dungeons?",
+          "nextNodeId": "depths_explain"
+        }
+      ],
+      "editorX": 50,
+      "editorY": -700
+    },
+    {
+      "id": "depths_explain",
+      "speaker": "Village Sage",
+      "text": "Long before this village was built, there were tunnels below. They were sealed generations ago when something foul moved in. If the rats came up from there, the seal must be broken.",
+      "choices": [
+        {
+          "text": "Can you open the door?",
+          "nextNodeId": "depths_reported",
+          "actions": [
+            { "type": "complete_objective", "value": "cellar_depths_reported" }
+          ]
+        }
+      ],
+      "editorX": 400,
+      "editorY": -700
+    },
+    {
+      "id": "depths_reported",
+      "speaker": "Village Sage",
+      "text": "I know the old unsealing rite. Give me a moment... there. The door should yield to you now. But heed my warning -- whatever broke that seal is still down there.",
+      "actions": [
+        { "type": "set_flag", "value": "dungeon_door_unlocked" },
+        { "type": "heal", "value": "999" },
+        { "type": "log", "value": "The Sage performs an ancient rite. The dungeon door is unsealed." }
+      ],
+      "editorX": 750,
+      "editorY": -700
+    },
+    {
+      "id": "depths_in_progress",
+      "speaker": "Village Sage",
+      "text": "Have you found anything in the cellar? Look carefully -- the rats must have come from somewhere deeper.",
+      "editorX": 50,
+      "editorY": -600
+    },
+    {
+      "id": "post_amulet",
+      "speaker": "Village Sage",
+      "text": "I am glad the amulet is safe, but something still troubles me. Those rats -- they did not just wander in. Something drove them up from below.",
+      "choices": [
+        {
+          "text": "You want me to go back down there?",
+          "nextNodeId": "depths_quest_offer"
+        },
+        {
+          "text": "I am sure it was nothing.",
+          "nextNodeId": "depths_decline"
+        }
       ],
       "editorX": 50,
       "editorY": -500
+    },
+    {
+      "id": "depths_quest_offer",
+      "speaker": "Village Sage",
+      "text": "I would not ask if I were not worried. Go back to the cellar and look for whatever drove the rats to the surface. There may be a passage we never knew about.",
+      "choices": [
+        {
+          "text": "I will investigate.",
+          "nextNodeId": "depths_accept",
+          "actions": [
+            { "type": "start_quest", "value": "cellar_depths" },
+            { "type": "set_flag", "value": "cellar_depths_accepted" }
+          ]
+        },
+        {
+          "text": "Not right now.",
+          "nextNodeId": "depths_decline"
+        }
+      ],
+      "editorX": 400,
+      "editorY": -500
+    },
+    {
+      "id": "depths_accept",
+      "speaker": "Village Sage",
+      "text": "Thank you. The guard will let you through again. Look for anything unusual -- a crack in the wall, a hidden passage, anything.",
+      "editorX": 750,
+      "editorY": -500
+    },
+    {
+      "id": "depths_decline",
+      "speaker": "Village Sage",
+      "text": "I understand. But if you change your mind, I will be here. I cannot shake this feeling that something worse is coming.",
+      "editorX": 400,
+      "editorY": -400
     },
     {
       "id": "return_amulet",

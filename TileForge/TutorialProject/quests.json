@@ -34,6 +34,35 @@
         "set_flags": ["village_safe"],
         "set_variables": { "reputation": "10" }
       }
+    },
+    {
+      "id": "cellar_depths",
+      "name": "The Cellar Depths",
+      "description": "The Sage suspects the rats were driven up from somewhere below the cellar. Investigate the source and report back.",
+      "objectives": [
+        {
+          "description": "Return to the cellar",
+          "type": "flag",
+          "flag": "entered_cellar_depths",
+          "value": 0
+        },
+        {
+          "description": "Find the source of the rats",
+          "type": "flag",
+          "flag": "found_cellar_door",
+          "value": 0
+        },
+        {
+          "description": "Report back to the Sage",
+          "type": "flag",
+          "flag": "objective_complete:cellar_depths_reported",
+          "value": 0
+        }
+      ],
+      "rewards": [
+        { "type": "set_flag", "value": "cellar_depths_done" },
+        { "type": "set_flag", "value": "dungeon_door_unlocked" }
+      ]
     }
   ]
 }
