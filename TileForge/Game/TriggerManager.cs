@@ -11,12 +11,12 @@ public class TriggerManager
 
         DialogueData dialogue = null;
 
-        if (evt.Properties.TryGetValue("dialogue_id", out var dialogueId) && !string.IsNullOrEmpty(dialogueId))
+        if (evt.Properties.TryGetValue(PropertyKeys.DialogueId, out var dialogueId) && !string.IsNullOrEmpty(dialogueId))
         {
             if (!dialogues.TryGetValue(dialogueId, out dialogue))
                 return null;
         }
-        else if (evt.Properties.TryGetValue("dialogue", out var inlineText) && !string.IsNullOrEmpty(inlineText))
+        else if (evt.Properties.TryGetValue(PropertyKeys.Dialogue, out var inlineText) && !string.IsNullOrEmpty(inlineText))
         {
             dialogue = CreateInlineDialogue(evt.EntityId ?? "unknown", inlineText);
         }

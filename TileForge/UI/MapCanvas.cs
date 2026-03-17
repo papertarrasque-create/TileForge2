@@ -363,7 +363,7 @@ public class MapCanvas
             var effects = SpriteEffects.None;
             if (state.IsPlayMode && state.PlayState != null
                 && group.DefaultProperties != null
-                && group.DefaultProperties.TryGetValue("default_facing", out var defaultFacing))
+                && group.DefaultProperties.TryGetValue(PropertyKeys.DefaultFacing, out var defaultFacing))
             {
                 bool defaultIsLeft = defaultFacing == "left";
                 Direction facing;

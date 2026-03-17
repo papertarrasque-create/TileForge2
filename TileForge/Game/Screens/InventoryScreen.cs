@@ -164,11 +164,8 @@ public class InventoryScreen : GameScreen
 
         // Fall through to existing heal logic
         int healAmount = 0;
-        if (_gameStateManager.State.ItemPropertyCache.TryGetValue(itemName, out var props)
-            && props.TryGetValue("heal", out var healStr))
-        {
-            int.TryParse(healStr, out healAmount);
-        }
+        if (_gameStateManager.State.ItemPropertyCache.TryGetValue(itemName, out var props))
+            healAmount = PropertyAccess.GetInt(props, PropertyKeys.Heal);
 
         if (healAmount > 0 && _gameStateManager.State.Player.Health < _gameStateManager.State.Player.MaxHealth)
         {
