@@ -1,5 +1,5 @@
 ---
-updated: 2026-03-16
+updated: 2026-03-17
 status: current
 ---
 
@@ -8,22 +8,20 @@ status: current
 ## Current State
 
 **Branch:** `Dialog` (branched from `HUD` from `game-state`)
-**Tests:** 1681 passing, 0 failures
-**Last milestone:** Phase 5 V1 Cleanup -- removed all v1 backward-compatibility fallback code
+**Tests:** 1757 passing, 0 failures
+**Last milestone:** Combat Knockback System -- knockback mechanic with weight-based resistance
 
 All planned phases G1-G14 are complete. Editor phases R1-R4 and P1-P3 are complete. Dialogue 2.0 is complete with v1 compat code removed.
 
 ## Active Work
 
-- **V1 Cleanup (complete):** Removed legacy DialogueEditor, QuestRewards class, v1 fallback code from DialogueScreen, concluded_flag/concluded_dialogue entity properties. V1 JSON properties kept for deserialization; MigrateV1ToV2 handles conversion on load.
-- **Dialogue 2.0 (complete):** Routes with conditions, actions, oneShot, unified triggering. DialogueTreeEditor now has native v2 UI. See [[ADR-002]].
-- **Previous:** G15 gameplay features (pickup dialogue, terrain notifications), play mode revert/keep, HUD minimap, Obsidian vault -- see [[Changelog]]
+- **Combat Knockback (complete):** Defender knocked back 1 tile after attacks. Weight property (1-3) controls resistance. Stagger tracking per-turn. Symmetric for player and entity attacks. KnockbackResolver follows EntityAI pattern (static, pure). See spec: `docs/superpowers/specs/2026-03-17-combat-knockback-design.md`.
+- **Previous:** Property Schema Registry, V1 Cleanup, Dialogue 2.0, G15 gameplay features, HUD minimap -- see [[Changelog]]
 
 ## Next Up (G15+)
 
 ### Gameplay Features (from Notes 2026-03-06)
 - **Residual damage effects** -- Lingering damage (e.g., fire) with continued damage flash on sprite for duration.
-- **Combat pace redesign** -- Current spam-bump is too fast. Needs research on deliberate, tactical alternatives.
 
 ### Architecture/Engine
 - **Ranged combat** -- New `ranged_chase` behavior reading `attack_range`/`preferred_distance` from property bags. Extension point already built.
@@ -47,7 +45,8 @@ Original review identified 5 issues. Re-assessment after dialogue 2.0 and v1 cle
 
 - **GameplayScreen holds EditorState reference** -- Play mode mutates editor state via `SyncEntityRenderState()`. Mitigated by deep-copy snapshot in PlayModeController (revert on exit). A `GameWorldView` DTO would still be cleaner long-term.
 - **Editor modals lack formal lifecycle hooks** -- No `OnEnter()`/`OnExit()` like game screens have. Cleanup is scattered.
-- **Property bags are stringly typed** -- All entity properties are `Dictionary<string, string>`. Works for now but error-prone and hard to validate.
+- ~~**Property bags are stringly typed**~~ -- **Resolved.** PropertySchema registry provides compile-time key constants, typed access helpers, and load-time validation. `Dictionary<string, string>` retained for serialization; all access goes through `PropertyKeys` + `PropertyAccess`.
+- **UndoStack event wiring stale after play mode revert** -- `PlayModeController.Exit()` skips `WireUndoStack()` when `ActiveMapIndex` hasn't changed. Dirty tracking breaks after revert. Low functional impact.
 
 ## Architectural Health Assessment
 
@@ -67,5 +66,5 @@ Original review identified 5 issues. Re-assessment after dialogue 2.0 and v1 cle
 ## Open Questions
 
 - Should the game runtime eventually be separable from the editor?
-- Is the property bag approach sustainable as entity complexity grows?
+- ~~Is the property bag approach sustainable as entity complexity grows?~~ -- Addressed by PropertySchema registry; path to strict mode (lock down unknown keys) when ready.
 - Should TileForge Next be a rewrite or an evolution of v1?
