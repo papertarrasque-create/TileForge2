@@ -96,29 +96,6 @@ public class GroupEditor
     private static readonly string[] NoiseLevelItems = { "0 (Silent)", "1 (Normal)", "2 (Loud)" };
     private static readonly int[] NoiseLevelValues = { 0, 1, 2 };
     private static readonly string[] EntTypeItems = { "NPC", "Item", "Trap", "Trigger", "Interactable" };
-    private static readonly string[] BehaviorItems = { "idle", "chase", "patrol", "chase_patrol" };
-    private static readonly string[] EquipSlotItems = { "", "weapon", "armor", "accessory" };
-    private static readonly string[] FacingItems = { "right", "left" };
-    private static readonly string[] HostileItems = { "true", "false" };
-
-    private static readonly Dictionary<EntityType, string[]> Presets = new()
-    {
-        { EntityType.NPC, new[] { "dialogue_id", "dialogue", "health", "attack", "defense", "poise", "behavior", "speed", "default_facing", "hostile", "hostile_flag", "friendly_flag", "aggro_range", "on_kill_set_flag", "on_kill_increment" } },
-        { EntityType.Item, new[] { "dialogue_id", "on_pickup_dialogue", "heal", "equip_slot", "equip_attack", "equip_defense", "equip_ap", "equip_poise", "on_collect_set_flag", "on_collect_increment" } },
-        { EntityType.Trap, new[] { "dialogue_id", "damage", "health", "on_kill_set_flag", "on_kill_increment" } },
-        { EntityType.Trigger, new[] { "dialogue_id", "target_map", "target_x", "target_y" } },
-        { EntityType.Interactable, new[] { "dialogue_id", "dialogue" } },
-    };
-
-    private static readonly Dictionary<string, (int Min, int Max)> NumericSpecs = new()
-    {
-        { "health", (1, 9999) }, { "attack", (0, 999) }, { "defense", (0, 999) },
-        { "aggro_range", (1, 50) }, { "damage", (1, 9999) }, { "heal", (1, 9999) },
-        { "target_x", (0, 999) }, { "target_y", (0, 999) },
-        { "equip_attack", (0, 999) }, { "equip_defense", (0, 999) }, { "equip_ap", (0, 5) },
-        { "equip_poise", (0, 999) }, { "poise", (0, 9999) },
-        { "speed", (1, 3) },
-    };
 
     // Completion
     public bool IsComplete { get; private set; }
@@ -644,7 +621,7 @@ public class GroupEditor
         if (_typeDD.SelectedIndex != 1) return;
 
         var et = (EntityType)_entityTypeDD.SelectedIndex;
-        var keys = Presets.TryGetValue(et, out var pk) ? pk : Array.Empty<string>();
+        var keys = PropertySchema.ForEntityType(et).Select(d => d.Key).ToArray();
 
         foreach (var key in keys)
         {
@@ -660,44 +637,52 @@ public class GroupEditor
 
     private PropField CreatePropField(string key, string value)
     {
-        if (NumericSpecs.TryGetValue(key, out var spec))
+        var def = PropertySchema.Get(key);
+        if (def != null)
         {
-            int v = int.TryParse(value, out int parsed) ? parsed : spec.Min;
-            return new PropField { Key = key, Kind = PFK.Numeric, NF = new NumericField(v, spec.Min, spec.Max) };
+            switch (def.Type)
+            {
+                case PropType.Int:
+                    int v = int.TryParse(value, out int parsed) ? parsed : (def.Range?.Min ?? 0);
+                    return new PropField
+                    {
+                        Key = key, Kind = PFK.Numeric,
+                        NF = new NumericField(v, def.Range?.Min ?? 0, def.Range?.Max ?? 9999)
+                    };
+
+                case PropType.Bool:
+                    int boolIdx = string.Equals(value, "false", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
+                    return new PropField
+                    {
+                        Key = key, Kind = PFK.Dropdown,
+                        DD = new Dropdown(new[] { "true", "false" }, boolIdx)
+                    };
+
+                case PropType.Enum:
+                    int enumIdx = Array.IndexOf(def.AllowedValues, value?.ToLower() ?? "");
+                    return new PropField
+                    {
+                        Key = key, Kind = PFK.Dropdown,
+                        DD = new Dropdown(def.AllowedValues, Math.Max(0, enumIdx))
+                    };
+
+                case PropType.MapRef:
+                case PropType.DialogueRef:
+                    var items = GetDropdownItems(key);
+                    int refIdx = Array.IndexOf(items, value);
+                    return new PropField
+                    {
+                        Key = key, Kind = PFK.Dropdown,
+                        DD = new Dropdown(items, Math.Max(0, refIdx))
+                    };
+
+                case PropType.String:
+                    return new PropField { Key = key, Kind = PFK.Text, TF = new TextInputField(value ?? "", maxLength: 512) };
+            }
         }
-        if (key == "behavior")
-        {
-            int idx = Array.IndexOf(BehaviorItems, value);
-            return new PropField { Key = key, Kind = PFK.Dropdown, DD = new Dropdown(BehaviorItems, Math.Max(0, idx)) };
-        }
-        if (key == "equip_slot")
-        {
-            int idx = Array.IndexOf(EquipSlotItems, value?.ToLower() ?? "");
-            return new PropField { Key = key, Kind = PFK.Dropdown, DD = new Dropdown(EquipSlotItems, Math.Max(0, idx)) };
-        }
-        if (key == "default_facing")
-        {
-            int idx = Array.IndexOf(FacingItems, value?.ToLower() ?? "right");
-            return new PropField { Key = key, Kind = PFK.Dropdown, DD = new Dropdown(FacingItems, Math.Max(0, idx)) };
-        }
-        if (key == "hostile")
-        {
-            int idx = string.Equals(value, "false", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
-            return new PropField { Key = key, Kind = PFK.Dropdown, DD = new Dropdown(HostileItems, idx) };
-        }
-        if (key == "target_map")
-        {
-            var items = GetDropdownItems(key);
-            int idx = Array.IndexOf(items, value);
-            return new PropField { Key = key, Kind = PFK.Dropdown, DD = new Dropdown(items, Math.Max(0, idx)) };
-        }
-        if (key is "dialogue" or "dialogue_id" or "on_pickup_dialogue")
-        {
-            var items = GetDropdownItems(key);
-            int idx = Array.IndexOf(items, value);
-            return new PropField { Key = key, Kind = PFK.Dropdown, DD = new Dropdown(items, Math.Max(0, idx)) };
-        }
-        return new PropField { Key = key, Kind = PFK.Text, TF = new TextInputField(value, maxLength: 512) };
+
+        // Unknown property -- text field
+        return new PropField { Key = key, Kind = PFK.Text, TF = new TextInputField(value ?? "", maxLength: 512) };
     }
 
     private string[] GetDropdownItems(string key)
