@@ -226,7 +226,7 @@ public static class PropertySchema
         // Dialogue (all entity types)
         new(PropertyKeys.DialogueId, PropType.DialogueRef,
             EntityType.NPC, EntityType.Item, EntityType.Trap, EntityType.Trigger, EntityType.Interactable),
-        new(PropertyKeys.Dialogue, PropType.String,
+        new(PropertyKeys.Dialogue, PropType.DialogueRef,
             EntityType.NPC, EntityType.Item, EntityType.Trap, EntityType.Trigger, EntityType.Interactable),
         new(PropertyKeys.OnPickupDialogue, PropType.DialogueRef, EntityType.Item),
 
