@@ -152,9 +152,10 @@ public class GameplayScreen : GameScreen
         _animator.Update(dt);
 
         // Write-through: keep PlayState.RenderPos in sync for Minimap/camera
-        var animPos = _animator.GetRenderPos("player");
-        if (animPos.HasValue)
-            play.RenderPos = animPos.Value;
+        // Use ground position (no arc offset) so the camera slides smoothly without bobbing
+        var groundPos = _animator.GetGroundPos("player");
+        if (groundPos.HasValue)
+            play.RenderPos = groundPos.Value;
 
         if (!_animator.IsAnimating("player") && _gameStateManager.IsPlayerAlive())
         {

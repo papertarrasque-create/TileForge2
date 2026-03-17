@@ -339,21 +339,22 @@ public class MapCanvas
             if (group.Sprites.Count == 0) continue;
 
             float drawX, drawY;
-            if (state.IsPlayMode && state.PlayState != null && entity == state.PlayState.PlayerEntity)
+            if (state.IsPlayMode && animator != null)
             {
-                // Player uses RenderPos (write-through from animator)
-                drawX = state.PlayState.RenderPos.X;
-                drawY = state.PlayState.RenderPos.Y;
-            }
-            else if (state.IsPlayMode && animator != null)
-            {
-                // Check for active animation (e.g. knockback slide)
-                var animPos = animator.GetRenderPos(entity.Id);
+                // Check animator for visual position (hop arc for player, knockback slide for entities)
+                var animId = entity == state.PlayState?.PlayerEntity ? "player" : entity.Id;
+                var animPos = animator.GetRenderPos(animId);
                 if (animPos.HasValue)
                 {
                     drawX = animPos.Value.X;
                     drawY = animPos.Value.Y;
                     // Skip culling for animated entities
+                }
+                else if (entity == state.PlayState?.PlayerEntity)
+                {
+                    // Player not animating: use RenderPos (ground position from write-through)
+                    drawX = state.PlayState.RenderPos.X;
+                    drawY = state.PlayState.RenderPos.Y;
                 }
                 else
                 {

@@ -102,6 +102,19 @@ public class EntityAnimator
         return pos;
     }
 
+    /// <summary>
+    /// Returns the linear interpolation position without arc offset.
+    /// Used for camera follow so it tracks horizontal movement without vertical bounce.
+    /// </summary>
+    public Vector2? GetGroundPos(string id)
+    {
+        if (!_active.TryGetValue(id, out var anim))
+            return null;
+
+        float t = Math.Clamp(anim.Progress, 0f, 1f);
+        return Vector2.Lerp(anim.From, anim.To, t);
+    }
+
     public void Clear()
     {
         _active.Clear();
