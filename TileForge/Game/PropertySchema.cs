@@ -61,6 +61,12 @@ public static class PropertySchema
         // Kill hooks
         new(PropertyKeys.OnKillSetFlag, PropType.String, EntityType.NPC, EntityType.Trap),
         new(PropertyKeys.OnKillIncrement, PropType.String, EntityType.NPC, EntityType.Trap),
+
+        // Spawn conditions (all entity types)
+        new(PropertyKeys.SpawnRequiresFlag, PropType.String,
+            EntityType.NPC, EntityType.Item, EntityType.Trap, EntityType.Trigger, EntityType.Interactable),
+        new(PropertyKeys.SpawnForbidsFlag, PropType.String,
+            EntityType.NPC, EntityType.Item, EntityType.Trap, EntityType.Trigger, EntityType.Interactable),
     };
 
     // Lookup helpers
