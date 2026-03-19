@@ -126,14 +126,23 @@ public class GameStateManager
             if (groupsByName.TryGetValue(entity.DefinitionName, out var group) && group.IsPlayer)
                 continue;
 
+            var merged = MergeProperties(group, entity.Properties);
+
+            // Persistence check: killed/collected entities stay in list as inactive
+            bool persistedInactive = State.Flags.Contains(EntityInactivePrefix + entity.Id);
+
+            // Spawn condition check: gated entities are not added at all
+            if (!persistedInactive && !PassesSpawnConditions(merged, State))
+                continue;
+
             State.ActiveEntities.Add(new EntityInstance
             {
                 Id = entity.Id,
                 DefinitionName = entity.DefinitionName,
                 X = entity.X,
                 Y = entity.Y,
-                Properties = MergeProperties(group, entity.Properties),
-                IsActive = !State.Flags.Contains(EntityInactivePrefix + entity.Id),
+                Properties = merged,
+                IsActive = !persistedInactive,
             });
         }
 

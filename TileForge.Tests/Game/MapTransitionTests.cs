@@ -381,6 +381,200 @@ public class MapTransitionTests
         Assert.Null(manager.PendingTransition);
     }
 
+    // ========== SwitchMap — Spawn conditions ==========
+
+    [Fact]
+    public void SwitchMap_SpawnRequiresFlag_FlagAbsent_EntityNotInActiveEntities()
+    {
+        var (map, groups) = BuildBasicMap();
+        var manager = new GameStateManager();
+        manager.Initialize(map, groups);
+
+        var targetMap = BuildLoadedMap();
+        targetMap.Entities.First(e => e.Id == "g1").Properties["spawn_requires_flag"] = "quest_started:cellar";
+        manager.SwitchMap(targetMap, 0, 0);
+
+        Assert.DoesNotContain(manager.State.ActiveEntities, e => e.Id == "g1");
+    }
+
+    [Fact]
+    public void SwitchMap_SpawnRequiresFlag_FlagPresent_EntitySpawns()
+    {
+        var (map, groups) = BuildBasicMap();
+        var manager = new GameStateManager();
+        manager.Initialize(map, groups);
+        manager.SetFlag("quest_started:cellar");
+
+        var targetMap = BuildLoadedMap();
+        targetMap.Entities.First(e => e.Id == "g1").Properties["spawn_requires_flag"] = "quest_started:cellar";
+        manager.SwitchMap(targetMap, 0, 0);
+
+        Assert.Contains(manager.State.ActiveEntities, e => e.Id == "g1" && e.IsActive);
+    }
+
+    [Fact]
+    public void SwitchMap_SpawnForbidsFlag_FlagAbsent_EntitySpawns()
+    {
+        var (map, groups) = BuildBasicMap();
+        var manager = new GameStateManager();
+        manager.Initialize(map, groups);
+
+        var targetMap = BuildLoadedMap();
+        targetMap.Entities.First(e => e.Id == "g1").Properties["spawn_forbids_flag"] = "village_safe";
+        manager.SwitchMap(targetMap, 0, 0);
+
+        Assert.Contains(manager.State.ActiveEntities, e => e.Id == "g1" && e.IsActive);
+    }
+
+    [Fact]
+    public void SwitchMap_SpawnForbidsFlag_FlagPresent_EntityNotInActiveEntities()
+    {
+        var (map, groups) = BuildBasicMap();
+        var manager = new GameStateManager();
+        manager.Initialize(map, groups);
+        manager.SetFlag("village_safe");
+
+        var targetMap = BuildLoadedMap();
+        targetMap.Entities.First(e => e.Id == "g1").Properties["spawn_forbids_flag"] = "village_safe";
+        manager.SwitchMap(targetMap, 0, 0);
+
+        Assert.DoesNotContain(manager.State.ActiveEntities, e => e.Id == "g1");
+    }
+
+    [Fact]
+    public void SwitchMap_BothConditions_RequiresMetForbidsAbsent_EntitySpawns()
+    {
+        var (map, groups) = BuildBasicMap();
+        var manager = new GameStateManager();
+        manager.Initialize(map, groups);
+        manager.SetFlag("quest_active");
+
+        var targetMap = BuildLoadedMap();
+        var goblin = targetMap.Entities.First(e => e.Id == "g1");
+        goblin.Properties["spawn_requires_flag"] = "quest_active";
+        goblin.Properties["spawn_forbids_flag"] = "quest_done";
+        manager.SwitchMap(targetMap, 0, 0);
+
+        Assert.Contains(manager.State.ActiveEntities, e => e.Id == "g1" && e.IsActive);
+    }
+
+    [Fact]
+    public void SwitchMap_BothConditions_RequiresMetForbidsSet_EntitySkipped()
+    {
+        var (map, groups) = BuildBasicMap();
+        var manager = new GameStateManager();
+        manager.Initialize(map, groups);
+        manager.SetFlag("quest_active");
+        manager.SetFlag("quest_done");
+
+        var targetMap = BuildLoadedMap();
+        var goblin = targetMap.Entities.First(e => e.Id == "g1");
+        goblin.Properties["spawn_requires_flag"] = "quest_active";
+        goblin.Properties["spawn_forbids_flag"] = "quest_done";
+        manager.SwitchMap(targetMap, 0, 0);
+
+        Assert.DoesNotContain(manager.State.ActiveEntities, e => e.Id == "g1");
+    }
+
+    [Fact]
+    public void SwitchMap_BothConditions_RequiresAbsentForbidsAbsent_EntitySkipped()
+    {
+        var (map, groups) = BuildBasicMap();
+        var manager = new GameStateManager();
+        manager.Initialize(map, groups);
+
+        var targetMap = BuildLoadedMap();
+        var goblin = targetMap.Entities.First(e => e.Id == "g1");
+        goblin.Properties["spawn_requires_flag"] = "quest_active";
+        goblin.Properties["spawn_forbids_flag"] = "quest_done";
+        manager.SwitchMap(targetMap, 0, 0);
+
+        Assert.DoesNotContain(manager.State.ActiveEntities, e => e.Id == "g1");
+    }
+
+    [Fact]
+    public void SwitchMap_BothConditions_RequiresAbsentForbidsSet_EntitySkipped()
+    {
+        var (map, groups) = BuildBasicMap();
+        var manager = new GameStateManager();
+        manager.Initialize(map, groups);
+        manager.SetFlag("quest_done");
+
+        var targetMap = BuildLoadedMap();
+        var goblin = targetMap.Entities.First(e => e.Id == "g1");
+        goblin.Properties["spawn_requires_flag"] = "quest_active";
+        goblin.Properties["spawn_forbids_flag"] = "quest_done";
+        manager.SwitchMap(targetMap, 0, 0);
+
+        Assert.DoesNotContain(manager.State.ActiveEntities, e => e.Id == "g1");
+    }
+
+    [Fact]
+    public void SwitchMap_SpawnCondition_ReEvaluatedOnReEntry()
+    {
+        var (map, groups) = BuildBasicMap();
+        var manager = new GameStateManager();
+        manager.Initialize(map, groups);
+
+        var targetMap = BuildLoadedMap();
+        targetMap.Entities.First(e => e.Id == "g1").Properties["spawn_requires_flag"] = "quest_started:cellar";
+
+        // First entry: flag not set, goblin absent
+        manager.SwitchMap(targetMap, 0, 0);
+        Assert.DoesNotContain(manager.State.ActiveEntities, e => e.Id == "g1");
+
+        // Set flag and re-enter: goblin appears
+        manager.SetFlag("quest_started:cellar");
+        manager.SwitchMap(targetMap, 0, 0);
+        Assert.Contains(manager.State.ActiveEntities, e => e.Id == "g1" && e.IsActive);
+    }
+
+    [Fact]
+    public void SwitchMap_SpawnForbids_ReEvaluatedOnReEntry()
+    {
+        var (map, groups) = BuildBasicMap();
+        var manager = new GameStateManager();
+        manager.Initialize(map, groups);
+
+        var targetMap = BuildLoadedMap();
+        targetMap.Entities.First(e => e.Id == "g1").Properties["spawn_forbids_flag"] = "village_safe";
+
+        // First entry: flag not set, goblin present
+        manager.SwitchMap(targetMap, 0, 0);
+        Assert.Contains(manager.State.ActiveEntities, e => e.Id == "g1" && e.IsActive);
+
+        // Set flag and re-enter: goblin gone
+        manager.SetFlag("village_safe");
+        manager.SwitchMap(targetMap, 0, 0);
+        Assert.DoesNotContain(manager.State.ActiveEntities, e => e.Id == "g1");
+    }
+
+    [Fact]
+    public void SwitchMap_PersistenceTakesPriority_KilledEntityStaysDead()
+    {
+        var (map, groups) = BuildBasicMap();
+        var manager = new GameStateManager();
+        manager.Initialize(map, groups);
+        manager.SetFlag("quest_started:cellar");
+
+        var targetMap = BuildLoadedMap();
+        targetMap.Entities.First(e => e.Id == "g1").Properties["spawn_requires_flag"] = "quest_started:cellar";
+
+        // First entry: goblin spawns
+        manager.SwitchMap(targetMap, 0, 0);
+        var goblin = manager.State.ActiveEntities.First(e => e.Id == "g1");
+        Assert.True(goblin.IsActive);
+
+        // Kill the goblin (sets entity_inactive flag)
+        manager.DeactivateEntity(goblin);
+
+        // Re-enter: goblin is inactive despite spawn condition passing
+        manager.SwitchMap(targetMap, 0, 0);
+        var goblinAfter = manager.State.ActiveEntities.FirstOrDefault(e => e.Id == "g1");
+        Assert.NotNull(goblinAfter);
+        Assert.False(goblinAfter.IsActive);
+    }
+
     // ========== Full flow: Initialize → SwitchMap → SwitchMap ==========
 
     [Fact]
