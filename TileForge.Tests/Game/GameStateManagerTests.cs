@@ -224,4 +224,49 @@ public class GameStateManagerTests
 
         Assert.Equal("1", manager.GetVariable("counter"));
     }
+
+    // ========== Spawn condition tests (Initialize) ==========
+
+    [Fact]
+    public void Initialize_NoSpawnConditions_EntitySpawns()
+    {
+        var (map, groups) = BuildBasicMap();
+        var manager = new GameStateManager();
+        manager.Initialize(map, groups);
+
+        Assert.Contains(manager.State.ActiveEntities, e => e.Id == "n1" && e.IsActive);
+    }
+
+    [Fact]
+    public void Initialize_SpawnRequiresFlag_FlagAbsent_EntitySkipped()
+    {
+        var (map, groups) = BuildBasicMap();
+        map.Entities.First(e => e.Id == "n1").Properties["spawn_requires_flag"] = "quest_started:cellar";
+        var manager = new GameStateManager();
+        manager.Initialize(map, groups);
+
+        Assert.DoesNotContain(manager.State.ActiveEntities, e => e.Id == "n1");
+    }
+
+    [Fact]
+    public void Initialize_SpawnForbidsFlag_FlagAbsent_EntitySpawns()
+    {
+        var (map, groups) = BuildBasicMap();
+        map.Entities.First(e => e.Id == "n1").Properties["spawn_forbids_flag"] = "village_safe";
+        var manager = new GameStateManager();
+        manager.Initialize(map, groups);
+
+        Assert.Contains(manager.State.ActiveEntities, e => e.Id == "n1" && e.IsActive);
+    }
+
+    [Fact]
+    public void Initialize_EmptyProperties_EntitySpawns()
+    {
+        var (map, groups) = BuildBasicMap();
+        map.Entities.First(e => e.Id == "n1").Properties.Clear();
+        var manager = new GameStateManager();
+        manager.Initialize(map, groups);
+
+        Assert.Contains(manager.State.ActiveEntities, e => e.Id == "n1" && e.IsActive);
+    }
 }

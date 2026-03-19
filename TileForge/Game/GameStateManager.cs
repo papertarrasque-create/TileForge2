@@ -86,15 +86,9 @@ public class GameStateManager
             if (groupsByName.TryGetValue(entity.GroupName, out var group) && group.IsPlayer)
                 continue;
 
-            // Merge group DefaultProperties as base, then overlay with instance overrides
-            var props = new Dictionary<string, string>();
-            if (group?.DefaultProperties != null)
-            {
-                foreach (var kvp in group.DefaultProperties)
-                    props[kvp.Key] = kvp.Value;
-            }
-            foreach (var kvp in entity.Properties)
-                props[kvp.Key] = kvp.Value;
+            var merged = MergeProperties(group, entity.Properties);
+            if (!PassesSpawnConditions(merged, State))
+                continue;
 
             State.ActiveEntities.Add(new EntityInstance
             {
@@ -102,7 +96,7 @@ public class GameStateManager
                 DefinitionName = entity.GroupName,
                 X = entity.X,
                 Y = entity.Y,
-                Properties = props,
+                Properties = merged,
                 IsActive = true,
             });
         }
@@ -132,23 +126,13 @@ public class GameStateManager
             if (groupsByName.TryGetValue(entity.DefinitionName, out var group) && group.IsPlayer)
                 continue;
 
-            // Merge group DefaultProperties as base, then overlay with instance overrides
-            var props = new Dictionary<string, string>();
-            if (group?.DefaultProperties != null)
-            {
-                foreach (var kvp in group.DefaultProperties)
-                    props[kvp.Key] = kvp.Value;
-            }
-            foreach (var kvp in entity.Properties)
-                props[kvp.Key] = kvp.Value;
-
             State.ActiveEntities.Add(new EntityInstance
             {
                 Id = entity.Id,
                 DefinitionName = entity.DefinitionName,
                 X = entity.X,
                 Y = entity.Y,
-                Properties = props,
+                Properties = MergeProperties(group, entity.Properties),
                 IsActive = !State.Flags.Contains(EntityInactivePrefix + entity.Id),
             });
         }
@@ -164,6 +148,32 @@ public class GameStateManager
     {
         entity.IsActive = false;
         SetFlag(EntityInactivePrefix + entity.Id);
+    }
+
+    private static bool PassesSpawnConditions(Dictionary<string, string> properties, GameState state)
+    {
+        var requires = PropertyAccess.GetString(properties, PropertyKeys.SpawnRequiresFlag);
+        if (!string.IsNullOrEmpty(requires) && !state.Flags.Contains(requires))
+            return false;
+
+        var forbids = PropertyAccess.GetString(properties, PropertyKeys.SpawnForbidsFlag);
+        if (!string.IsNullOrEmpty(forbids) && state.Flags.Contains(forbids))
+            return false;
+
+        return true;
+    }
+
+    private static Dictionary<string, string> MergeProperties(TileGroup group, Dictionary<string, string> overrides)
+    {
+        var props = new Dictionary<string, string>();
+        if (group?.DefaultProperties != null)
+        {
+            foreach (var kvp in group.DefaultProperties)
+                props[kvp.Key] = kvp.Value;
+        }
+        foreach (var kvp in overrides)
+            props[kvp.Key] = kvp.Value;
+        return props;
     }
 
     // Flag operations
@@ -534,52 +544,6 @@ public class GameStateManager
         };
     }
 
-    /// <summary>
-    /// Attacks an entity: calculates damage, reduces health, deactivates if killed.
-    /// Returns an AttackResult with the outcome.
-    /// </summary>
     public AttackResult AttackEntity(EntityInstance entity, int attackerAttack)
-    {
-        int defense = PropertyAccess.GetInt(entity.Properties, PropertyKeys.Defense);
-        int damage = CombatHelper.CalculateDamage(attackerAttack, defense);
-
-        int currentHealth = PropertyAccess.GetInt(entity.Properties, PropertyKeys.Health);
-        int newHealth = Math.Max(0, currentHealth - damage);
-        PropertyAccess.SetInt(entity.Properties, PropertyKeys.Health, newHealth);
-
-        bool killed = newHealth <= 0;
-        if (killed)
-        {
-            DeactivateEntity(entity);
-
-            // Process entity kill event hooks for quest tracking
-            var killFlag = PropertyAccess.GetString(entity.Properties, PropertyKeys.OnKillSetFlag);
-            if (!string.IsNullOrEmpty(killFlag))
-                SetFlag(killFlag);
-            var killVar = PropertyAccess.GetString(entity.Properties, PropertyKeys.OnKillIncrement);
-            if (!string.IsNullOrEmpty(killVar))
-                IncrementVariable(killVar);
-        }
-
-        int maxHealth = PropertyAccess.GetInt(entity.Properties, PropertyKeys.MaxHealth, currentHealth);
-        string xpStr = "";
-        if (killed)
-        {
-            int xp = PropertyAccess.GetInt(entity.Properties, PropertyKeys.Xp);
-            xpStr = xp > 0 ? $" (+{xp} XP)" : "";
-        }
-
-        string message = killed
-            ? $"{entity.DefinitionName} defeated!{xpStr}"
-            : $"Hit {entity.DefinitionName} for {damage}! ({newHealth}/{maxHealth} HP)";
-
-        return new AttackResult
-        {
-            DamageDealt = damage,
-            RemainingHealth = newHealth,
-            Killed = killed,
-            TargetName = entity.DefinitionName,
-            Message = message,
-        };
-    }
+        => AttackEntity(entity, attackerAttack, 0, 1.0f);
 }
