@@ -52,4 +52,8 @@ public static class PropertyKeys
     // Kill hooks
     public const string OnKillSetFlag = "on_kill_set_flag";
     public const string OnKillIncrement = "on_kill_increment";
+
+    // Spawn conditions
+    public const string SpawnRequiresFlag = "spawn_requires_flag";
+    public const string SpawnForbidsFlag = "spawn_forbids_flag";
 }
