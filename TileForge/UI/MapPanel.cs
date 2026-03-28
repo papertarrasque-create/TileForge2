@@ -97,6 +97,7 @@ public class MapPanel : Panel
     public string WantsDeleteGroup { get; private set; }
     public bool WantsNewLayer { get; private set; }
     public (int fromIndex, int toIndex)? PendingLayerReorder { get; private set; }
+    public (string GroupName, string TargetLayerName)? WantsMoveGroupLayer { get; private set; }
 
     // --- Collapse state persistence ---
 
@@ -188,6 +189,7 @@ public class MapPanel : Panel
         WantsDeleteGroup = null;
         WantsNewLayer = false;
         PendingLayerReorder = null;
+        WantsMoveGroupLayer = null;
 
         ComputeLayout(state);
 
@@ -232,11 +234,10 @@ public class MapPanel : Panel
             {
                 string targetLayer = GetGroupDragTargetLayer(mouse.Y);
                 if (targetLayer != null && _dragGroupName != null
-                    && state.GroupsByName.TryGetValue(_dragGroupName, out var group)
-                    && group.LayerName != targetLayer)
+                    && state.GroupsByName.TryGetValue(_dragGroupName, out _)
+                    && state.GroupsByName[_dragGroupName].LayerName != targetLayer)
                 {
-                    group.LayerName = targetLayer;
-                    state.ActiveLayerName = targetLayer;
+                    WantsMoveGroupLayer = (_dragGroupName, targetLayer);
                 }
                 _isDraggingGroup = false;
                 _dragGroupName = null;
@@ -280,7 +281,7 @@ public class MapPanel : Panel
         int scrollDelta = mouse.ScrollWheelValue - prevMouse.ScrollWheelValue;
         if (scrollDelta != 0)
         {
-            _scrollOffset -= scrollDelta > 0 ? 1 : -1;
+            _scrollOffset -= scrollDelta > 0 ? 30 : -30;
             int totalHeight = GetTotalContentHeight();
             int maxScroll = Math.Max(0, totalHeight - ContentBounds.Height);
             _scrollOffset = Math.Clamp(_scrollOffset, 0, maxScroll);
