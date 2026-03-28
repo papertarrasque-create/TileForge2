@@ -613,6 +613,41 @@ public class TileForgeGame : Microsoft.Xna.Framework.Game
             cmd.Execute();
             _state.UndoStack.Push(cmd);
         }
+
+        if (_mapPanel.WantsMoveGroupLayer.HasValue)
+        {
+            var (groupName, targetLayerName) = _mapPanel.WantsMoveGroupLayer.Value;
+            if (_state.GroupsByName.TryGetValue(groupName, out var group))
+            {
+                var allMaps = new List<MapData>();
+                foreach (var doc in _state.MapDocuments)
+                    if (doc.Map != null)
+                        allMaps.Add(doc.Map);
+
+                var cmd = new MoveGroupLayerCommand(group, group.LayerName, targetLayerName, allMaps);
+
+                if (cmd.ConflictCount > 0)
+                {
+                    _dialogManager.Show(
+                        new ConfirmDialog($"Moving \"{groupName}\" to \"{targetLayerName}\" will overwrite {cmd.ConflictCount} tile(s). Continue?"),
+                        dialog =>
+                        {
+                            if (!dialog.WasCancelled)
+                            {
+                                cmd.Execute();
+                                _state.UndoStack.Push(cmd);
+                                _state.ActiveLayerName = targetLayerName;
+                            }
+                        });
+                }
+                else
+                {
+                    cmd.Execute();
+                    _state.UndoStack.Push(cmd);
+                    _state.ActiveLayerName = targetLayerName;
+                }
+            }
+        }
     }
 
     private void HandleTilePaletteActions()
