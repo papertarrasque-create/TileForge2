@@ -281,8 +281,8 @@ public class EquipmentInventoryTests
         Assert.Equal(2, gsm.State.Player.Inventory.Count); // Iron Sword + Potion
 
         // Step 5: Verify final stats
-        // Only armor equipped: base defense 2 + chainmail 8 = 10
-        Assert.Equal(10, gsm.GetEffectiveDefense());
+        // Only armor equipped: base defense 3 + chainmail 8 = 11
+        Assert.Equal(11, gsm.GetEffectiveDefense());
         // No weapon equipped: base attack 5
         Assert.Equal(5, gsm.GetEffectiveAttack());
 

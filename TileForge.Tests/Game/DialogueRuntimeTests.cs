@@ -14,8 +14,8 @@ public class ConditionEvaluatorTests
         {
             Health = 100,
             MaxHealth = 100,
-            Poise = 20,
-            MaxPoise = 20,
+            Poise = 10,
+            MaxPoise = 10,
             MaxAP = 2,
         };
         return gsm;
@@ -245,8 +245,8 @@ public class ActionExecutorTests
         {
             Health = 100,
             MaxHealth = 100,
-            Poise = 20,
-            MaxPoise = 20,
+            Poise = 10,
+            MaxPoise = 10,
             MaxAP = 2,
         };
         return gsm;

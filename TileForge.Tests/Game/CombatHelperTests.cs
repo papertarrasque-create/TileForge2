@@ -98,11 +98,11 @@ public class CombatHelperTests
     }
 
     [Fact]
-    public void PlayerState_Defense_DefaultIsTwo()
+    public void PlayerState_Defense_DefaultIsThree()
     {
         var player = new PlayerState();
 
-        Assert.Equal(2, player.Defense);
+        Assert.Equal(3, player.Defense);
     }
 
     [Fact]

@@ -7,7 +7,7 @@ namespace TileForge.Tests.Game;
 
 public class PoiseTests
 {
-    private GameStateManager CreateManagerWithPlayer(int health = 100, int poise = 20, int maxPoise = 20)
+    private GameStateManager CreateManagerWithPlayer(int health = 100, int poise = 10, int maxPoise = 10)
     {
         var mgr = new GameStateManager();
         var map = new MapData(10, 10);
@@ -106,31 +106,31 @@ public class PoiseTests
     [Fact]
     public void RegeneratePoise_RestoresQuarterOfMax()
     {
-        var mgr = CreateManagerWithPlayer(poise: 0, maxPoise: 20);
+        var mgr = CreateManagerWithPlayer(poise: 0, maxPoise: 10);
         int amount = mgr.RegeneratePoise();
 
-        Assert.Equal(5, amount);
-        Assert.Equal(5, mgr.State.Player.Poise);
+        Assert.Equal(2, amount);
+        Assert.Equal(2, mgr.State.Player.Poise);
     }
 
     [Fact]
     public void RegeneratePoise_CapsAtMax()
     {
-        var mgr = CreateManagerWithPlayer(poise: 18, maxPoise: 20);
+        var mgr = CreateManagerWithPlayer(poise: 8, maxPoise: 10);
         int amount = mgr.RegeneratePoise();
 
         Assert.Equal(2, amount);
-        Assert.Equal(20, mgr.State.Player.Poise);
+        Assert.Equal(10, mgr.State.Player.Poise);
     }
 
     [Fact]
     public void RegeneratePoise_AlreadyFull_ReturnsZero()
     {
-        var mgr = CreateManagerWithPlayer(poise: 20, maxPoise: 20);
+        var mgr = CreateManagerWithPlayer(poise: 10, maxPoise: 10);
         int amount = mgr.RegeneratePoise();
 
         Assert.Equal(0, amount);
-        Assert.Equal(20, mgr.State.Player.Poise);
+        Assert.Equal(10, mgr.State.Player.Poise);
     }
 
     [Fact]
@@ -147,21 +147,21 @@ public class PoiseTests
     [Fact]
     public void GetEffectiveMaxPoise_BaseOnly()
     {
-        var mgr = CreateManagerWithPlayer(maxPoise: 20);
-        Assert.Equal(20, mgr.GetEffectiveMaxPoise());
+        var mgr = CreateManagerWithPlayer(maxPoise: 10);
+        Assert.Equal(10, mgr.GetEffectiveMaxPoise());
     }
 
     [Fact]
     public void GetEffectiveMaxPoise_WithEquipment()
     {
-        var mgr = CreateManagerWithPlayer(maxPoise: 20);
+        var mgr = CreateManagerWithPlayer(maxPoise: 10);
         mgr.State.Player.Equipment["Armor"] = "shield";
         mgr.State.ItemPropertyCache["shield"] = new Dictionary<string, string>
         {
             ["equip_poise"] = "10"
         };
 
-        Assert.Equal(30, mgr.GetEffectiveMaxPoise());
+        Assert.Equal(20, mgr.GetEffectiveMaxPoise());
     }
 
     [Fact]
@@ -221,8 +221,8 @@ public class PoiseTests
         map.Entities.Add(new Entity { GroupName = "player", X = 5, Y = 5 });
         mgr.Initialize(map, new Dictionary<string, TileGroup> { ["player"] = player });
 
-        Assert.Equal(20, mgr.State.Player.Poise);
-        Assert.Equal(20, mgr.State.Player.MaxPoise);
+        Assert.Equal(10, mgr.State.Player.Poise);
+        Assert.Equal(10, mgr.State.Player.MaxPoise);
     }
 
     [Fact]
@@ -236,8 +236,8 @@ public class PoiseTests
         var mgr = new GameStateManager();
         mgr.LoadState(state);
 
-        Assert.Equal(20, mgr.State.Player.MaxPoise);
-        Assert.Equal(20, mgr.State.Player.Poise);
+        Assert.Equal(10, mgr.State.Player.MaxPoise);
+        Assert.Equal(10, mgr.State.Player.Poise);
     }
 
     [Fact]

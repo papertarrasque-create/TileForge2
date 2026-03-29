@@ -124,7 +124,7 @@ public class EntityTurnTests
         var map = CreateMap(10, 10);
         var state = new GameState
         {
-            Player = new PlayerState { X = 3, Y = 3, Health = 100, MaxHealth = 100, Defense = 2, Poise = 0 },
+            Player = new PlayerState { X = 3, Y = 3, Health = 100, MaxHealth = 100, Defense = 3, Poise = 0 },
         };
         var enemy = new EntityInstance
         {
@@ -139,10 +139,10 @@ public class EntityTurnTests
 
         var messages = SimulateEntityTurn(gsm, pathfinder);
 
-        // Damage = max(1, 6 - 2) = 4
-        Assert.Equal(96, state.Player.Health);
+        // Damage = max(1, 6 - 3) = 3
+        Assert.Equal(97, state.Player.Health);
         Assert.Single(messages);
-        Assert.Equal("Goblin hit you for 4 damage!", messages[0]);
+        Assert.Equal("Goblin hit you for 3 damage!", messages[0]);
     }
 
     [Fact]
