@@ -8,14 +8,15 @@ status: current
 ## Current State
 
 **Branch:** `Dialog` (branched from `HUD` from `game-state`)
-**Tests:** 1768 passing, 0 failures
-**Last milestone:** Entity Animation -- hop arcs for player movement, slide-back for knockback
+**Tests:** 1796 passing, 0 failures
+**Last milestone:** Combat Rebalance -- two-tier enemy progression with 5 enemy types
 
 All planned phases G1-G14 are complete. Editor phases R1-R4 and P1-P3 are complete. Dialogue 2.0 is complete with v1 compat code removed.
 
 ## Active Work
 
-- **Adventure Designer Skill (complete):** Claude Code skill (`/adventure-designer`) that translates plain language into TileForge quests, dialogues, and entity groups. Four modes: Direct Command, Conversational Design, Blueprint (structured markdown), Modification. Lives at `~/.claude/plugins/local/tileforge-adventure-designer/`. Needs Claude Code restart to activate, then testing.
+- **Combat Rebalance (complete):** Player poise 20->10, defense 2->3. Five enemy types across two tiers: Tier 1 (Rat speed 2, Goblin, Skeleton chase_patrol) and Tier 2 (Zombie weight 3, Ghost speed 2). New entity groups in QuestTestMap.tileforge with placeholder sprites at (1,1).
+- **Adventure Designer Skill (complete):** Claude Code skill (`/adventure-designer`) for game content generation. Tested and deployed for combat rebalance.
 - **Previous:** Entity Animation, Combat Knockback, Property Schema Registry, V1 Cleanup, Dialogue 2.0, G15 gameplay features, HUD minimap
 
 ## Next Up (G15+)
