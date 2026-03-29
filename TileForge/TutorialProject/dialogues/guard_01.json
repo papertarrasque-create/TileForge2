@@ -26,17 +26,14 @@
       ]
     },
     {
-      "startNode": "no_entry",
-      "conditions": [
-        { "type": "not_flag", "flag": "sage_asked_help" }
-      ]
+      "startNode": "no_entry"
     }
   ],
   "nodes": [
     {
       "id": "dungeon_open",
       "speaker": "Guard",
-      "text": "I heard the Sage opened that old door. Whatever is down there, give it hell. I will keep watch up here.",
+      "text": "The Sage sent word about that old door. Whatever is down there, give it hell. I will keep watch up here -- governor's orders.",
       "actions": [
         { "type": "log", "value": "The Guard nods grimly." }
       ],
@@ -46,10 +43,11 @@
     {
       "id": "depths_active",
       "speaker": "Guard",
-      "text": "Back again? The Sage sent word you would be coming. Go on through -- but I will tell you, something felt wrong down there even after the rats were cleared. A cold draft from somewhere deep.",
+      "text": "The Sage sent word you would be coming back. The hut door is open for you. But I will say -- something felt wrong in there even after the rats were cleared. A cold draft from somewhere deep.",
       "actions": [
+        { "type": "set_flag", "value": "guard_approved" },
         { "type": "set_flag", "value": "entered_cellar_depths" },
-        { "type": "log", "value": "The Guard lets you pass into the cellar." }
+        { "type": "log", "value": "The Guard unlocks the hut door for you." }
       ],
       "editorX": 50,
       "editorY": -375
@@ -57,16 +55,17 @@
     {
       "id": "post_quest",
       "speaker": "Guard",
-      "text": "The Sage looks much happier now. Well done.",
+      "text": "Good work clearing those rats. The hut is locked up again -- governor wants it sealed until the Sage finishes his inspection. Talk to the Sage if there is anything else.",
       "editorX": 50,
       "editorY": -300
     },
     {
       "id": "let_pass",
       "speaker": "Guard",
-      "text": "The Sage sent you? Good luck in there. Watch out for the rats -- they bite.",
+      "text": "The Sage sent you to deal with the rats? About time someone with a weapon showed up. I have unlocked the hut door -- go on through. Watch yourself in there, they bite.",
       "actions": [
-        { "type": "set_flag", "value": "guard_approved" }
+        { "type": "set_flag", "value": "guard_approved" },
+        { "type": "log", "value": "The Guard unlocks the hut door." }
       ],
       "editorX": 50,
       "editorY": -150
@@ -74,7 +73,7 @@
     {
       "id": "no_entry",
       "speaker": "Guard",
-      "text": "The cellar is off-limits. Too dangerous. Talk to the Sage if you have business here.",
+      "text": "By order of the governor, this hut is sealed. Rat infestation -- too dangerous for civilians. The Sage is handling the investigation. Talk to him if you have business here.",
       "editorX": 50,
       "editorY": 0
     }

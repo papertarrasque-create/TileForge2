@@ -1,0 +1,61 @@
+{
+  "id": "dungeon_gate",
+  "routes": [
+    {
+      "startNode": "gate_opened",
+      "conditions": [
+        { "type": "has_flag", "flag": "dungeon_gate_opened" }
+      ]
+    },
+    {
+      "startNode": "gate_closed"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "gate_opened",
+      "speaker": "Iron Gate",
+      "text": "The gate stands open. Strange sounds echo from the passage beyond -- a low scraping, like claws on stone.",
+      "editorX": 50,
+      "editorY": -200
+    },
+    {
+      "id": "gate_closed",
+      "speaker": "Iron Gate",
+      "text": "A heavy iron gate blocks the corridor ahead. It is not locked -- the latch is rusted but free. From somewhere beyond, you hear strange noises... a low scraping, and something that might be breathing.",
+      "choices": [
+        {
+          "text": "Push the gate open.",
+          "nextNodeId": "open_gate",
+          "actions": [
+            { "type": "set_flag", "value": "dungeon_gate_opened" },
+            { "type": "log", "value": "You heave the iron gate open. Rusted hinges groan in protest." }
+          ]
+        },
+        {
+          "text": "Leave it for now.",
+          "nextNodeId": "leave_gate"
+        }
+      ],
+      "editorX": 50,
+      "editorY": -50
+    },
+    {
+      "id": "open_gate",
+      "speaker": "Iron Gate",
+      "text": "The gate swings open with a terrible screech. The noises beyond go silent for a moment... then resume, closer now. Whatever is down there heard you.",
+      "actions": [
+        { "type": "log", "value": "The passage ahead is open. Something stirs in the darkness.", "color": "yellow" }
+      ],
+      "editorX": 400,
+      "editorY": -50
+    },
+    {
+      "id": "leave_gate",
+      "speaker": "Iron Gate",
+      "text": "You step back from the gate. The noises continue -- patient, unhurried.",
+      "editorX": 400,
+      "editorY": 100
+    }
+  ]
+}

@@ -20,6 +20,7 @@ Expert game designer and C# developer.
 - **Evolve, don't rebuild.** Enhance existing systems. Don't create parallel ones.
 - **One source of truth.** TileGroup defines both tiles and entities. Maps reference by name.
 - **Don't ignore bugs.** When you discover a bug, stop what you are doing and fix it.
+- **MonoGame where it shines, vanilla C# everywhere else.** When implementing a new feature, check whether MonoGame provides a natural fit (e.g., camera transforms, render targets, audio, sprite effects). Use MonoGame when it does the job better than hand-rolled code. If it would require shoehorning or fighting the API, stick to vanilla C#.
 
 ## Architecture Rules
 - Game runtime code: `TileForge/Game/` namespace
@@ -43,7 +44,7 @@ The **docs/** Obsidian vault is the living documentation layer. It is the primar
 | `docs/Brief.md` | Project identity, philosophy, goals |
 | `docs/Status.md` | Current state, active work, known issues, open questions |
 | `docs/Architecture.md` | System overview, data flow, boundaries, coupling |
-| `docs/Changelog.md` | Feature history and architectural shifts |
+| `git log` | Feature history |
 | `docs/ADRs/` | Architecture Decision Records |
 | `docs/Sessions/` | Per-session summaries |
 

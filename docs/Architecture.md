@@ -111,30 +111,9 @@ Modal editors (QuestEditor, DialogueTreeEditor, WorldMapEditor) are full-screen 
 
 ## Entity System
 
-Entities use **property bags** (`Dictionary<string, string>`) rather than class hierarchies. `TileGroup.DefaultProperties` are inherited by entity instances at placement time.
+Entities use **property bags** (`Dictionary<string, string>`) rather than class hierarchies. `TileGroup.DefaultProperties` are inherited by entity instances at placement time. Typed access goes through `PropertyKeys` + `PropertyAccess`; load-time validation via `PropertyValidator`.
 
-Key property conventions:
-- `entity_type`: NPC, Item, Trap, Trigger, Interactable
-- `behavior`: idle, chase, patrol, chase_patrol
-- `health`, `attack`, `defense`, `poise`, `speed`, `aggro_range`
-- `equip_slot`, `equip_attack`, `equip_defense`, `equip_poise`, `equip_ap`
-- `target_map`, `target_x`, `target_y` (trigger transitions)
-- `dialogue_id`, `on_kill_set_flag`, `on_collect_increment` (hooks)
-- `alert_turns` (runtime, set by noise system)
-
-This avoids class proliferation but is stringly typed -- errors are silent and validation is manual.
-
-## Combat System
-
-AP-based tactical combat:
-- 2 AP/turn (configurable via equipment). Move = 1 AP, attack = 1 AP.
-- `damage = max(1, (atk - (def + terrain)) * positionMult)`
-- Terrain defense from `TileGroup.DefenseBonus`
-- Backstab (2x) / Flanking (1.5x) based on 4-directional facing
-- Poise: regenerating shield buffer, absorbs damage before health
-- Auto-end-turn when no hostiles nearby (exploration feels seamless)
-- Entity speed property (1-3 actions per turn)
-- Noise/alertness: stepping on loud tiles alerts nearby dormant enemies
+See [[Property Reference]] for all property keys, [[Entities]] for runtime behavior, [[Combat]] for the AP-based tactical combat system.
 
 ## Map System
 

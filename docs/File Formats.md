@@ -107,48 +107,7 @@ Layer cells are stored as a linear string array indexed as `x + y * width`. Valu
 
 ## Dialogue JSON
 
-Stored as `{projectDir}/dialogues/{id}.json`. Uses **camelCase** naming.
-
-```json
-{
-  "id": "elder_01",
-  "nodes": [
-    {
-      "id": "start",
-      "speaker": "Village Elder",
-      "text": "Welcome, traveler.",
-      "choices": [
-        {
-          "text": "What happened?",
-          "nextNodeId": "explain"
-        },
-        {
-          "text": "Just passing through.",
-          "nextNodeId": "decline"
-        }
-      ],
-      "editorX": 56,
-      "editorY": -174
-    },
-    {
-      "id": "explain",
-      "speaker": "Village Elder",
-      "text": "Strange creatures invaded.",
-      "nextNodeId": null,
-      "setsFlag": "elder_explained",
-      "choices": [
-        {
-          "text": "I will help!",
-          "nextNodeId": "quest_accept",
-          "setsFlag": "quest_caves_accepted"
-        }
-      ]
-    }
-  ]
-}
-```
-
-See [[Dialogue]] for the full node/choice structure.
+Stored as `{projectDir}/dialogues/{id}.json`. Uses **camelCase** naming. Top-level fields: `id`, `type`, `oneShot`, `routes`, `nodes`. See [[Dialogue]] for the full data model and examples.
 
 ## Quest JSON
 

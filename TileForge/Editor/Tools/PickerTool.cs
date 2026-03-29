@@ -17,7 +17,7 @@ public class PickerTool : ITool
         if (!state.Map.InBounds(gridX, gridY)) return;
 
         // First check for entities at this position (entities take priority)
-        var entity = FindEntityAt(state, gridX, gridY);
+        var entity = state.FindEntityAt(gridX, gridY);
         if (entity != null)
         {
             state.SelectedGroupName = entity.GroupName;
@@ -45,15 +45,8 @@ public class PickerTool : ITool
         }
     }
 
-    public void OnDrag(int gridX, int gridY, EditorState state)
-    {
-        // No-op
-    }
-
-    public void OnRelease(EditorState state)
-    {
-        // No-op
-    }
+    public void OnDrag(int gridX, int gridY, EditorState state) { }
+    public void OnRelease(EditorState state) { }
 
     public void DrawPreview(SpriteBatch spriteBatch, int gridX, int gridY,
                             EditorState state, Camera camera, Renderer renderer)
@@ -82,15 +75,4 @@ public class PickerTool : ITool
         renderer.DrawRect(spriteBatch, new Rectangle(cx, cy - armLen, 1, armLen * 2), PreviewColor);
     }
 
-    private static Entity FindEntityAt(EditorState state, int gridX, int gridY)
-    {
-        if (state.Map == null) return null;
-        for (int i = state.Map.Entities.Count - 1; i >= 0; i--)
-        {
-            var e = state.Map.Entities[i];
-            if (e.X == gridX && e.Y == gridY)
-                return e;
-        }
-        return null;
-    }
 }

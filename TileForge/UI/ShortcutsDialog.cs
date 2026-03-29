@@ -182,7 +182,7 @@ public class ShortcutsDialog : IDialog
 
         // Footer hint
         string hint = _maxScroll > 0
-            ? "[Enter/Esc] Close    [\u2191\u2193] Scroll"
+            ? "[Enter/Esc] Close    [Up/Down] Scroll"
             : "[Enter] or [Esc] to close";
         var hintSize = font.MeasureString(hint);
         int hintY = py + panelHeight - FooterHeight + (FooterHeight - font.LineSpacing) / 2;

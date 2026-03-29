@@ -86,7 +86,7 @@
     {
       "id": "depths_reported",
       "speaker": "Village Sage",
-      "text": "I know the old unsealing rite. Give me a moment... there. The door should yield to you now. But heed my warning -- whatever broke that seal is still down there.",
+      "text": "I know the old unsealing rite. Give me a moment... there. The door should yield to you now. I will send word to the guard -- he will let you back into the hut.",
       "actions": [
         { "type": "set_flag", "value": "dungeon_door_unlocked" },
         { "type": "heal", "value": "999" },
@@ -105,10 +105,10 @@
     {
       "id": "post_amulet",
       "speaker": "Village Sage",
-      "text": "I am glad the amulet is safe, but something still troubles me. Those rats -- they did not just wander in. Something drove them up from below.",
+      "text": "The amulet is safe, and I thank you. But something still troubles me. That many rats do not infest a place without reason. Something drove them up from below.",
       "choices": [
         {
-          "text": "You want me to go back down there?",
+          "text": "You want me to go back in there?",
           "nextNodeId": "depths_quest_offer"
         },
         {
@@ -122,7 +122,7 @@
     {
       "id": "depths_quest_offer",
       "speaker": "Village Sage",
-      "text": "I would not ask if I were not worried. Go back to the cellar and look for whatever drove the rats to the surface. There may be a passage we never knew about.",
+      "text": "I would not ask if I were not worried. Return to the hut and search the cellar for whatever drove the rats to the surface. There may be a passage we never knew about. I will tell the guard to let you through again.",
       "choices": [
         {
           "text": "I will investigate.",
@@ -143,14 +143,14 @@
     {
       "id": "depths_accept",
       "speaker": "Village Sage",
-      "text": "Thank you. The guard will let you through again. Look for anything unusual -- a crack in the wall, a hidden passage, anything.",
+      "text": "Thank you. The guard will have my word by the time you reach the hut. Look for anything unusual -- a crack in the wall, a hidden passage, anything.",
       "editorX": 750,
       "editorY": -500
     },
     {
       "id": "depths_decline",
       "speaker": "Village Sage",
-      "text": "I understand. But if you change your mind, I will be here. I cannot shake this feeling that something worse is coming.",
+      "text": "I understand. But if you change your mind, I will be here. I cannot shake this feeling that something worse is lurking below.",
       "editorX": 400,
       "editorY": -400
     },
@@ -175,7 +175,7 @@
     {
       "id": "amulet_returned",
       "speaker": "Village Sage",
-      "text": "Thank you! Let me mend your wounds as thanks.",
+      "text": "Thank you! The village owes you a great debt. Let me mend your wounds as thanks.",
       "actions": [
         { "type": "heal", "value": "20" },
         { "type": "set_variable", "key": "reputation", "value": "10" },
@@ -187,22 +187,18 @@
     {
       "id": "in_progress",
       "speaker": "Village Sage",
-      "text": "Please hurry! The rats grow bolder by the hour. The cellar is through the gap to the east.",
+      "text": "The rats grow bolder by the hour. Please, the hut is to the east -- the guard will let you through. Clear those vermin and find my amulet!",
       "editorX": 50,
       "editorY": -200
     },
     {
       "id": "start",
       "speaker": "Village Sage",
-      "text": "Dark times, traveler. Rats stole my amulet of protection and dragged it into the old cellar to the east.",
+      "text": "Thank goodness, a traveler with a sword arm! The governor called me to investigate a terrible rat infestation in the old hut to the east. But I am a scholar, not a swordsman -- the beasts nearly took my hand off when I went in.",
       "choices": [
         {
-          "text": "I'll get it back for you.",
-          "nextNodeId": "quest_accept",
-          "actions": [
-            { "type": "start_quest", "value": "lost_amulet" },
-            { "type": "set_flag", "value": "sage_asked_help" }
-          ]
+          "text": "What do you need?",
+          "nextNodeId": "explain_problem"
         },
         {
           "text": "Not my problem.",
@@ -213,18 +209,39 @@
       "editorY": -50
     },
     {
+      "id": "explain_problem",
+      "speaker": "Village Sage",
+      "text": "The rats stole my amulet of protection when I entered the hut. Dragged it down into the cellar below. I need someone who can fight to clear them out and bring it back. Will you help?",
+      "choices": [
+        {
+          "text": "I'll deal with the rats.",
+          "nextNodeId": "quest_accept",
+          "actions": [
+            { "type": "start_quest", "value": "lost_amulet" },
+            { "type": "set_flag", "value": "sage_asked_help" }
+          ]
+        },
+        {
+          "text": "Sounds dangerous. No thanks.",
+          "nextNodeId": "decline"
+        }
+      ],
+      "editorX": 400,
+      "editorY": -50
+    },
+    {
       "id": "quest_accept",
       "speaker": "Village Sage",
-      "text": "Bless you! Speak with the guard by the cellar entrance -- he will let you through. Clear those rats and bring back my amulet.",
-      "editorX": 400,
-      "editorY": -100
+      "text": "Bless you! The governor posted a guard at the hut door to keep people out. Tell him I sent you and he will let you through. Clear those rats and bring back my amulet.",
+      "editorX": 750,
+      "editorY": -50
     },
     {
       "id": "decline",
       "speaker": "Village Sage",
-      "text": "I understand. But without the amulet, the village is defenseless...",
+      "text": "I understand. But without that amulet, the village has no protection. If you change your mind, I will be here.",
       "editorX": 400,
-      "editorY": 50
+      "editorY": 100
     }
   ]
 }

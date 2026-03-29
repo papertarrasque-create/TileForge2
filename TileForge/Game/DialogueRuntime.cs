@@ -83,6 +83,9 @@ public static class ActionExecutor
             case "set_flag":
                 gsm.SetFlag(action.Value);
                 break;
+            case "clear_flag":
+                gsm.ClearFlag(action.Value);
+                break;
             case "set_variable":
                 gsm.SetVariable(action.Key, action.Value);
                 break;
@@ -111,6 +114,27 @@ public static class ActionExecutor
                 break;
             case "log":
                 gameLog?.Add(action.Text, ParseColor(action.Color));
+                break;
+            case "map_transition":
+                if (!string.IsNullOrEmpty(action.Value))
+                {
+                    int mtx = 0, mty = 0;
+                    if (!string.IsNullOrEmpty(action.Key))
+                    {
+                        var parts = action.Key.Split(',');
+                        if (parts.Length >= 2)
+                        {
+                            int.TryParse(parts[0].Trim(), out mtx);
+                            int.TryParse(parts[1].Trim(), out mty);
+                        }
+                    }
+                    gsm.PendingTransition = new MapTransitionRequest
+                    {
+                        TargetMap = action.Value,
+                        TargetX = mtx,
+                        TargetY = mty,
+                    };
+                }
                 break;
         }
     }

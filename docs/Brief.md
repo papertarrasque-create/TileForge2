@@ -13,13 +13,7 @@ The editor *is* the authoring tool. There is no separate data pipeline, no exter
 
 ## Philosophy
 
-- **Data-driven over code-driven.** New content is JSON data, not new classes.
-- **Serialize everything.** If it can't round-trip to JSON, it doesn't exist in the game state.
-- **Property bags for extensibility.** `Dictionary<string, string>` on entities avoids premature hierarchies.
-- **Editor is the single source of truth.** All gameplay data is authored in the GroupEditor UI and exported.
-- **Evolve, don't rebuild.** Enhance existing systems rather than creating parallel ones.
-- **One source of truth.** TileGroup defines both tiles and entities. Maps reference by name.
-- **Don't ignore bugs.** Fix them immediately when discovered.
+See CLAUDE.md "Design Principles" for the canonical list. Core tenets: data-driven, serialize everything, property bags for extensibility, editor as single source of truth, evolve don't rebuild.
 
 ## Goals
 
@@ -62,5 +56,5 @@ The editor is feature-complete for v1 (see [[Status]]). The game runtime covers:
 
 - [[Architecture]] -- System overview and data flow
 - [[Status]] -- Current state and open work
-- [[Changelog]] -- Feature history
+- Feature history available via `git log`
 - [[ADRs/001-initial-architecture|ADR-001]] -- Foundational architecture decisions

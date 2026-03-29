@@ -276,6 +276,26 @@ public class ActionExecutorTests
     }
 
     [Fact]
+    public void ClearFlag_RemovesTheFlag()
+    {
+        var gsm = CreateGSM();
+        gsm.SetFlag("guard_approved");
+        Assert.True(gsm.HasFlag("guard_approved"));
+        var action = new DialogueAction { Type = "clear_flag", Value = "guard_approved" };
+        ActionExecutor.Execute(action, gsm);
+        Assert.False(gsm.HasFlag("guard_approved"));
+    }
+
+    [Fact]
+    public void ClearFlag_NonexistentFlag_NoCrash()
+    {
+        var gsm = CreateGSM();
+        var action = new DialogueAction { Type = "clear_flag", Value = "nonexistent" };
+        ActionExecutor.Execute(action, gsm);
+        Assert.False(gsm.HasFlag("nonexistent"));
+    }
+
+    [Fact]
     public void SetVariable_SetsTheVariable()
     {
         var gsm = CreateGSM();
@@ -401,5 +421,49 @@ public class ActionExecutorTests
         Assert.True(gsm.HasFlag("step1"));
         Assert.Equal("10", gsm.GetVariable("counter"));
         Assert.True(gsm.HasItem("potion"));
+    }
+
+    [Fact]
+    public void MapTransition_SetsPendingTransition()
+    {
+        var gsm = CreateGSM();
+        var action = new DialogueAction { Type = "map_transition", Value = "dungeon", Key = "5,3" };
+        ActionExecutor.Execute(action, gsm);
+        Assert.NotNull(gsm.PendingTransition);
+        Assert.Equal("dungeon", gsm.PendingTransition.TargetMap);
+        Assert.Equal(5, gsm.PendingTransition.TargetX);
+        Assert.Equal(3, gsm.PendingTransition.TargetY);
+    }
+
+    [Fact]
+    public void MapTransition_WithNoKey_DefaultsToZeroZero()
+    {
+        var gsm = CreateGSM();
+        var action = new DialogueAction { Type = "map_transition", Value = "town" };
+        ActionExecutor.Execute(action, gsm);
+        Assert.NotNull(gsm.PendingTransition);
+        Assert.Equal("town", gsm.PendingTransition.TargetMap);
+        Assert.Equal(0, gsm.PendingTransition.TargetX);
+        Assert.Equal(0, gsm.PendingTransition.TargetY);
+    }
+
+    [Fact]
+    public void MapTransition_WithEmptyValue_DoesNotSetTransition()
+    {
+        var gsm = CreateGSM();
+        var action = new DialogueAction { Type = "map_transition", Value = "" };
+        ActionExecutor.Execute(action, gsm);
+        Assert.Null(gsm.PendingTransition);
+    }
+
+    [Fact]
+    public void MapTransition_WithSpacesInKey_ParsesCorrectly()
+    {
+        var gsm = CreateGSM();
+        var action = new DialogueAction { Type = "map_transition", Value = "cave", Key = " 10 , 20 " };
+        ActionExecutor.Execute(action, gsm);
+        Assert.NotNull(gsm.PendingTransition);
+        Assert.Equal(10, gsm.PendingTransition.TargetX);
+        Assert.Equal(20, gsm.PendingTransition.TargetY);
     }
 }

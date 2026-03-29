@@ -380,12 +380,7 @@ public class GroupEditor
                     bool shift = kb.IsKeyDown(Keys.LeftShift) || kb.IsKeyDown(Keys.RightShift);
                     bool ctrl = kb.IsKeyDown(Keys.LeftControl) || kb.IsKeyDown(Keys.RightControl);
 
-                    // When editing an existing group, require Ctrl or Shift to change selection
-                    // to prevent accidental sprite changes from stray clicks
-                    if (_isNew || shift || ctrl)
-                    {
-                        _selection.Select(col, row, shift, ctrl);
-                    }
+                    _selection.Select(col, row, shift, ctrl);
                 }
             }
         }
@@ -498,6 +493,17 @@ public class GroupEditor
         // Entity property fields
         if (isEntity && _propFields.Count > 0)
         {
+            // Check if dialogue_id is set (for hint on target_map)
+            string dialogueIdValue = null;
+            foreach (var f in _propFields)
+            {
+                if (f.Key == PropertyKeys.DialogueId)
+                {
+                    dialogueIdValue = f.GetValue();
+                    break;
+                }
+            }
+
             foreach (var pf in _propFields)
             {
                 string propLabel = TextUtils.TruncateToFit(font, pf.Key + ":", _propLabelW - 4);
@@ -508,6 +514,16 @@ public class GroupEditor
                     case PFK.Text: pf.TF.Draw(sb, font, r, pf.Bounds, gt); break;
                     case PFK.Numeric: pf.NF.Draw(sb, font, r, pf.Bounds, gt); break;
                     case PFK.Dropdown: pf.DD.Draw(sb, font, r, pf.Bounds); break;
+                }
+
+                // Show hint when target_map is set but dialogue_id may supersede it
+                if (pf.Key == PropertyKeys.TargetMap && !string.IsNullOrEmpty(dialogueIdValue)
+                    && !string.IsNullOrEmpty(pf.GetValue()))
+                {
+                    string hint = $"(dialogue \"{dialogueIdValue}\" may supersede)";
+                    sb.DrawString(font, hint,
+                        new Vector2(pf.Bounds.Right + 6, pf.Bounds.Y + (pf.Bounds.Height - font.LineSpacing) / 2),
+                        HintColor);
                 }
             }
         }

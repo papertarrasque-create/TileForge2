@@ -41,7 +41,8 @@
       "text": "You steel yourself and step through the doorway. Stone stairs spiral downward into the dark...",
       "actions": [
         { "type": "set_flag", "value": "entered_dungeon_l1" },
-        { "type": "log", "value": "You descend into the dungeon beneath the cellar." }
+        { "type": "log", "value": "You descend into the dungeon beneath the cellar." },
+        { "type": "map_transition", "value": "dungeon_level_1", "key": "2,2" }
       ],
       "editorX": 400,
       "editorY": -250

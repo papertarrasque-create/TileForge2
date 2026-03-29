@@ -30,10 +30,11 @@
           "value": 0
         }
       ],
-      "rewards": {
-        "set_flags": ["village_safe"],
-        "set_variables": { "reputation": "10" }
-      }
+      "rewards": [
+        { "type": "set_flag", "value": "village_safe" },
+        { "type": "clear_flag", "value": "guard_approved" },
+        { "type": "set_variable", "key": "reputation", "value": "10" }
+      ]
     },
     {
       "id": "cellar_depths",

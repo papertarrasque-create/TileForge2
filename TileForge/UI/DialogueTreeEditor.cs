@@ -49,7 +49,7 @@ public class DialogueTreeEditor
 
     // === Condition/Action type dropdowns ===
     private static readonly string[] ConditionTypes = { "has_flag", "not_flag", "has_item", "variable_eq", "variable_gte", "variable_lt", "quest_active", "quest_complete" };
-    private static readonly string[] ActionTypes = { "set_flag", "set_variable", "increment", "give_item", "remove_item", "start_quest", "complete_objective", "heal", "damage", "log" };
+    private static readonly string[] ActionTypes = { "set_flag", "set_variable", "increment", "give_item", "remove_item", "start_quest", "complete_objective", "heal", "damage", "log", "map_transition" };
 
     // === Properties panel: focus + scroll ===
     private object _activeField; // TextInputField or ComboBox
@@ -81,6 +81,7 @@ public class DialogueTreeEditor
     private string[] _knownVariables = Array.Empty<string>();
     private string[] _knownItems = Array.Empty<string>();
     private string[] _knownQuests = Array.Empty<string>();
+    private string[] _knownMaps = Array.Empty<string>();
 
     // Tree panel hit-test rects
     private readonly List<Rectangle> _treeRowRects = new();
@@ -1103,7 +1104,7 @@ public class DialogueTreeEditor
 
     private static bool NeedsKeyField(string actionType)
     {
-        return actionType is "set_variable" or "log";
+        return actionType is "set_variable" or "log" or "map_transition";
     }
 
     // === Layout ===
@@ -1885,6 +1886,10 @@ public class DialogueTreeEditor
             ids.Sort(StringComparer.OrdinalIgnoreCase);
             _knownQuests = ids.ToArray();
         }
+
+        // Collect map names for map_transition suggestions
+        var maps = ctx.GetAvailableMaps();
+        _knownMaps = maps?.Where(m => m != ProjectContext.CreateNewItem).ToArray() ?? Array.Empty<string>();
     }
 
     private string[] GetConditionSuggestions(string conditionType)
@@ -1907,6 +1912,7 @@ public class DialogueTreeEditor
             "set_variable" or "increment" => _knownVariables,
             "give_item" or "remove_item" => _knownItems,
             "start_quest" or "complete_objective" => _knownQuests,
+            "map_transition" => _knownMaps,
             _ => Array.Empty<string>(),
         };
     }
@@ -2055,6 +2061,10 @@ public class DialogueTreeEditor
                 case "log":
                     a.Text = val;
                     a.Color = string.IsNullOrEmpty(key) ? null : key;
+                    break;
+                case "map_transition":
+                    a.Value = val;
+                    a.Key = string.IsNullOrEmpty(key) ? null : key;
                     break;
                 default:
                     a.Value = val;

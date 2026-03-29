@@ -40,8 +40,7 @@ public class CutsceneScreen : GameScreen
 
     public override void OnEnter()
     {
-        string startNodeId = ResolveStartNode();
-        AdvanceToNode(startNodeId);
+        AdvanceToNode(_dialogue.ResolveStartNodeId(_gsm));
     }
 
     public override void Update(GameTime gameTime, GameInputManager input)
@@ -134,19 +133,6 @@ public class CutsceneScreen : GameScreen
             _gsm.SetFlag($"dialogue_shown:{_dialogue.Id}");
 
         ScreenManager.Pop();
-    }
-
-    private string ResolveStartNode()
-    {
-        if (_dialogue.Routes != null)
-        {
-            foreach (var route in _dialogue.Routes)
-            {
-                if (ConditionEvaluator.EvaluateAll(route.Conditions, _gsm))
-                    return route.StartNode;
-            }
-        }
-        return _dialogue.Nodes.FirstOrDefault()?.Id;
     }
 
     public override void Draw(SpriteBatch spriteBatch, SpriteFont font,

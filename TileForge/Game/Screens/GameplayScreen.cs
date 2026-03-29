@@ -33,33 +33,30 @@ public class GameplayScreen : GameScreen
     private readonly Dictionary<string, DialogueData> _dialogues;
     private IPathfinder _pathfinder;
     private BarkOverlay _activeBark;
+    private readonly Queue<BarkOverlay> _barkQueue = new();
     private readonly EntityAnimator _animator = new();
 
-    // --- Cached fields to avoid per-frame allocations and redundant computation ---
+    // Brief input freeze for quest notifications
+    private float _inputFreezeTimer;
 
-    // Fix #1: Reusable dictionary for SyncEntityRenderState (avoids allocation every frame)
+    // Queued floating messages — shown one at a time with stagger delay
+    private readonly Queue<FloatingMessage> _floatingQueue = new();
+    private const float FloatingStaggerDelay = 0.35f;
+    private float _floatingStaggerTimer;
+
+    // Cached fields to avoid per-frame allocations
     private readonly Dictionary<string, EntityInstance> _activeById = new();
-
-    // Fix #2: Cached AP text (only rebuilt when currentAP or maxAP changes)
     private string _cachedAPText = "";
     private int _cachedCurrentAP = -1;
     private int _cachedMaxAP = -1;
-
-    // Fix #3: Cached stats text and its measured size (only rebuilt when ATK/DEF changes)
     private string _cachedStatsText = "";
     private Vector2 _cachedStatsSize;
     private int _cachedATK = -1;
     private int _cachedDEF = -1;
-
-    // Fix #5: Cached hostile-nearby flag (computed in Update, read in Draw)
     private bool _hostileNearby;
-
-    // Fix #6: Cached cover bonus (recomputed when player position changes)
     private int _cachedCover;
     private int _cachedCoverX = int.MinValue;
     private int _cachedCoverY = int.MinValue;
-
-    // Fix #7: Cached player position and canvas bounds for camera centering
     private float _lastCameraRenderX = float.NaN;
     private float _lastCameraRenderY = float.NaN;
     private Rectangle _lastCanvasBounds;
@@ -126,15 +123,28 @@ public class GameplayScreen : GameScreen
 
         float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
 
-        // Tick active bark overlay
+        // Tick active bark overlay; dequeue next when current finishes
         if (_activeBark != null)
         {
             _activeBark.Update(dt);
             if (!_activeBark.IsActive)
                 _activeBark = null;
         }
+        if (_activeBark == null && _barkQueue.Count > 0)
+        {
+            _activeBark = _barkQueue.Dequeue();
+            _activeBark.Start();
+        }
 
-        // Tick floating messages
+        // Check for quest/spawn updates every frame (detects changes immediately after dialogue closes)
+        ProcessQuestUpdates(play);
+        _gameStateManager.ReEvaluateSpawnConditions();
+
+        // Tick input freeze (quest notification pause)
+        if (_inputFreezeTimer > 0)
+            _inputFreezeTimer -= dt;
+
+        // Tick active floating messages
         for (int i = play.FloatingMessages.Count - 1; i >= 0; i--)
         {
             var fm = play.FloatingMessages[i];
@@ -178,6 +188,10 @@ public class GameplayScreen : GameScreen
 
             // AP-gated actions require AP > 0 and player turn
             if (!play.IsPlayerTurn || play.PlayerAP <= 0)
+                return;
+
+            // Brief freeze after quest notifications so player sees them
+            if (_inputFreezeTimer > 0)
                 return;
 
             // End Turn — forfeit remaining AP, entities act
@@ -282,7 +296,7 @@ public class GameplayScreen : GameScreen
 
         SyncEntityRenderState();
 
-        // Fix #7: Only center camera when player position or canvas bounds actually change
+        // Only center camera when player position or canvas bounds actually change
         float renderX = play.RenderPos.X;
         float renderY = play.RenderPos.Y;
         var currentBounds = _getCanvasBounds();
@@ -295,10 +309,9 @@ public class GameplayScreen : GameScreen
             CenterCameraOnPlayer();
         }
 
-        // Fix #5: Cache hostile-nearby result for Draw
         _hostileNearby = AnyHostileNearby();
 
-        // Fix #6: Cache cover bonus — recompute only when player position changes
+        // Cache cover bonus -- recompute only when player position changes
         if (play.PlayerEntity != null)
         {
             int px = play.PlayerEntity.X;
@@ -311,7 +324,7 @@ public class GameplayScreen : GameScreen
             }
         }
 
-        // Fix #3: Cache stats text — recompute only when ATK/DEF changes
+        // Cache stats text -- recompute only when ATK/DEF changes
         int currentATK = _gameStateManager.GetEffectiveAttack();
         int currentDEF = _gameStateManager.GetEffectiveDefense();
         if (currentATK != _cachedATK || currentDEF != _cachedDEF)
@@ -322,7 +335,7 @@ public class GameplayScreen : GameScreen
             _cachedStatsSize = default; // Reset; will be measured once in Draw when font is available
         }
 
-        // Fix #2: Cache AP text — recompute only when currentAP or maxAP changes
+        // Cache AP text -- recompute only when currentAP or maxAP changes
         int maxAP = _gameStateManager.GetEffectiveMaxAP();
         int currentAP = play.PlayerAP;
         if (currentAP != _cachedCurrentAP || maxAP != _cachedMaxAP)
@@ -333,6 +346,16 @@ public class GameplayScreen : GameScreen
             for (int i = 0; i < maxAP; i++)
                 sb.Append(i < currentAP ? '*' : '.');
             _cachedAPText = sb.ToString();
+        }
+
+        // Promote queued floating messages one at a time with stagger delay
+        if (_floatingStaggerTimer > 0)
+            _floatingStaggerTimer -= dt;
+        if (_floatingStaggerTimer <= 0 && _floatingQueue.Count > 0)
+        {
+            var next = _floatingQueue.Dequeue();
+            play.FloatingMessages.Add(next);
+            _floatingStaggerTimer = _floatingQueue.Count > 0 ? FloatingStaggerDelay : 0f;
         }
     }
 
@@ -349,6 +372,9 @@ public class GameplayScreen : GameScreen
         foreach (var instance in _gameStateManager.State.ActiveEntities)
             _activeById[instance.Id] = instance;
 
+        // Track which active instances already have editor entities
+        var editorIds = new HashSet<string>();
+
         for (int i = _state.Map.Entities.Count - 1; i >= 0; i--)
         {
             var editorEntity = _state.Map.Entities[i];
@@ -360,11 +386,32 @@ public class GameplayScreen : GameScreen
                 {
                     editorEntity.X = instance.X;
                     editorEntity.Y = instance.Y;
+                    editorIds.Add(instance.Id);
                 }
                 else
                 {
                     _state.Map.Entities.RemoveAt(i);
                 }
+            }
+            else
+            {
+                // Entity not in ActiveEntities -- hide it
+                _state.Map.Entities.RemoveAt(i);
+            }
+        }
+
+        // Re-add editor entities for instances that became active but were previously removed
+        foreach (var instance in _gameStateManager.State.ActiveEntities)
+        {
+            if (instance.IsActive && !editorIds.Contains(instance.Id))
+            {
+                _state.Map.Entities.Add(new Data.Entity
+                {
+                    Id = instance.Id,
+                    GroupName = instance.DefinitionName,
+                    X = instance.X,
+                    Y = instance.Y,
+                });
             }
         }
     }
@@ -400,86 +447,59 @@ public class GameplayScreen : GameScreen
             }
         }
 
-        // Active bark overlay (floating text bubble above entity)
         _activeBark?.Draw(spriteBatch, font, renderer, canvasBounds);
-
-        // HUD stats + status effects are now shown in the SidebarHUD
     }
 
-    private bool CanMoveTo(int x, int y)
+    private bool IsTileSolid(int x, int y)
     {
-        var map = _state.Map;
-        if (!map.InBounds(x, y)) return false;
-
-        // Check all layers for solid groups
-        foreach (var layer in map.Layers)
+        foreach (var layer in _state.Map.Layers)
         {
-            string groupName = layer.GetCell(x, y, map.Width);
+            string groupName = layer.GetCell(x, y, _state.Map.Width);
             if (groupName != null
                 && _state.GroupsByName.TryGetValue(groupName, out var group)
                 && group.IsSolid)
             {
-                return false;
+                return true;
             }
         }
+        return false;
+    }
 
-        // Check active entities for solid groups
+    private bool IsEntitySolidAt(int x, int y, string excludeEntityId = null)
+    {
         foreach (var instance in _gameStateManager.State.ActiveEntities)
         {
             if (!instance.IsActive) continue;
+            if (excludeEntityId != null && instance.Id == excludeEntityId) continue;
             if (instance.X == x && instance.Y == y
                 && _state.GroupsByName.TryGetValue(instance.DefinitionName, out var group)
                 && group.IsSolid)
             {
-                return false;
+                return true;
             }
         }
+        return false;
+    }
 
-        return true;
+    private bool CanMoveTo(int x, int y)
+    {
+        return _state.Map.InBounds(x, y) && !IsTileSolid(x, y) && !IsEntitySolidAt(x, y);
     }
 
     /// <summary>
-    /// Checks if a tile is walkable (not solid) and not occupied by any entity or the player.
-    /// Used for knockback destination validation.
+    /// Checks if a tile is walkable and not occupied by any entity or the player.
     /// excludeEntityId: skip this entity in occupancy check (the entity being knocked back).
     /// Pass null when checking player knockback (player is excluded automatically).
     /// </summary>
     private bool IsTileWalkableAndUnoccupied(int x, int y, string excludeEntityId)
     {
-        var map = _state.Map;
-        if (!map.InBounds(x, y)) return false;
-
-        // Check all layers for solid tiles (same logic as CanMoveTo)
-        foreach (var layer in map.Layers)
-        {
-            string groupName = layer.GetCell(x, y, map.Width);
-            if (groupName != null
-                && _state.GroupsByName.TryGetValue(groupName, out var group)
-                && group.IsSolid)
-            {
-                return false;
-            }
-        }
-
-        // Check no solid entity occupies the tile (matches CanMoveTo entity check)
-        foreach (var e in _gameStateManager.State.ActiveEntities)
-        {
-            if (!e.IsActive) continue;
-            if (excludeEntityId != null && e.Id == excludeEntityId) continue;
-            if (e.X == x && e.Y == y
-                && _state.GroupsByName.TryGetValue(e.DefinitionName, out var eGroup)
-                && eGroup.IsSolid)
-            {
-                return false;
-            }
-        }
+        if (!_state.Map.InBounds(x, y) || IsTileSolid(x, y) || IsEntitySolidAt(x, y, excludeEntityId))
+            return false;
 
         // Don't check player collision when player is the knockback target (excludeEntityId == null)
-        if (excludeEntityId != null)
-        {
-            if (_state.PlayState.PlayerEntity.X == x && _state.PlayState.PlayerEntity.Y == y)
-                return false;
-        }
+        if (excludeEntityId != null
+            && _state.PlayState.PlayerEntity.X == x && _state.PlayState.PlayerEntity.Y == y)
+            return false;
 
         return true;
     }
@@ -524,42 +544,48 @@ public class GameplayScreen : GameScreen
                     {
                         LogAndFloat(play,$"Triggered {instance.DefinitionName}", Color.White, instance.X, instance.Y);
                     }
-                    if (!_gameStateManager.IsPlayerAlive())
-                    {
-                        ScreenManager.Push(new GameOverScreen(_gameStateManager));
-                        return;
-                    }
+                    if (CheckPlayerDeath()) return;
                     break;
 
                 case EntityType.Trigger:
-                    var targetMap = PropertyAccess.GetString(instance.Properties, PropertyKeys.TargetMap);
-                    if (!string.IsNullOrEmpty(targetMap))
-                    {
-                        int tx = PropertyAccess.GetInt(instance.Properties, PropertyKeys.TargetX);
-                        int ty = PropertyAccess.GetInt(instance.Properties, PropertyKeys.TargetY);
-                        _gameStateManager.PendingTransition = new MapTransitionRequest
-                        {
-                            TargetMap = targetMap,
-                            TargetX = tx,
-                            TargetY = ty,
-                        };
-                        LogAndFloat(play,$"Transitioning to {targetMap}...", Color.White, instance.X, instance.Y);
-                    }
-                    else
-                    {
-                        LogAndFloat(play,$"Triggered {instance.DefinitionName}", Color.White, instance.X, instance.Y);
-                    }
+                    TryEntityMapTransition(play, instance);
                     break;
 
                 case EntityType.Interactable:
-                    LogAndFloat(play,$"Interacted with {instance.DefinitionName}", Color.White, instance.X, instance.Y);
+                    // Fallback: if dialogue didn't set a transition, check entity properties
+                    if (_gameStateManager.PendingTransition == null)
+                        TryEntityMapTransition(play, instance);
+                    else
+                        LogAndFloat(play,$"Interacted with {instance.DefinitionName}", Color.White, instance.X, instance.Y);
                     break;
+
                 default:
                     LogAndFloat(play,$"Interacted with {instance.DefinitionName}", Color.White, instance.X, instance.Y);
                     break;
             }
 
             return;
+        }
+    }
+
+    private void TryEntityMapTransition(PlayState play, EntityInstance instance)
+    {
+        var targetMap = PropertyAccess.GetString(instance.Properties, PropertyKeys.TargetMap);
+        if (!string.IsNullOrEmpty(targetMap))
+        {
+            int tx = PropertyAccess.GetInt(instance.Properties, PropertyKeys.TargetX);
+            int ty = PropertyAccess.GetInt(instance.Properties, PropertyKeys.TargetY);
+            _gameStateManager.PendingTransition = new MapTransitionRequest
+            {
+                TargetMap = targetMap,
+                TargetX = tx,
+                TargetY = ty,
+            };
+            LogAndFloat(play, $"Transitioning to {targetMap}...", Color.White, instance.X, instance.Y);
+        }
+        else
+        {
+            LogAndFloat(play, $"Interacted with {instance.DefinitionName}", Color.White, instance.X, instance.Y);
         }
     }
 
@@ -594,10 +620,7 @@ public class GameplayScreen : GameScreen
             if (effectMessages.Exists(m => m.Contains("damage")))
                 TriggerDamageFlash();
 
-            if (!_gameStateManager.IsPlayerAlive())
-            {
-                ScreenManager.Push(new GameOverScreen(_gameStateManager));
-            }
+            CheckPlayerDeath();
         }
 
         // Deduct 1 AP for completed move and process turn if needed
@@ -641,29 +664,10 @@ public class GameplayScreen : GameScreen
                     // "spikes" and null: instant damage only, no lingering effect
                 }
 
-                if (!_gameStateManager.IsPlayerAlive())
-                {
-                    ScreenManager.Push(new GameOverScreen(_gameStateManager));
-                }
+                CheckPlayerDeath();
                 return;
             }
         }
-    }
-
-    private float GetMovementCostAt(int x, int y)
-    {
-        float maxCost = 1.0f;
-        foreach (var layer in _state.Map.Layers)
-        {
-            string groupName = layer.GetCell(x, y, _state.Map.Width);
-            if (groupName != null
-                && _state.GroupsByName.TryGetValue(groupName, out var group))
-            {
-                if (group.MovementCost > maxCost)
-                    maxCost = group.MovementCost;
-            }
-        }
-        return maxCost;
     }
 
     internal (float cost, string groupName) GetMovementCostWithSource(int x, int y)
@@ -686,37 +690,26 @@ public class GameplayScreen : GameScreen
         return (maxCost, sourceName);
     }
 
-    internal int GetDefenseBonusAt(int x, int y)
+    private int GetMaxTileProperty(int x, int y, Func<TileGroup, int> selector)
     {
-        int maxBonus = 0;
+        int max = 0;
         foreach (var layer in _state.Map.Layers)
         {
             string groupName = layer.GetCell(x, y, _state.Map.Width);
             if (groupName != null
                 && _state.GroupsByName.TryGetValue(groupName, out var group))
             {
-                if (group.DefenseBonus > maxBonus)
-                    maxBonus = group.DefenseBonus;
+                int val = selector(group);
+                if (val > max)
+                    max = val;
             }
         }
-        return maxBonus;
+        return max;
     }
 
-    internal int GetNoiseLevelAt(int x, int y)
-    {
-        int maxNoise = 0;
-        foreach (var layer in _state.Map.Layers)
-        {
-            string groupName = layer.GetCell(x, y, _state.Map.Width);
-            if (groupName != null
-                && _state.GroupsByName.TryGetValue(groupName, out var group))
-            {
-                if (group.NoiseLevel > maxNoise)
-                    maxNoise = group.NoiseLevel;
-            }
-        }
-        return maxNoise;
-    }
+    internal int GetDefenseBonusAt(int x, int y) => GetMaxTileProperty(x, y, g => g.DefenseBonus);
+
+    internal int GetNoiseLevelAt(int x, int y) => GetMaxTileProperty(x, y, g => g.NoiseLevel);
 
     private void PropagateNoise(PlayState play, int x, int y)
     {
@@ -784,9 +777,13 @@ public class GameplayScreen : GameScreen
 
             if (msg != null)
             {
-                LogAndFloat(play,msg, Color.Cyan, play.PlayerEntity.X, play.PlayerEntity.Y);
+                LogAndFloat(play, msg, Color.Cyan, play.PlayerEntity.X, play.PlayerEntity.Y);
             }
         }
+
+        // Briefly freeze input so the player can read quest notifications
+        if (events.Count > 0)
+            _inputFreezeTimer = 0.6f;
     }
 
     private bool TryBumpAttack(PlayState play, int x, int y)
@@ -907,7 +904,6 @@ public class GameplayScreen : GameScreen
         if (!_gameStateManager.IsPlayerAlive())
             return;
 
-        ProcessQuestUpdates(play);
         BeginPlayerTurn(play);
     }
 
@@ -1024,11 +1020,7 @@ public class GameplayScreen : GameScreen
 
                 entityAP--;
 
-                if (!_gameStateManager.IsPlayerAlive())
-                {
-                    ScreenManager.Push(new GameOverScreen(_gameStateManager));
-                    return;
-                }
+                if (CheckPlayerDeath()) return;
             }
 
             // Alert tick-down after each entity's turn
@@ -1037,11 +1029,7 @@ public class GameplayScreen : GameScreen
                 PropertyAccess.SetInt(entity.Properties, PropertyKeys.AlertTurns, alertTurns - 1);
         }
 
-        // Check player death after all entities have acted
-        if (!_gameStateManager.IsPlayerAlive())
-        {
-            ScreenManager.Push(new GameOverScreen(_gameStateManager));
-        }
+        CheckPlayerDeath();
     }
 
     private IPathfinder CreatePathfinder()
@@ -1081,8 +1069,15 @@ public class GameplayScreen : GameScreen
 
         if (result.BarkOverlay != null)
         {
-            _activeBark = result.BarkOverlay;
-            _activeBark.Start();
+            if (_activeBark == null)
+            {
+                _activeBark = result.BarkOverlay;
+                _activeBark.Start();
+            }
+            else
+            {
+                _barkQueue.Enqueue(result.BarkOverlay);
+            }
         }
         else if (result.Screen != null)
         {
@@ -1183,12 +1178,24 @@ public class GameplayScreen : GameScreen
         return dialogue;
     }
 
-    /// <summary>
-    /// Adds a floating message AND logs it to the persistent game log.
-    /// </summary>
+    private bool CheckPlayerDeath()
+    {
+        if (_gameStateManager.IsPlayerAlive()) return false;
+        ScreenManager.Push(new GameOverScreen(_gameStateManager));
+        return true;
+    }
+
     private void LogAndFloat(PlayState play, string text, Color color, int tileX, int tileY)
     {
-        play.AddFloatingMessage(text, color, tileX, tileY);
+        _floatingQueue.Enqueue(new FloatingMessage
+        {
+            Text = text,
+            Color = color,
+            TileX = tileX,
+            TileY = tileY,
+            Timer = FloatingMessage.Duration,
+            VerticalOffset = 0f,
+        });
         _gameLog?.Add(text, color);
     }
 }

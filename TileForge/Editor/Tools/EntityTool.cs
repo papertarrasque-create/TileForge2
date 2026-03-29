@@ -10,7 +10,7 @@ public class EntityTool : ITool
 {
     private static readonly Color PreviewColor = LayoutConstants.EntityPreviewColor;
 
-    private enum Mode { None, Placed, Dragging }
+    private enum Mode { None, Dragging }
 
     private Mode _mode;
     private Entity _dragEntity;
@@ -23,7 +23,7 @@ public class EntityTool : ITool
         if (state.Map == null) return;
 
         // Check if there's an entity at this position
-        var hit = FindEntityAt(state, gridX, gridY);
+        var hit = state.FindEntityAt(gridX, gridY);
 
         if (hit != null)
         {
@@ -55,7 +55,7 @@ public class EntityTool : ITool
             state.Map.Entities.Add(entity);
             state.SelectedEntityId = entity.Id;
             state.UndoStack.Push(new PlaceEntityCommand(state.Map, entity));
-            _mode = Mode.Placed;
+            _mode = Mode.None;
         }
     }
 
@@ -87,7 +87,7 @@ public class EntityTool : ITool
     {
         if (state.SelectedGroup?.Type != GroupType.Entity) return;
         if (state.SelectedGroup.Sprites.Count == 0 || state.Sheet == null) return;
-        if (FindEntityAt(state, gridX, gridY) != null) return;
+        if (state.FindEntityAt(gridX, gridY) != null) return;
 
         var sprite = state.SelectedGroup.Sprites[0];
         var srcRect = state.Sheet.GetTileRect(sprite.Col, sprite.Row);
@@ -99,15 +99,4 @@ public class EntityTool : ITool
         spriteBatch.Draw(state.Sheet.Texture, destRect, srcRect, PreviewColor);
     }
 
-    private static Entity FindEntityAt(EditorState state, int gridX, int gridY)
-    {
-        if (state.Map == null) return null;
-        for (int i = state.Map.Entities.Count - 1; i >= 0; i--)
-        {
-            var e = state.Map.Entities[i];
-            if (e.X == gridX && e.Y == gridY)
-                return e;
-        }
-        return null;
-    }
 }

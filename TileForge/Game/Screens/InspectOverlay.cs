@@ -32,25 +32,7 @@ public class InspectOverlay : GameScreen
 
     public override void OnEnter()
     {
-        string startNodeId = ResolveStartNode();
-        AdvanceToNode(startNodeId);
-    }
-
-    /// <summary>
-    /// Evaluates routes top-to-bottom, returning the first matching startNode.
-    /// Falls back to first node if no routes defined.
-    /// </summary>
-    private string ResolveStartNode()
-    {
-        if (_dialogue.Routes != null)
-        {
-            foreach (var route in _dialogue.Routes)
-            {
-                if (ConditionEvaluator.EvaluateAll(route.Conditions, _gsm))
-                    return route.StartNode;
-            }
-        }
-        return _dialogue.Nodes.FirstOrDefault()?.Id;
+        AdvanceToNode(_dialogue.ResolveStartNodeId(_gsm));
     }
 
     /// <summary>

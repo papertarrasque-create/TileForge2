@@ -245,7 +245,7 @@ public class GameStateManagerTests
         var manager = new GameStateManager();
         manager.Initialize(map, groups);
 
-        Assert.DoesNotContain(manager.State.ActiveEntities, e => e.Id == "n1");
+        Assert.Contains(manager.State.ActiveEntities, e => e.Id == "n1" && !e.IsActive);
     }
 
     [Fact]
@@ -268,5 +268,74 @@ public class GameStateManagerTests
         manager.Initialize(map, groups);
 
         Assert.Contains(manager.State.ActiveEntities, e => e.Id == "n1" && e.IsActive);
+    }
+
+    [Fact]
+    public void ReEvaluateSpawnConditions_ForbidsFlagNowSet_DeactivatesEntity()
+    {
+        var (map, groups) = BuildBasicMap();
+        map.Entities.First(e => e.Id == "n1").Properties["spawn_forbids_flag"] = "guard_approved";
+        var manager = new GameStateManager();
+        manager.Initialize(map, groups);
+
+        // Entity should be active initially (flag not set yet)
+        Assert.Contains(manager.State.ActiveEntities, e => e.Id == "n1" && e.IsActive);
+
+        // Set the forbids flag and re-evaluate
+        manager.SetFlag("guard_approved");
+        manager.ReEvaluateSpawnConditions();
+
+        // Entity should now be deactivated
+        var entity = manager.State.ActiveEntities.First(e => e.Id == "n1");
+        Assert.False(entity.IsActive);
+    }
+
+    [Fact]
+    public void ReEvaluateSpawnConditions_ForbidsFlagNotSet_EntityRemainsActive()
+    {
+        var (map, groups) = BuildBasicMap();
+        map.Entities.First(e => e.Id == "n1").Properties["spawn_forbids_flag"] = "guard_approved";
+        var manager = new GameStateManager();
+        manager.Initialize(map, groups);
+
+        // Re-evaluate without setting the flag
+        manager.ReEvaluateSpawnConditions();
+
+        Assert.Contains(manager.State.ActiveEntities, e => e.Id == "n1" && e.IsActive);
+    }
+
+    [Fact]
+    public void ReEvaluateSpawnConditions_ForbidsFlagCleared_ReactivatesEntity()
+    {
+        var (map, groups) = BuildBasicMap();
+        map.Entities.First(e => e.Id == "n1").Properties["spawn_forbids_flag"] = "guard_approved";
+        var manager = new GameStateManager();
+        manager.Initialize(map, groups);
+
+        // Deactivate via spawn condition
+        manager.SetFlag("guard_approved");
+        manager.ReEvaluateSpawnConditions();
+        Assert.False(manager.State.ActiveEntities.First(e => e.Id == "n1").IsActive);
+
+        // Clear the flag and re-evaluate — entity should reactivate
+        manager.ClearFlag("guard_approved");
+        manager.ReEvaluateSpawnConditions();
+        Assert.True(manager.State.ActiveEntities.First(e => e.Id == "n1").IsActive);
+    }
+
+    [Fact]
+    public void ReEvaluateSpawnConditions_PermanentlyKilledEntity_DoesNotReactivate()
+    {
+        var (map, groups) = BuildBasicMap();
+        map.Entities.First(e => e.Id == "n1").Properties["spawn_forbids_flag"] = "guard_approved";
+        var manager = new GameStateManager();
+        manager.Initialize(map, groups);
+
+        // Permanently deactivate (kill/collect uses DeactivateEntity which sets persistent flag)
+        manager.DeactivateEntity(manager.State.ActiveEntities.First(e => e.Id == "n1"));
+
+        // Even though spawn conditions pass, entity should stay inactive
+        manager.ReEvaluateSpawnConditions();
+        Assert.False(manager.State.ActiveEntities.First(e => e.Id == "n1").IsActive);
     }
 }

@@ -55,5 +55,5 @@ Welcome to the TileForge project wiki. This is the living documentation for the 
 
 ## Project History
 
-- [[Changelog]] -- Feature history reconstructed from git
 - [[Sessions/|Session Log]] -- Per-session work summaries
+- Feature history available via `git log`

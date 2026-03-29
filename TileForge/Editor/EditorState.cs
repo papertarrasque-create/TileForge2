@@ -182,6 +182,18 @@ public class EditorState
         }
     }
 
+    public Entity FindEntityAt(int gridX, int gridY)
+    {
+        if (Map == null) return null;
+        for (int i = Map.Entities.Count - 1; i >= 0; i--)
+        {
+            var e = Map.Entities[i];
+            if (e.X == gridX && e.Y == gridY)
+                return e;
+        }
+        return null;
+    }
+
     private bool _isPlayMode;
     public bool IsPlayMode
     {

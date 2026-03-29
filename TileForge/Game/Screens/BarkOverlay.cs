@@ -125,18 +125,13 @@ public class BarkOverlay
 
     private DialogueNode ResolveDisplayNode()
     {
-        // 1. Try route evaluation (same pattern as DialogueScreen.ResolveStartNode)
-        if (_dialogue.Routes != null && _dialogue.Routes.Count > 0)
+        // 1. Try route evaluation
+        var startId = _dialogue.ResolveStartNodeId(_gsm);
+        if (startId != null)
         {
-            foreach (var route in _dialogue.Routes)
-            {
-                if (ConditionEvaluator.EvaluateAll(route.Conditions, _gsm))
-                {
-                    var routeNode = _dialogue.Nodes.FirstOrDefault(n => n.Id == route.StartNode);
-                    if (routeNode != null)
-                        return routeNode;
-                }
-            }
+            var routeNode = _dialogue.Nodes.FirstOrDefault(n => n.Id == startId);
+            if (routeNode != null)
+                return routeNode;
         }
 
         // 2. Random selection: filter nodes tagged "random" whose conditions pass

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 
 namespace TileForge.Game;
 
@@ -9,6 +10,23 @@ public class DialogueData
     public List<DialogueRoute> Routes { get; set; }     // Ordered conditional entry points
     public List<DialogueNode> Nodes { get; set; } = new();
     public bool? OneShot { get; set; }                  // Auto-set "dialogue_shown:{id}" after completion
+
+    /// <summary>
+    /// Evaluates routes and returns the ID of the first matching start node,
+    /// or falls back to the first node in the list.
+    /// </summary>
+    public string ResolveStartNodeId(GameStateManager gsm)
+    {
+        if (Routes != null)
+        {
+            foreach (var route in Routes)
+            {
+                if (ConditionEvaluator.EvaluateAll(route.Conditions, gsm))
+                    return route.StartNode;
+            }
+        }
+        return Nodes.FirstOrDefault()?.Id;
+    }
 }
 
 public class DialogueRoute
@@ -60,7 +78,7 @@ public class Condition
 
 public class DialogueAction
 {
-    public string Type { get; set; }      // set_flag, set_variable, increment, give_item, remove_item, start_quest, complete_objective, heal, damage, log
+    public string Type { get; set; }      // set_flag, clear_flag, set_variable, increment, give_item, remove_item, start_quest, complete_objective, heal, damage, log, map_transition
     public string Value { get; set; }     // primary value (flag name, variable value, heal amount, etc.)
     public string Key { get; set; }       // secondary key (variable name, item name)
     public string Color { get; set; }     // for log action

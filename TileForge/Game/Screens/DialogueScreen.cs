@@ -38,26 +38,7 @@ public class DialogueScreen : GameScreen
 
     public override void OnEnter()
     {
-        // Use route evaluation to find the starting node
-        string startNodeId = ResolveStartNode();
-        AdvanceToNode(startNodeId);
-    }
-
-    /// <summary>
-    /// Evaluates routes top-to-bottom, returning the first matching startNode.
-    /// Falls back to first node ID if no routes defined.
-    /// </summary>
-    private string ResolveStartNode()
-    {
-        if (_dialogue.Routes != null)
-        {
-            foreach (var route in _dialogue.Routes)
-            {
-                if (ConditionEvaluator.EvaluateAll(route.Conditions, _gameStateManager))
-                    return route.StartNode;
-            }
-        }
-        return _dialogue.Nodes.FirstOrDefault()?.Id;
+        AdvanceToNode(_dialogue.ResolveStartNodeId(_gameStateManager));
     }
 
     public override void Update(GameTime gameTime, GameInputManager input)
@@ -74,21 +55,22 @@ public class DialogueScreen : GameScreen
         float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
 
         // Typewriter reveal
-        if (_revealedChars < (_currentNode.Text?.Length ?? 0))
+        int textLen = _currentNode.Text?.Length ?? 0;
+        if (_revealedChars < textLen)
         {
             _revealTimer += dt;
             int charsToReveal = (int)(_revealTimer * CharsPerSecond);
             if (charsToReveal > _revealedChars)
             {
                 _revealedChars = charsToReveal;
-                if (_revealedChars >= (_currentNode.Text?.Length ?? 0))
-                    _revealedChars = _currentNode.Text?.Length ?? 0;
+                if (_revealedChars >= textLen)
+                    _revealedChars = textLen;
             }
 
             // Interact during reveal -> skip to full text
             if (input.IsActionJustPressed(GameAction.Interact))
             {
-                _revealedChars = _currentNode.Text?.Length ?? 0;
+                _revealedChars = textLen;
                 return;
             }
         }
@@ -188,9 +170,25 @@ public class DialogueScreen : GameScreen
     {
         if (_currentNode == null) return;
 
-        // Dialogue box at bottom of screen
-        int boxHeight = 120;
         int boxMargin = 8;
+        int padding = 8;
+        int maxTextWidth = canvasBounds.Width - boxMargin * 2 - padding * 2;
+        float lineHeight = font.MeasureString("A").Y;
+
+        // Pre-compute wrapped lines to size the box
+        var wrappedLines = new List<string>();
+        if (!string.IsNullOrEmpty(_currentNode.Text))
+            wrappedLines = TextUtils.WrapText(font, _currentNode.Text, maxTextWidth);
+
+        float contentHeight = padding * 2;
+        if (!string.IsNullOrEmpty(_currentNode.Speaker))
+            contentHeight += lineHeight + 4f;
+        if (wrappedLines.Count > 0)
+            contentHeight += wrappedLines.Count * lineHeight + 8f;
+        if (_visibleChoices != null && _revealedChars >= (_currentNode.Text?.Length ?? 0))
+            contentHeight += _visibleChoices.Count * (lineHeight + 2f);
+
+        int boxHeight = (int)System.Math.Max(contentHeight, 60);
         var boxRect = new Rectangle(
             canvasBounds.X + boxMargin,
             canvasBounds.Y + canvasBounds.Height - boxHeight - boxMargin,
@@ -200,7 +198,6 @@ public class DialogueScreen : GameScreen
         // Semi-transparent dark background
         renderer.DrawRect(spriteBatch, boxRect, new Color(0, 0, 0, 200));
 
-        int padding = 8;
         float textX = boxRect.X + padding;
         float textY = boxRect.Y + padding;
 
@@ -208,16 +205,24 @@ public class DialogueScreen : GameScreen
         if (!string.IsNullOrEmpty(_currentNode.Speaker))
         {
             spriteBatch.DrawString(font, _currentNode.Speaker, new Vector2(textX, textY), Color.Yellow);
-            textY += font.MeasureString(_currentNode.Speaker).Y + 4f;
+            textY += lineHeight + 4f;
         }
 
-        // Dialogue text (typewriter)
-        if (!string.IsNullOrEmpty(_currentNode.Text))
+        // Dialogue text (typewriter with word-wrap)
+        if (wrappedLines.Count > 0)
         {
-            int chars = _revealedChars < _currentNode.Text.Length ? _revealedChars : _currentNode.Text.Length;
-            string visibleText = _currentNode.Text.Substring(0, chars);
-            spriteBatch.DrawString(font, visibleText, new Vector2(textX, textY), Color.White);
-            textY += font.MeasureString(_currentNode.Text).Y + 8f;
+            int chars = System.Math.Min(_revealedChars, _currentNode.Text.Length);
+            var revealedLines = chars >= _currentNode.Text.Length
+                ? wrappedLines
+                : TextUtils.WrapText(font, _currentNode.Text.Substring(0, chars), maxTextWidth);
+
+            foreach (var line in revealedLines)
+            {
+                spriteBatch.DrawString(font, line, new Vector2(textX, textY), Color.White);
+                textY += lineHeight;
+            }
+            // Reserve space for full text so box doesn't resize during reveal
+            textY += (wrappedLines.Count - revealedLines.Count) * lineHeight + 8f;
         }
 
         // Choices
@@ -228,7 +233,7 @@ public class DialogueScreen : GameScreen
                 string choiceText = _visibleChoices[i].Text ?? "";
                 var color = i == _selectedChoiceIndex ? Color.Yellow : Color.LightGray;
                 spriteBatch.DrawString(font, $"> {choiceText}", new Vector2(textX + 8, textY), color);
-                textY += font.MeasureString(choiceText).Y + 2f;
+                textY += lineHeight + 2f;
             }
         }
     }

@@ -87,8 +87,7 @@ public class GameStateManager
                 continue;
 
             var merged = MergeProperties(group, entity.Properties);
-            if (!PassesSpawnConditions(merged, State))
-                continue;
+            bool spawnGated = !PassesSpawnConditions(merged, State);
 
             State.ActiveEntities.Add(new EntityInstance
             {
@@ -97,7 +96,7 @@ public class GameStateManager
                 X = entity.X,
                 Y = entity.Y,
                 Properties = merged,
-                IsActive = true,
+                IsActive = !spawnGated,
             });
         }
     }
@@ -131,9 +130,9 @@ public class GameStateManager
             // Persistence check: killed/collected entities stay in list as inactive
             bool persistedInactive = State.Flags.Contains(EntityInactivePrefix + entity.Id);
 
-            // Spawn condition check: gated entities are not added at all
-            if (!persistedInactive && !PassesSpawnConditions(merged, State))
-                continue;
+            // Spawn condition check: gated entities are added as inactive so
+            // ReEvaluateSpawnConditions can reactivate them if conditions change
+            bool spawnGated = !persistedInactive && !PassesSpawnConditions(merged, State);
 
             State.ActiveEntities.Add(new EntityInstance
             {
@@ -142,7 +141,7 @@ public class GameStateManager
                 X = entity.X,
                 Y = entity.Y,
                 Properties = merged,
-                IsActive = !persistedInactive,
+                IsActive = !persistedInactive && !spawnGated,
             });
         }
 
@@ -157,6 +156,30 @@ public class GameStateManager
     {
         entity.IsActive = false;
         SetFlag(EntityInactivePrefix + entity.Id);
+    }
+
+    /// <summary>
+    /// Re-checks spawn conditions for all entities. Deactivates those that no longer
+    /// pass and reactivates those that now pass (unless permanently killed/collected).
+    /// Spawn-condition deactivation is reversible — it does not set the persistent
+    /// entity_inactive flag used by kills and collects.
+    /// </summary>
+    public void ReEvaluateSpawnConditions()
+    {
+        foreach (var entity in State.ActiveEntities)
+        {
+            bool passes = PassesSpawnConditions(entity.Properties, State);
+            if (entity.IsActive && !passes)
+            {
+                // Reversible deactivation — no persistent flag
+                entity.IsActive = false;
+            }
+            else if (!entity.IsActive && passes && !HasFlag(EntityInactivePrefix + entity.Id))
+            {
+                // Reactivate: spawn conditions pass and entity was not permanently killed/collected
+                entity.IsActive = true;
+            }
+        }
     }
 
     private static bool PassesSpawnConditions(Dictionary<string, string> properties, GameState state)
@@ -187,6 +210,7 @@ public class GameStateManager
 
     // Flag operations
     public void SetFlag(string flag) => State.Flags.Add(flag);
+    public void ClearFlag(string flag) => State.Flags.Remove(flag);
     public bool HasFlag(string flag) => State.Flags.Contains(flag);
 
     // Variable operations

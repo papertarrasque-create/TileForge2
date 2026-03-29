@@ -1,0 +1,36 @@
+{
+  "id": "hut_door",
+  "routes": [
+    {
+      "startNode": "door_locked_quest",
+      "conditions": [
+        { "type": "quest_active", "value": "cellar_depths" }
+      ]
+    },
+    {
+      "startNode": "door_locked_quest",
+      "conditions": [
+        { "type": "quest_active", "value": "lost_amulet" }
+      ]
+    },
+    {
+      "startNode": "door_locked"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "door_locked_quest",
+      "speaker": "Hut Door",
+      "text": "The door is locked with a municipal padlock. The guard posted nearby should have the key.",
+      "editorX": 50,
+      "editorY": -50
+    },
+    {
+      "id": "door_locked",
+      "speaker": "Hut Door",
+      "text": "The door is locked with a municipal padlock.",
+      "editorX": 50,
+      "editorY": 100
+    }
+  ]
+}

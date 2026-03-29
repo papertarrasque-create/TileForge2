@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace TileForge.Data;
@@ -71,8 +72,8 @@ public class MapData
             var oldCells = layer.Cells;
             var newCells = new string[newWidth * newHeight];
 
-            int copyW = System.Math.Min(oldWidth, newWidth);
-            int copyH = System.Math.Min(oldHeight, newHeight);
+            int copyW = Math.Min(oldWidth, newWidth);
+            int copyH = Math.Min(oldHeight, newHeight);
 
             for (int y = 0; y < copyH; y++)
             {
@@ -89,8 +90,9 @@ public class MapData
         Height = newHeight;
 
         // Remove entities outside the new bounds
-        var removed = Entities.FindAll(e => e.X < 0 || e.X >= newWidth || e.Y < 0 || e.Y >= newHeight);
-        Entities.RemoveAll(e => e.X < 0 || e.X >= newWidth || e.Y < 0 || e.Y >= newHeight);
+        bool IsOutOfBounds(Entity e) => e.X < 0 || e.X >= newWidth || e.Y < 0 || e.Y >= newHeight;
+        var removed = Entities.FindAll(e => IsOutOfBounds(e));
+        Entities.RemoveAll(e => IsOutOfBounds(e));
 
         return removed;
     }

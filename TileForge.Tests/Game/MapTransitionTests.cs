@@ -394,7 +394,7 @@ public class MapTransitionTests
         targetMap.Entities.First(e => e.Id == "g1").Properties["spawn_requires_flag"] = "quest_started:cellar";
         manager.SwitchMap(targetMap, 0, 0);
 
-        Assert.DoesNotContain(manager.State.ActiveEntities, e => e.Id == "g1");
+        Assert.Contains(manager.State.ActiveEntities, e => e.Id == "g1" && !e.IsActive);
     }
 
     [Fact]
@@ -438,7 +438,7 @@ public class MapTransitionTests
         targetMap.Entities.First(e => e.Id == "g1").Properties["spawn_forbids_flag"] = "village_safe";
         manager.SwitchMap(targetMap, 0, 0);
 
-        Assert.DoesNotContain(manager.State.ActiveEntities, e => e.Id == "g1");
+        Assert.Contains(manager.State.ActiveEntities, e => e.Id == "g1" && !e.IsActive);
     }
 
     [Fact]
@@ -473,7 +473,7 @@ public class MapTransitionTests
         goblin.Properties["spawn_forbids_flag"] = "quest_done";
         manager.SwitchMap(targetMap, 0, 0);
 
-        Assert.DoesNotContain(manager.State.ActiveEntities, e => e.Id == "g1");
+        Assert.Contains(manager.State.ActiveEntities, e => e.Id == "g1" && !e.IsActive);
     }
 
     [Fact]
@@ -489,7 +489,7 @@ public class MapTransitionTests
         goblin.Properties["spawn_forbids_flag"] = "quest_done";
         manager.SwitchMap(targetMap, 0, 0);
 
-        Assert.DoesNotContain(manager.State.ActiveEntities, e => e.Id == "g1");
+        Assert.Contains(manager.State.ActiveEntities, e => e.Id == "g1" && !e.IsActive);
     }
 
     [Fact]
@@ -506,7 +506,7 @@ public class MapTransitionTests
         goblin.Properties["spawn_forbids_flag"] = "quest_done";
         manager.SwitchMap(targetMap, 0, 0);
 
-        Assert.DoesNotContain(manager.State.ActiveEntities, e => e.Id == "g1");
+        Assert.Contains(manager.State.ActiveEntities, e => e.Id == "g1" && !e.IsActive);
     }
 
     [Fact]
@@ -519,9 +519,9 @@ public class MapTransitionTests
         var targetMap = BuildLoadedMap();
         targetMap.Entities.First(e => e.Id == "g1").Properties["spawn_requires_flag"] = "quest_started:cellar";
 
-        // First entry: flag not set, goblin absent
+        // First entry: flag not set, goblin inactive
         manager.SwitchMap(targetMap, 0, 0);
-        Assert.DoesNotContain(manager.State.ActiveEntities, e => e.Id == "g1");
+        Assert.Contains(manager.State.ActiveEntities, e => e.Id == "g1" && !e.IsActive);
 
         // Set flag and re-enter: goblin appears
         manager.SetFlag("quest_started:cellar");
@@ -546,7 +546,7 @@ public class MapTransitionTests
         // Set flag and re-enter: goblin gone
         manager.SetFlag("village_safe");
         manager.SwitchMap(targetMap, 0, 0);
-        Assert.DoesNotContain(manager.State.ActiveEntities, e => e.Id == "g1");
+        Assert.Contains(manager.State.ActiveEntities, e => e.Id == "g1" && !e.IsActive);
     }
 
     [Fact]
