@@ -69,15 +69,17 @@
       "defaultProperties": {
         "dialogue_id": "0",
         "dialogue": "0",
-        "health": "5",
+        "health": "8",
         "attack": "2",
         "defense": "0",
         "poise": "0",
         "behavior": "chase",
-        "speed": "1",
+        "speed": "2",
+        "weight": "1",
         "default_facing": "right",
         "hostile": "true",
-        "aggro_range": "3",
+        "aggro_range": "6",
+        "xp": "5",
         "on_kill_increment": "rats_killed"
       }
     },
@@ -174,23 +176,17 @@
       "layer": "Entities",
       "entityType": "NPC",
       "defaultProperties": {
-        "health": "10",
-        "max_health": "1",
-        "attack": "4",
-        "defense": "0",
+        "health": "15",
+        "attack": "5",
+        "defense": "1",
         "poise": "0",
-        "xp": "0",
+        "xp": "15",
         "weight": "1",
         "behavior": "chase",
         "speed": "1",
         "default_facing": "right",
         "hostile": "true",
-        "aggro_range": "3",
-        "alert_turns": "1",
-        "patrol_axis": "x",
-        "patrol_range": "1",
-        "patrol_origin": "0",
-        "patrol_dir": "0",
+        "aggro_range": "8",
         "dialogue_id": "0",
         "dialogue": "0",
         "spawn_requires_flag": "cellar_depths_accepted"
@@ -721,6 +717,84 @@
         "dialogue_id": "dungeon_gate",
         "dialogue": "0",
         "spawn_forbids_flag": "dungeon_gate_opened"
+      }
+    },
+    {
+      "name": "Skeleton",
+      "type": "Entity",
+      "sprites": [
+        {
+          "col": 0,
+          "row": 0
+        }
+      ],
+      "isSolid": true,
+      "layer": "Entities",
+      "entityType": "NPC",
+      "defaultProperties": {
+        "health": "18",
+        "attack": "4",
+        "defense": "2",
+        "poise": "0",
+        "xp": "15",
+        "weight": "1",
+        "behavior": "chase_patrol",
+        "speed": "1",
+        "default_facing": "right",
+        "hostile": "true",
+        "aggro_range": "7"
+      }
+    },
+    {
+      "name": "Zombie",
+      "type": "Entity",
+      "sprites": [
+        {
+          "col": 0,
+          "row": 0
+        }
+      ],
+      "isSolid": true,
+      "layer": "Entities",
+      "entityType": "NPC",
+      "defaultProperties": {
+        "health": "40",
+        "attack": "8",
+        "defense": "0",
+        "poise": "0",
+        "xp": "30",
+        "weight": "3",
+        "behavior": "chase",
+        "speed": "1",
+        "default_facing": "right",
+        "hostile": "true",
+        "aggro_range": "5"
+      }
+    },
+    {
+      "name": "Ghost",
+      "type": "Entity",
+      "sprites": [
+        {
+          "col": 0,
+          "row": 0
+        }
+      ],
+      "isSolid": true,
+      "layer": "Entities",
+      "entityType": "NPC",
+      "defaultProperties": {
+        "health": "12",
+        "attack": "7",
+        "defense": "1",
+        "poise": "0",
+        "xp": "25",
+        "weight": "1",
+        "behavior": "chase",
+        "speed": "2",
+        "default_facing": "right",
+        "hostile": "true",
+        "aggro_range": "10"
       }
     }
   ],
@@ -2298,6 +2372,24 @@
         {
           "id": "63ce4b2a",
           "groupName": "HutDoor",
+          "x": 1,
+          "y": 1
+        },
+        {
+          "id": "f8e2f68d",
+          "groupName": "Skeleton",
+          "x": 1,
+          "y": 1
+        },
+        {
+          "id": "5fe9df92",
+          "groupName": "Zombie",
+          "x": 1,
+          "y": 1
+        },
+        {
+          "id": "9e37187c",
+          "groupName": "Ghost",
           "x": 1,
           "y": 1
         }
