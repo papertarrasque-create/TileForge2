@@ -43,8 +43,8 @@ public class GameStateManager
         // Backward-compat: old saves may not have MaxPoise
         if (State.Player != null && State.Player.MaxPoise <= 0)
         {
-            State.Player.MaxPoise = 20;
-            State.Player.Poise = 20;
+            State.Player.MaxPoise = 10;
+            State.Player.Poise = 10;
         }
     }
 
@@ -75,8 +75,8 @@ public class GameStateManager
                 Health = 100,
                 MaxHealth = 100,
                 MaxAP = 2,
-                Poise = 20,
-                MaxPoise = 20,
+                Poise = 10,
+                MaxPoise = 10,
             };
         }
 
