@@ -548,11 +548,7 @@ public class GameplayScreen : GameScreen
                     break;
 
                 case EntityType.Trigger:
-                    var triggerTarget = PropertyAccess.GetString(instance.Properties, PropertyKeys.TargetMap);
-                    if (!string.IsNullOrEmpty(triggerTarget))
-                        TryEntityMapTransition(play, instance);
-                    else
-                        LogAndFloat(play, $"Triggered {instance.DefinitionName}", Color.White, instance.X, instance.Y);
+                    TryEntityMapTransition(play, instance);
                     break;
 
                 case EntityType.Interactable:
