@@ -1,0 +1,43 @@
+{
+  "id": "DungeonDoor2",
+  "nodes": [
+    {
+      "id": "door_closed",
+      "speaker": "Ominous Door",
+      "text": "Having a moment to catch your breath, you find yourself standing before an ancient door festooned with vile runes. The door sits slightly ajar and the dust around it is unsettled, suggesting someone -- or something -- has been through recently.",
+      "choices": [
+        {
+          "text": "Push the door open.",
+          "nextNodeId": "open_door",
+          "actions": [
+            { "type": "set_flag", "value": "dungeon_door_2_opened" },
+            { "type": "log", "value": "You shove the door wide. The runes flare briefly, then fade to nothing." }
+          ]
+        },
+        {
+          "text": "Leave it for now.",
+          "nextNodeId": "leave_door"
+        }
+      ],
+      "editorX": 50,
+      "editorY": -50
+    },
+    {
+      "id": "open_door",
+      "speaker": "Ominous Door",
+      "text": "The door gives way with a grinding shudder. The runes pulse once -- a sickly green -- then go dark. Beyond, the corridor stretches into shadow. Fresh scratches line the walls, as if something clawed its way through in a hurry.",
+      "actions": [
+        { "type": "log", "value": "The passage ahead lies open. Whatever came through here did not linger.", "color": "yellow" }
+      ],
+      "editorX": 400,
+      "editorY": -50
+    },
+    {
+      "id": "leave_door",
+      "speaker": "Ominous Door",
+      "text": "You step back. The runes continue their faint, rhythmic glow -- almost like breathing.",
+      "editorX": 400,
+      "editorY": 100
+    }
+  ]
+}

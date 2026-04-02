@@ -332,8 +332,18 @@ public class DialogueTreeEditor
 
         if (leftClick && !_resize.IsResizing)
         {
+            // Header button clicks (+ Node, Del Node)
+            if (_addNodeRect != Rectangle.Empty && _addNodeRect.Contains(mouse.X, mouse.Y))
+            {
+                FlushSelectedNode();
+                AddNode();
+            }
+            else if (_deleteNodeRect != Rectangle.Empty && _deleteNodeRect.Contains(mouse.X, mouse.Y))
+            {
+                DeleteSelectedNode();
+            }
             // Tree panel clicks
-            if (_treeRect.Contains(mouse.X, mouse.Y))
+            else if (_treeRect.Contains(mouse.X, mouse.Y))
             {
                 HandleTreePanelClick(mouse);
             }
